@@ -1,0 +1,179 @@
+import React, { useCallback, useState } from 'react'
+import { RefreshControl, ScrollView, Text, View, Pressable } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { useFocusEffect, useRouter } from 'expo-router'
+import { Bell, BookOpen, CalendarDays, Package as PackageIcon } from 'lucide-react-native'
+
+import { useTranslation } from '@/lib/i18n'
+import { useUser } from '@/lib/user-context'
+import { useNotifications } from '@/lib/notifications-context'
+import {
+  fetchMyPackages,
+  fetchTopicById,
+  fetchMyClasses,
+  splitByTime,
+  displayName,
+} from '@/lib/data'
+import { formatDateTime, formatPrice } from '@/lib/format'
+import { Card, Logo } from '@/components/ui'
+import type { Package, TheoryClass, TheoryTopic } from '@/lib/types'
+
+export default function Home() {
+  const { t, locale } = useTranslation()
+  const { profile } = useUser()
+  const { unreadCount } = useNotifications()
+  const router = useRouter()
+
+  const [packages, setPackages] = useState<Package[]>([])
+  const [topic, setTopic] = useState<TheoryTopic | null>(null)
+  const [nextClass, setNextClass] = useState<TheoryClass | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const load = useCallback(async () => {
+    if (!profile) return
+    try {
+      const [pkgs, tpc, classes] = await Promise.all([
+        fetchMyPackages(profile.id),
+        fetchTopicById(profile.current_theory_topic_id),
+        fetchMyClasses(profile.id),
+      ])
+      setPackages(pkgs)
+      setTopic(tpc)
+      setNextClass(splitByTime(classes).upcoming[0] ?? null)
+    } catch {}
+  }, [profile])
+
+  useFocusEffect(
+    useCallback(() => {
+      load()
+    }, [load]),
+  )
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    await load()
+    setRefreshing(false)
+  }, [load])
+
+  const name = displayName(profile)
+
+  return (
+    <SafeAreaView className="flex-1 bg-neutral-50" edges={['top']}>
+      <ScrollView
+        contentContainerClassName="p-5 gap-4"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22C55E" />
+        }
+      >
+        <View className="mb-1 flex-row items-center justify-between">
+          <View className="rounded-xl bg-ink px-3 py-2">
+            <Logo width={150} />
+          </View>
+        </View>
+        <Text className="text-2xl font-extrabold text-neutral-900">
+          {name ? t('home.greeting', { name }) : t('home.greetingNoName')}
+        </Text>
+
+        {/* Unread notifications */}
+        <Pressable onPress={() => router.push('/(tabs)/notifications')}>
+          <Card className="flex-row items-center gap-3">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-brand-light">
+              <Bell size={20} color="#15803D" />
+            </View>
+            <View className="flex-1">
+              <Text className="font-semibold text-neutral-900">
+                {t('notif.title')}
+              </Text>
+              <Text className="text-sm text-neutral-500">
+                {unreadCount > 0
+                  ? t('home.unread', { count: unreadCount })
+                  : t('notif.empty')}
+              </Text>
+            </View>
+            {unreadCount > 0 ? (
+              <View className="min-w-[24px] items-center rounded-full bg-red-500 px-2 py-0.5">
+                <Text className="text-xs font-bold text-white">{unreadCount}</Text>
+              </View>
+            ) : null}
+          </Card>
+        </Pressable>
+
+        {/* Current theory class */}
+        <Card className="gap-2">
+          <View className="flex-row items-center gap-2">
+            <BookOpen size={18} color="#15803D" />
+            <Text className="text-sm font-semibold text-neutral-500">
+              {t('home.currentTopic')}
+            </Text>
+          </View>
+          {topic ? (
+            <View>
+              <Text className="text-xs font-bold text-brand-dark">
+                {t('theory.topicN', { n: topic.number })}
+              </Text>
+              <Text className="text-lg font-bold text-neutral-900">
+                {locale === 'de' ? topic.title_de : topic.title_en}
+              </Text>
+            </View>
+          ) : (
+            <Text className="text-neutral-500">{t('home.noTopic')}</Text>
+          )}
+        </Card>
+
+        {/* Next appointment */}
+        <Card className="gap-2">
+          <View className="flex-row items-center gap-2">
+            <CalendarDays size={18} color="#15803D" />
+            <Text className="text-sm font-semibold text-neutral-500">
+              {t('home.nextAppointment')}
+            </Text>
+          </View>
+          {nextClass ? (
+            <View>
+              <Text className="text-lg font-bold text-neutral-900">
+                {locale === 'de' ? nextClass.title_de : nextClass.title_en}
+              </Text>
+              <Text className="text-sm text-neutral-600">
+                {formatDateTime(nextClass.starts_at, locale)}
+              </Text>
+              {nextClass.location ? (
+                <Text className="text-sm text-neutral-500">
+                  {t('schedule.location')}: {nextClass.location}
+                </Text>
+              ) : null}
+            </View>
+          ) : (
+            <Text className="text-neutral-500">{t('home.noAppointment')}</Text>
+          )}
+        </Card>
+
+        {/* Packages */}
+        <Card className="gap-3">
+          <View className="flex-row items-center gap-2">
+            <PackageIcon size={18} color="#15803D" />
+            <Text className="text-sm font-semibold text-neutral-500">
+              {packages.length > 1 ? t('home.yourPackages') : t('home.yourPackage')}
+            </Text>
+          </View>
+          {packages.length ? (
+            packages.map((p) => (
+              <View
+                key={p.id}
+                className="flex-row items-center justify-between rounded-xl bg-neutral-50 px-3 py-2"
+              >
+                <Text className="font-semibold text-neutral-900">
+                  {locale === 'de' ? p.name_de : p.name_en}
+                </Text>
+                <Text className="text-sm font-bold text-brand-dark">
+                  {formatPrice(Number(p.price_eur), locale)}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <Text className="text-neutral-500">{t('home.noPackage')}</Text>
+          )}
+        </Card>
+      </ScrollView>
+    </SafeAreaView>
+  )
+}

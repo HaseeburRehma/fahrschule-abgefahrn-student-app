@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Native
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+ios/
+android/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Metro
+.metro-health-check*
+
+# Debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Typescript
+*.tsbuildinfo
+
+expo-env.d.ts
+
+# Production secrets — never commit
+.env.production
+.env.staging
+google-play-service-account.json
+*-service-account.json
+ios/Certificates.p12
