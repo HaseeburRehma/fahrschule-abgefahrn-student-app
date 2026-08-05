@@ -1,77 +1,141 @@
-import React, { useCallback, useState } from 'react'
-import { FlatList, Pressable, Text, View } from 'react-native'
+import React, { useCallback, useMemo, useState } from 'react'
+import { FlatList, Pressable, Text, TextInput, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack, useFocusEffect, useRouter } from 'expo-router'
-import { UserPlus, ChevronRight, CircleDot } from 'lucide-react-native'
+import { UserPlus, ChevronRight, CircleSlash, BookOpen } from 'lucide-react-native'
 
 import { useTranslation } from '@/lib/i18n'
-import { fetchStudents } from '@/lib/admin'
+import { fetchStudentsWithPlans, type StudentWithPlan } from '@/lib/admin'
 import { displayName } from '@/lib/data'
 import { Loader } from '@/components/ui'
-import type { Profile } from '@/lib/types'
 
 export default function StudentsList() {
-  const { t } = useTranslation()
+  const { t, locale } = useTranslation()
   const router = useRouter()
-  const [students, setStudents] = useState<Profile[] | null>(null)
+  const [rows, setRows] = useState<StudentWithPlan[] | null>(null)
+  const [query, setQuery] = useState('')
 
   useFocusEffect(
     useCallback(() => {
       let alive = true
-      fetchStudents()
-        .then((s) => alive && setStudents(s))
-        .catch(() => alive && setStudents([]))
+      fetchStudentsWithPlans()
+        .then((s) => alive && setRows(s))
+        .catch(() => alive && setRows([]))
       return () => {
         alive = false
       }
     }, []),
   )
 
-  if (students === null) return <Loader />
+  const filtered = useMemo(() => {
+    const list = rows ?? []
+    const q = query.trim().toLowerCase()
+    if (!q) return list
+    return list.filter((r) => {
+      const hay = `${displayName(r.profile)} ${r.profile.email ?? ''} ${
+        r.profile.phone ?? ''
+      }`.toLowerCase()
+      return hay.includes(q)
+    })
+  }, [rows, query])
+
+  if (rows === null) return <Loader />
 
   return (
     <SafeAreaView className="flex-1 bg-black" edges={['bottom']}>
-      <Stack.Screen options={{ title: t('admin.students') }} />
+      <Stack.Screen options={{ title: `${t('admin.students')} (${rows.length})` }} />
       <FlatList
-        data={students}
-        keyExtractor={(s) => s.id}
+        data={filtered}
+        keyExtractor={(s) => s.profile.id}
         contentContainerClassName="p-5 gap-2"
+        keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
-          <Pressable
-            onPress={() => router.push('/admin/students/new')}
-            className="mb-2 flex-row items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-4"
-          >
-            <UserPlus size={18} color="#0A0A0A" />
-            <Text className="font-bold text-ink">{t('admin.addStudent')}</Text>
-          </Pressable>
-        }
-        renderItem={({ item }) => (
-          <Pressable
-            onPress={() => router.push(`/admin/students/${item.id}`)}
-            className="flex-row items-center gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 p-4"
-          >
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
-              <Text className="font-black text-brand">
-                {(displayName(item) || '?').charAt(0).toUpperCase()}
-              </Text>
-            </View>
-            <View className="flex-1">
-              <Text className="font-semibold text-neutral-100">
-                {displayName(item) || item.email}
-              </Text>
-              {item.email ? (
-                <Text className="text-sm text-neutral-400">{item.email}</Text>
-              ) : null}
-            </View>
-            {!item.is_active ? (
-              <CircleDot size={16} color="#EF4444" />
+          <View className="mb-1 gap-2">
+            <Pressable
+              onPress={() => router.push('/admin/students/new')}
+              className="flex-row items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-4"
+            >
+              <UserPlus size={18} color="#0A0A0A" />
+              <Text className="font-bold text-ink">{t('admin.addStudent')}</Text>
+            </Pressable>
+            {rows.length > 0 ? (
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder={t('admin.searchStudents')}
+                placeholderTextColor="#6B7280"
+                autoCapitalize="none"
+                className="rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3 text-base text-neutral-100"
+              />
             ) : null}
-            <ChevronRight size={20} color="#9CA3AF" />
-          </Pressable>
-        )}
+          </View>
+        }
+        renderItem={({ item }) => {
+          const p = item.profile
+          return (
+            <Pressable
+              onPress={() => router.push(`/admin/students/${p.id}`)}
+              className="flex-row items-center gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 p-4"
+            >
+              <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
+                <Text className="font-black text-brand">
+                  {(displayName(p) || '?').charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              <View className="flex-1 gap-1">
+                <View className="flex-row items-center gap-2">
+                  <Text className="font-semibold text-neutral-100">
+                    {displayName(p) || p.email}
+                  </Text>
+                  {!p.is_active ? (
+                    <CircleSlash size={14} color="#EF4444" />
+                  ) : null}
+                </View>
+                {p.email ? (
+                  <Text className="text-xs text-neutral-400">{p.email}</Text>
+                ) : null}
+
+                {/* Plan (packages) */}
+                <View className="mt-1 flex-row flex-wrap gap-1">
+                  {item.packages.length ? (
+                    item.packages.map((pkg) => (
+                      <View
+                        key={pkg.id}
+                        className="rounded-full bg-brand/10 px-2 py-0.5"
+                      >
+                        <Text className="text-[11px] font-semibold text-brand">
+                          {locale === 'de' ? pkg.name_de : pkg.name_en}
+                        </Text>
+                      </View>
+                    ))
+                  ) : (
+                    <Text className="text-[11px] text-neutral-500">
+                      {t('admin.noPlan')}
+                    </Text>
+                  )}
+                </View>
+
+                {/* Current theory class */}
+                <View className="mt-0.5 flex-row items-center gap-1">
+                  <BookOpen size={12} color="#6B7280" />
+                  <Text className="text-[11px] text-neutral-400">
+                    {item.topic
+                      ? `${item.topic.number}. ${
+                          locale === 'de'
+                            ? item.topic.title_de
+                            : item.topic.title_en
+                        }`
+                      : t('admin.noTopic')}
+                  </Text>
+                </View>
+              </View>
+              <ChevronRight size={20} color="#6B7280" />
+            </Pressable>
+          )
+        }}
         ListEmptyComponent={
           <Text className="mt-16 text-center text-neutral-400">
-            {t('admin.noStudents')}
+            {query ? t('common.empty') : t('admin.noStudents')}
           </Text>
         }
       />

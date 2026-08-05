@@ -1,6 +1,7 @@
 import '../global.css'
 
 import React from 'react'
+import { View } from 'react-native'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
@@ -26,7 +27,14 @@ export default function RootLayout() {
                 <AuthGuard>
                   <SessionGuardRunner />
                   <PushRegistrar />
-                  <Stack screenOptions={{ headerShown: false }} />
+                  {/* On web, center the app in a phone-width column so wide
+                      desktop screens don't stretch the UI. On native the
+                      web:* variants are no-ops (full width). */}
+                  <View className="flex-1 w-full bg-black web:items-center">
+                    <View className="flex-1 w-full web:max-w-2xl">
+                      <Stack screenOptions={{ headerShown: false }} />
+                    </View>
+                  </View>
                 </AuthGuard>
               </NotificationsProvider>
             </UserProvider>

@@ -147,6 +147,17 @@ const DE: Dict = {
   'admin.noClasses': 'Noch keine Theorieklassen.',
   'admin.enrolled': 'Angemeldete Fahrschüler',
   'admin.badDate': 'Ungültiges Datum. Bitte JJJJ-MM-TT SS:MM verwenden.',
+  'admin.plan': 'Paket',
+  'admin.noPlan': 'Kein Paket',
+  'admin.noTopic': 'Keine Theorieklasse',
+  'admin.delete': 'Fahrschüler löschen',
+  'admin.deleteConfirm':
+    'Diesen Fahrschüler und alle seine Daten wirklich löschen? Das kann nicht rückgängig gemacht werden.',
+  'admin.deleted': 'Gelöscht.',
+  'admin.enrolledClasses': 'Angemeldete Klassen',
+  'admin.noClassesEnrolled': 'In keiner Klasse angemeldet.',
+  'admin.searchStudents': 'Fahrschüler suchen…',
+  'common.delete': 'Löschen',
 }
 
 const EN: Dict = {
@@ -263,6 +274,17 @@ const EN: Dict = {
   'admin.noClasses': 'No theory classes yet.',
   'admin.enrolled': 'Enrolled students',
   'admin.badDate': 'Invalid date. Please use YYYY-MM-DD HH:MM.',
+  'admin.plan': 'Package',
+  'admin.noPlan': 'No package',
+  'admin.noTopic': 'No theory class',
+  'admin.delete': 'Delete student',
+  'admin.deleteConfirm':
+    'Delete this student and all their data? This cannot be undone.',
+  'admin.deleted': 'Deleted.',
+  'admin.enrolledClasses': 'Enrolled classes',
+  'admin.noClassesEnrolled': 'Not enrolled in any class.',
+  'admin.searchStudents': 'Search students…',
+  'common.delete': 'Delete',
 }
 
 const DICTIONARY: Record<Locale, Dict> = { de: DE, en: EN }

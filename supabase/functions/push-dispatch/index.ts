@@ -1,3 +1,5 @@
+// @ts-nocheck  — Deno edge function (Deno global + https: imports). Checked by
+// the Deno runtime at deploy, not by the app's TypeScript.
 // ============================================================================
 // push-dispatch — sends an Expo push when a notification row is inserted.
 //

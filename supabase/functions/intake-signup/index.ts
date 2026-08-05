@@ -1,3 +1,5 @@
+// @ts-nocheck  — Deno edge function (Deno global + https: imports). Checked by
+// the Deno runtime at deploy, not by the app's TypeScript.
 // ============================================================================
 // intake-signup — public endpoint the website's "Online Anmeldung" form POSTs
 // to. Inserts a signup_intake row (status='pending') for an admin to review.

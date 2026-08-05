@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Alert, Platform, ScrollView, Switch, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
+import { CalendarDays } from 'lucide-react-native'
 
 import { useTranslation } from '@/lib/i18n'
 import {
@@ -11,24 +12,38 @@ import {
   fetchStudentPackageIds,
   updateStudent,
   setStudentPackages,
+  deleteStudent,
 } from '@/lib/admin'
+import { fetchMyClasses, splitByTime } from '@/lib/data'
+import { formatDateTime } from '@/lib/format'
 import { Button, Card, ErrorText, Loader, TextField } from '@/components/ui'
 import { PackagePicker, TopicPicker } from '@/components/admin-pickers'
-import type { Package, Profile, TheoryTopic } from '@/lib/types'
+import type { Package, Profile, TheoryClass, TheoryTopic } from '@/lib/types'
 
 function notify(msg: string) {
   if (Platform.OS === 'web') window.alert(msg)
   else Alert.alert(msg)
 }
 
+function confirmDelete(msg: string): Promise<boolean> {
+  if (Platform.OS === 'web') return Promise.resolve(window.confirm(msg))
+  return new Promise((resolve) =>
+    Alert.alert('', msg, [
+      { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+      { text: 'OK', style: 'destructive', onPress: () => resolve(true) },
+    ]),
+  )
+}
+
 export default function EditStudent() {
-  const { t } = useTranslation()
+  const { t, locale } = useTranslation()
   const router = useRouter()
   const { id } = useLocalSearchParams<{ id: string }>()
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [packages, setPackages] = useState<Package[]>([])
   const [topics, setTopics] = useState<TheoryTopic[]>([])
+  const [classes, setClasses] = useState<TheoryClass[]>([])
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -44,15 +59,18 @@ export default function EditStudent() {
     if (!id) return
     ;(async () => {
       try {
-        const [p, pkgs, tps, mine] = await Promise.all([
+        const [p, pkgs, tps, mine, cls] = await Promise.all([
           fetchProfile(id),
           fetchPackages(),
           fetchTopics(),
           fetchStudentPackageIds(id),
+          fetchMyClasses(id),
         ])
         setPackages(pkgs)
         setTopics(tps)
         setPkgIds(mine)
+        const { upcoming, past } = splitByTime(cls)
+        setClasses([...upcoming, ...past])
         if (p) {
           setProfile(p)
           setFirstName(p.first_name ?? '')
@@ -91,6 +109,22 @@ export default function EditStudent() {
     } catch (e: any) {
       setError(e?.message ?? t('common.error'))
     } finally {
+      setBusy(false)
+    }
+  }
+
+  async function del() {
+    if (!id) return
+    const ok = await confirmDelete(t('admin.deleteConfirm'))
+    if (!ok) return
+    setError(null)
+    setBusy(true)
+    try {
+      await deleteStudent(id)
+      notify(t('admin.deleted'))
+      router.back()
+    } catch (e: any) {
+      setError(e?.message ?? t('common.error'))
       setBusy(false)
     }
   }
@@ -155,8 +189,44 @@ export default function EditStudent() {
           />
         </Card>
 
+        {/* Enrolled theory classes (read-only; manage from a class screen) */}
+        <Card className="gap-2">
+          <View className="flex-row items-center gap-2">
+            <CalendarDays size={16} color="#22C55E" />
+            <Text className="text-sm font-bold text-neutral-300">
+              {t('admin.enrolledClasses')}
+            </Text>
+          </View>
+          {classes.length ? (
+            classes.map((c) => (
+              <View
+                key={c.id}
+                className="rounded-xl bg-neutral-800 px-3 py-2"
+              >
+                <Text className="text-sm font-semibold text-neutral-100">
+                  {locale === 'de' ? c.title_de : c.title_en}
+                </Text>
+                <Text className="text-xs text-neutral-400">
+                  {formatDateTime(c.starts_at, locale)}
+                  {c.location ? ` • ${c.location}` : ''}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <Text className="text-sm text-neutral-500">
+              {t('admin.noClassesEnrolled')}
+            </Text>
+          )}
+        </Card>
+
         <ErrorText>{error}</ErrorText>
         <Button label={t('common.save')} onPress={save} loading={busy} />
+        <Button
+          label={t('admin.delete')}
+          onPress={del}
+          disabled={busy}
+          variant="danger"
+        />
       </ScrollView>
     </SafeAreaView>
   )
