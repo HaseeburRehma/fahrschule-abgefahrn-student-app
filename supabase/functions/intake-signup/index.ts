@@ -93,9 +93,15 @@ Deno.serve(async (req) => {
     'leistung',
   ])
   const payment = pick(raw, ['payment', 'zahlung', 'zahlungsart', 'bezahlung'])
+  const form_title = pick(raw, ['form_title', 'form_name'])
 
-  if (!email && !first_name && !last_name) {
-    return json({ error: 'empty_submission' }, 400)
+  // A student sign-up must carry a real email. Forminator "Send test"
+  // submissions send field labels ("E-Mail") as values — skip those (200 so
+  // the webhook doesn't error/retry) to keep the admin queue clean.
+  const cleanEmail =
+    email && email.includes('@') ? email.trim().toLowerCase() : null
+  if (!cleanEmail) {
+    return json({ ok: true, skipped: 'no_valid_email' }, 200)
   }
 
   const supabase = createClient(
@@ -108,9 +114,9 @@ Deno.serve(async (req) => {
     .insert({
       first_name,
       last_name,
-      email,
+      email: cleanEmail,
       phone,
-      service_label,
+      service_label: service_label ?? form_title,
       payment,
       raw,
       status: 'pending',
