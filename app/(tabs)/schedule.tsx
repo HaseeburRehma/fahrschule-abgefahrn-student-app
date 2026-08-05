@@ -14,25 +14,25 @@ function ClassRow({ item, dim }: { item: TheoryClass; dim?: boolean }) {
   const { t, locale } = useTranslation()
   return (
     <View
-      className={`rounded-2xl border border-neutral-200 bg-white p-4 ${dim ? 'opacity-60' : ''}`}
+      className={`rounded-2xl border border-neutral-800 bg-neutral-900 p-4 ${dim ? 'opacity-60' : ''}`}
     >
-      <Text className="text-base font-bold text-neutral-900">
+      <Text className="text-base font-bold text-neutral-100">
         {locale === 'de' ? item.title_de : item.title_en}
       </Text>
       <View className="mt-1 flex-row items-center gap-1.5">
         <CalendarDays size={14} color="#6B7280" />
-        <Text className="text-sm text-neutral-600">
+        <Text className="text-sm text-neutral-400">
           {formatDateTime(item.starts_at, locale)}
         </Text>
       </View>
       {item.location ? (
         <View className="mt-0.5 flex-row items-center gap-1.5">
           <MapPin size={14} color="#6B7280" />
-          <Text className="text-sm text-neutral-500">{item.location}</Text>
+          <Text className="text-sm text-neutral-400">{item.location}</Text>
         </View>
       ) : null}
       {item.notes ? (
-        <Text className="mt-1 text-sm text-neutral-500">{item.notes}</Text>
+        <Text className="mt-1 text-sm text-neutral-400">{item.notes}</Text>
       ) : null}
     </View>
   )
@@ -70,9 +70,9 @@ export default function Schedule() {
   const empty = upcoming.length === 0 && past.length === 0
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-black" edges={['top']}>
       <View className="px-5 pb-2 pt-3">
-        <Text className="text-2xl font-extrabold text-neutral-900">
+        <Text className="text-2xl font-extrabold text-neutral-100">
           {t('schedule.title')}
         </Text>
       </View>
@@ -84,10 +84,10 @@ export default function Schedule() {
       >
         {empty ? (
           <View className="mt-24 items-center gap-3">
-            <View className="h-14 w-14 items-center justify-center rounded-full bg-neutral-200">
+            <View className="h-14 w-14 items-center justify-center rounded-full bg-neutral-800">
               <CalendarDays size={24} color="#9CA3AF" />
             </View>
-            <Text className="text-neutral-500">{t('schedule.empty')}</Text>
+            <Text className="text-neutral-400">{t('schedule.empty')}</Text>
           </View>
         ) : null}
 

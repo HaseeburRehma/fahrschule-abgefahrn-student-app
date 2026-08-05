@@ -30,7 +30,7 @@ export default function StudentsList() {
   if (students === null) return <Loader />
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-black" edges={['bottom']}>
       <Stack.Screen options={{ title: t('admin.students') }} />
       <FlatList
         data={students}
@@ -48,19 +48,19 @@ export default function StudentsList() {
         renderItem={({ item }) => (
           <Pressable
             onPress={() => router.push(`/admin/students/${item.id}`)}
-            className="flex-row items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-4"
+            className="flex-row items-center gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 p-4"
           >
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-brand-light">
-              <Text className="font-black text-brand-dark">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
+              <Text className="font-black text-brand">
                 {(displayName(item) || '?').charAt(0).toUpperCase()}
               </Text>
             </View>
             <View className="flex-1">
-              <Text className="font-semibold text-neutral-900">
+              <Text className="font-semibold text-neutral-100">
                 {displayName(item) || item.email}
               </Text>
               {item.email ? (
-                <Text className="text-sm text-neutral-500">{item.email}</Text>
+                <Text className="text-sm text-neutral-400">{item.email}</Text>
               ) : null}
             </View>
             {!item.is_active ? (
@@ -70,7 +70,7 @@ export default function StudentsList() {
           </Pressable>
         )}
         ListEmptyComponent={
-          <Text className="mt-16 text-center text-neutral-500">
+          <Text className="mt-16 text-center text-neutral-400">
             {t('admin.noStudents')}
           </Text>
         }

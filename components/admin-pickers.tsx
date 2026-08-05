@@ -25,20 +25,20 @@ export function PackagePicker({
             key={p.id}
             onPress={() => onToggle(p.id)}
             className={`flex-row items-center gap-3 rounded-xl border px-3 py-3 ${
-              on ? 'border-brand bg-brand-light' : 'border-neutral-200 bg-white'
+              on ? 'border-brand bg-brand/10' : 'border-neutral-800 bg-neutral-900'
             }`}
           >
             <View
               className={`h-5 w-5 items-center justify-center rounded-md border ${
-                on ? 'border-brand bg-brand' : 'border-neutral-300 bg-white'
+                on ? 'border-brand bg-brand' : 'border-neutral-700 bg-neutral-900'
               }`}
             >
               {on ? <Check size={14} color="#0A0A0A" /> : null}
             </View>
-            <Text className="flex-1 font-medium text-neutral-900">
+            <Text className="flex-1 font-medium text-neutral-100">
               {locale === 'de' ? p.name_de : p.name_en}
             </Text>
-            <Text className="text-sm font-bold text-brand-dark">
+            <Text className="text-sm font-bold text-brand">
               {formatPrice(Number(p.price_eur), locale)}
             </Text>
           </Pressable>
@@ -65,12 +65,12 @@ export function TopicPicker({
         className={`rounded-full border px-3 py-2 ${
           selected === null
             ? 'border-neutral-800 bg-neutral-800'
-            : 'border-neutral-200 bg-white'
+            : 'border-neutral-800 bg-neutral-900'
         }`}
       >
         <Text
           className={`text-xs font-semibold ${
-            selected === null ? 'text-white' : 'text-neutral-600'
+            selected === null ? 'text-white' : 'text-neutral-400'
           }`}
         >
           {t('common.none')}
@@ -83,12 +83,12 @@ export function TopicPicker({
             key={tp.id}
             onPress={() => onSelect(tp.id)}
             className={`rounded-full border px-3 py-2 ${
-              on ? 'border-brand bg-brand' : 'border-neutral-200 bg-white'
+              on ? 'border-brand bg-brand' : 'border-neutral-800 bg-neutral-900'
             }`}
           >
             <Text
               className={`text-xs font-semibold ${
-                on ? 'text-ink' : 'text-neutral-700'
+                on ? 'text-ink' : 'text-neutral-300'
               }`}
             >
               {tp.number}. {locale === 'de' ? tp.title_de : tp.title_en}

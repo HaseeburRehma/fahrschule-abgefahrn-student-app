@@ -67,9 +67,9 @@ export function Button({
       ? 'bg-brand'
       : variant === 'danger'
         ? 'bg-red-500'
-        : 'bg-transparent border border-neutral-300'
+        : 'bg-transparent border border-neutral-700'
   const textColor =
-    variant === 'ghost' ? 'text-neutral-800' : 'text-ink'
+    variant === 'ghost' ? 'text-neutral-200' : 'text-ink'
   return (
     <Pressable
       onPress={onPress}
@@ -93,17 +93,17 @@ export function TextField({
   return (
     <View className="w-full">
       {label ? (
-        <Text className="mb-1.5 text-sm font-semibold text-neutral-700">
+        <Text className="mb-1.5 text-sm font-semibold text-neutral-300">
           {label}
         </Text>
       ) : null}
       <TextInput
         placeholderTextColor="#A3A3A3"
-        className="w-full rounded-2xl border border-neutral-300 bg-white px-4 py-4 text-base text-neutral-900"
+        className="w-full rounded-2xl border border-neutral-700 bg-neutral-900 px-4 py-4 text-base text-neutral-100"
         {...props}
       />
       {hint ? (
-        <Text className="mt-1.5 text-xs text-neutral-500">{hint}</Text>
+        <Text className="mt-1.5 text-xs text-neutral-400">{hint}</Text>
       ) : null}
     </View>
   )
@@ -117,7 +117,7 @@ export function Card({
   className?: string
 }) {
   return (
-    <View className={`rounded-2xl border border-neutral-200 bg-white p-4 ${className}`}>
+    <View className={`rounded-2xl border border-neutral-800 bg-neutral-900 p-4 ${className}`}>
       {children}
     </View>
   )
@@ -130,10 +130,10 @@ export function ErrorText({ children }: { children: React.ReactNode }) {
 
 export function Loader({ label }: { label?: string }) {
   return (
-    <View className="flex-1 items-center justify-center bg-white">
+    <View className="flex-1 items-center justify-center bg-neutral-900">
       <ActivityIndicator color="#22C55E" size="large" />
       {label ? (
-        <Text className="mt-3 text-sm text-neutral-500">{label}</Text>
+        <Text className="mt-3 text-sm text-neutral-400">{label}</Text>
       ) : null}
     </View>
   )

@@ -70,11 +70,11 @@ export default function IntakeQueue() {
   if (rows === null) return <Loader />
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-black" edges={['bottom']}>
       <Stack.Screen options={{ title: t('admin.intake') }} />
       <ScrollView contentContainerClassName="p-5 gap-3">
         {rows.length === 0 ? (
-          <Text className="mt-16 text-center text-neutral-500">
+          <Text className="mt-16 text-center text-neutral-400">
             {t('admin.intakeEmpty')}
           </Text>
         ) : (
@@ -85,18 +85,18 @@ export default function IntakeQueue() {
             return (
               <Card key={r.id} className="gap-3">
                 <View>
-                  <Text className="text-base font-bold text-neutral-900">
+                  <Text className="text-base font-bold text-neutral-100">
                     {name}
                   </Text>
                   {r.email ? (
-                    <Text className="text-sm text-neutral-600">{r.email}</Text>
+                    <Text className="text-sm text-neutral-400">{r.email}</Text>
                   ) : null}
                   {r.phone ? (
-                    <Text className="text-sm text-neutral-500">{r.phone}</Text>
+                    <Text className="text-sm text-neutral-400">{r.phone}</Text>
                   ) : null}
                   {r.service_label ? (
-                    <View className="mt-1 self-start rounded-full bg-brand-light px-2.5 py-1">
-                      <Text className="text-xs font-semibold text-brand-dark">
+                    <View className="mt-1 self-start rounded-full bg-brand/10 px-2.5 py-1">
+                      <Text className="text-xs font-semibold text-brand">
                         {r.service_label}
                       </Text>
                     </View>
@@ -117,10 +117,10 @@ export default function IntakeQueue() {
                   <Pressable
                     onPress={() => dismiss(r)}
                     disabled={busy}
-                    className={`flex-row items-center justify-center gap-1 rounded-xl border border-neutral-300 px-4 py-3 ${busy ? 'opacity-50' : ''}`}
+                    className={`flex-row items-center justify-center gap-1 rounded-xl border border-neutral-700 px-4 py-3 ${busy ? 'opacity-50' : ''}`}
                   >
                     <X size={16} color="#6B7280" />
-                    <Text className="font-semibold text-neutral-600">
+                    <Text className="font-semibold text-neutral-400">
                       {t('admin.dismiss')}
                     </Text>
                   </Pressable>

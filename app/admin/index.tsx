@@ -19,36 +19,36 @@ export default function AdminHome() {
     {
       href: '/admin/students',
       label: t('admin.students'),
-      icon: <Users size={20} color="#15803D" />,
+      icon: <Users size={20} color="#22C55E" />,
     },
     {
       href: '/admin/intake',
       label: t('admin.intake'),
-      icon: <Inbox size={20} color="#15803D" />,
+      icon: <Inbox size={20} color="#22C55E" />,
     },
     {
       href: '/admin/notify',
       label: t('admin.notify'),
-      icon: <Send size={20} color="#15803D" />,
+      icon: <Send size={20} color="#22C55E" />,
     },
     {
       href: '/admin/classes',
       label: t('admin.classes'),
-      icon: <CalendarPlus size={20} color="#15803D" />,
+      icon: <CalendarPlus size={20} color="#22C55E" />,
     },
   ]
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-black" edges={['bottom']}>
       <Stack.Screen options={{ title: t('admin.title') }} />
       <ScrollView contentContainerClassName="p-5 gap-3">
         {links.map((l) => (
           <Pressable key={l.href} onPress={() => router.push(l.href as any)}>
             <Card className="flex-row items-center gap-3">
-              <View className="h-10 w-10 items-center justify-center rounded-full bg-brand-light">
+              <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
                 {l.icon}
               </View>
-              <Text className="flex-1 font-semibold text-neutral-900">
+              <Text className="flex-1 font-semibold text-neutral-100">
                 {l.label}
               </Text>
               <ChevronRight size={20} color="#9CA3AF" />

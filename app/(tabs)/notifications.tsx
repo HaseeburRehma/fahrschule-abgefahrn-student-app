@@ -26,8 +26,8 @@ export default function NotificationsScreen() {
         onPress={() => !item.is_read && markAsRead(item.id)}
         className={`mb-2 rounded-2xl border p-4 ${
           item.is_read
-            ? 'border-neutral-200 bg-white'
-            : 'border-brand/40 bg-brand-light'
+            ? 'border-neutral-800 bg-neutral-900'
+            : 'border-brand/40 bg-brand/10'
         }`}
       >
         <View className="flex-row items-start gap-2">
@@ -37,11 +37,11 @@ export default function NotificationsScreen() {
             <View className="mt-1.5 h-2 w-2 rounded-full bg-transparent" />
           )}
           <View className="flex-1">
-            <Text className="text-base font-bold text-neutral-900">
+            <Text className="text-base font-bold text-neutral-100">
               {item.title}
             </Text>
             {item.body ? (
-              <Text className="mt-0.5 text-sm text-neutral-700">{item.body}</Text>
+              <Text className="mt-0.5 text-sm text-neutral-300">{item.body}</Text>
             ) : null}
             <Text className="mt-1 text-xs text-neutral-400">
               {formatDateTime(item.created_at, locale)}
@@ -54,18 +54,18 @@ export default function NotificationsScreen() {
   )
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-black" edges={['top']}>
       <View className="flex-row items-center justify-between px-5 pb-2 pt-3">
-        <Text className="text-2xl font-extrabold text-neutral-900">
+        <Text className="text-2xl font-extrabold text-neutral-100">
           {t('notif.title')}
         </Text>
         {unreadCount > 0 ? (
           <Pressable
             onPress={markAllAsRead}
-            className="flex-row items-center gap-1 rounded-full bg-white px-3 py-1.5"
+            className="flex-row items-center gap-1 rounded-full bg-neutral-900 px-3 py-1.5"
           >
-            <CheckCheck size={16} color="#15803D" />
-            <Text className="text-xs font-semibold text-brand-dark">
+            <CheckCheck size={16} color="#22C55E" />
+            <Text className="text-xs font-semibold text-brand">
               {t('notif.markAllRead')}
             </Text>
           </Pressable>
@@ -82,10 +82,10 @@ export default function NotificationsScreen() {
         }
         ListEmptyComponent={
           <View className="mt-24 items-center gap-3">
-            <View className="h-14 w-14 items-center justify-center rounded-full bg-neutral-200">
+            <View className="h-14 w-14 items-center justify-center rounded-full bg-neutral-800">
               <Bell size={24} color="#9CA3AF" />
             </View>
-            <Text className="text-neutral-500">{t('notif.empty')}</Text>
+            <Text className="text-neutral-400">{t('notif.empty')}</Text>
           </View>
         }
       />

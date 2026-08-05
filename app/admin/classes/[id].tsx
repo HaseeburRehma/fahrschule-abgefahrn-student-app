@@ -64,22 +64,22 @@ export default function ClassEnrollments() {
   if (!cls) return <Loader />
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-black" edges={['bottom']}>
       <Stack.Screen
         options={{ title: locale === 'de' ? cls.title_de : cls.title_en }}
       />
       <ScrollView contentContainerClassName="p-5 gap-4">
         <Card>
-          <Text className="text-lg font-bold text-neutral-900">
+          <Text className="text-lg font-bold text-neutral-100">
             {locale === 'de' ? cls.title_de : cls.title_en}
           </Text>
-          <Text className="mt-1 text-sm text-neutral-500">
+          <Text className="mt-1 text-sm text-neutral-400">
             {formatDateTime(cls.starts_at, locale)}
             {cls.location ? ` • ${cls.location}` : ''}
           </Text>
         </Card>
 
-        <Text className="text-sm font-bold text-neutral-700">
+        <Text className="text-sm font-bold text-neutral-300">
           {t('admin.enrolled')} ({enrolled.length})
         </Text>
 
@@ -92,17 +92,17 @@ export default function ClassEnrollments() {
                 onPress={() => toggle(s.id)}
                 disabled={pending === s.id}
                 className={`flex-row items-center gap-3 rounded-xl border px-3 py-3 ${
-                  on ? 'border-brand bg-brand-light' : 'border-neutral-200 bg-white'
+                  on ? 'border-brand bg-brand/10' : 'border-neutral-800 bg-neutral-900'
                 } ${pending === s.id ? 'opacity-50' : ''}`}
               >
                 <View
                   className={`h-5 w-5 items-center justify-center rounded-md border ${
-                    on ? 'border-brand bg-brand' : 'border-neutral-300'
+                    on ? 'border-brand bg-brand' : 'border-neutral-700'
                   }`}
                 >
                   {on ? <Check size={14} color="#0A0A0A" /> : null}
                 </View>
-                <Text className="flex-1 text-neutral-900">
+                <Text className="flex-1 text-neutral-100">
                   {displayName(s) || s.email}
                 </Text>
               </Pressable>

@@ -73,7 +73,7 @@ export default function NewStudent() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-black" edges={['bottom']}>
       <Stack.Screen options={{ title: t('admin.addStudent') }} />
       <ScrollView contentContainerClassName="p-5 gap-4">
         <Card className="gap-3">
@@ -112,14 +112,14 @@ export default function NewStudent() {
         </Card>
 
         <Card className="gap-3">
-          <Text className="text-sm font-bold text-neutral-700">
+          <Text className="text-sm font-bold text-neutral-300">
             {t('admin.assignTopic')}
           </Text>
           <TopicPicker topics={topics} selected={topicId} onSelect={setTopicId} />
         </Card>
 
         <Card className="gap-3">
-          <Text className="text-sm font-bold text-neutral-700">
+          <Text className="text-sm font-bold text-neutral-300">
             {t('admin.assignPackages')}
           </Text>
           <PackagePicker

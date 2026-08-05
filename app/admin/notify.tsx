@@ -67,22 +67,22 @@ export default function AdminNotify() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-black" edges={['bottom']}>
       <Stack.Screen options={{ title: t('admin.notify') }} />
       <ScrollView contentContainerClassName="p-5 gap-4">
         <Card className="gap-3">
-          <Text className="text-sm font-bold text-neutral-700">
+          <Text className="text-sm font-bold text-neutral-300">
             {t('admin.notifyTo')}
           </Text>
           <View className="flex-row gap-2">
             <Pressable
               onPress={() => setToAll(true)}
               className={`flex-1 items-center rounded-xl border py-3 ${
-                toAll ? 'border-brand bg-brand-light' : 'border-neutral-200 bg-white'
+                toAll ? 'border-brand bg-brand/10' : 'border-neutral-800 bg-neutral-900'
               }`}
             >
               <Text
-                className={`font-bold ${toAll ? 'text-brand-dark' : 'text-neutral-600'}`}
+                className={`font-bold ${toAll ? 'text-brand' : 'text-neutral-400'}`}
               >
                 {t('admin.notifyAll')}
               </Text>
@@ -90,11 +90,11 @@ export default function AdminNotify() {
             <Pressable
               onPress={() => setToAll(false)}
               className={`flex-1 items-center rounded-xl border py-3 ${
-                !toAll ? 'border-brand bg-brand-light' : 'border-neutral-200 bg-white'
+                !toAll ? 'border-brand bg-brand/10' : 'border-neutral-800 bg-neutral-900'
               }`}
             >
               <Text
-                className={`font-bold ${!toAll ? 'text-brand-dark' : 'text-neutral-600'}`}
+                className={`font-bold ${!toAll ? 'text-brand' : 'text-neutral-400'}`}
               >
                 {t('admin.students')}
               </Text>
@@ -110,17 +110,17 @@ export default function AdminNotify() {
                     key={s.id}
                     onPress={() => toggle(s.id)}
                     className={`flex-row items-center gap-3 rounded-xl border px-3 py-2.5 ${
-                      on ? 'border-brand bg-brand-light' : 'border-neutral-200 bg-white'
+                      on ? 'border-brand bg-brand/10' : 'border-neutral-800 bg-neutral-900'
                     }`}
                   >
                     <View
                       className={`h-5 w-5 items-center justify-center rounded-md border ${
-                        on ? 'border-brand bg-brand' : 'border-neutral-300'
+                        on ? 'border-brand bg-brand' : 'border-neutral-700'
                       }`}
                     >
                       {on ? <Check size={14} color="#0A0A0A" /> : null}
                     </View>
-                    <Text className="flex-1 text-neutral-900">
+                    <Text className="flex-1 text-neutral-100">
                       {displayName(s) || s.email}
                     </Text>
                   </Pressable>

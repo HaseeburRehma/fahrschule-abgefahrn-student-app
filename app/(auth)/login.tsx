@@ -108,14 +108,14 @@ export default function Login() {
             <Logo width={280} />
           </View>
 
-          <View className="mt-10 rounded-3xl bg-white p-6">
+          <View className="mt-10 rounded-3xl bg-neutral-900 p-6">
             {step === 'email' ? (
               <View className="gap-4">
                 <View>
-                  <Text className="text-xl font-bold text-neutral-900">
+                  <Text className="text-xl font-bold text-neutral-100">
                     {t('auth.title')}
                   </Text>
-                  <Text className="mt-1 text-sm text-neutral-500">
+                  <Text className="mt-1 text-sm text-neutral-400">
                     {t('auth.subtitle')}
                   </Text>
                 </View>
@@ -137,10 +137,10 @@ export default function Login() {
             ) : (
               <View className="gap-4">
                 <View>
-                  <Text className="text-xl font-bold text-neutral-900">
+                  <Text className="text-xl font-bold text-neutral-100">
                     {t('auth.codeSentTitle')}
                   </Text>
-                  <Text className="mt-1 text-sm text-neutral-500">
+                  <Text className="mt-1 text-sm text-neutral-400">
                     {t('auth.codeSentSubtitle', { email: cleanEmail })}
                   </Text>
                 </View>
@@ -159,7 +159,7 @@ export default function Login() {
                 <Button label={t('auth.verify')} onPress={verify} loading={busy} />
                 <View className="flex-row justify-between">
                   <Pressable onPress={sendCode} disabled={busy}>
-                    <Text className="text-sm font-semibold text-brand-dark">
+                    <Text className="text-sm font-semibold text-brand">
                       {t('auth.resend')}
                     </Text>
                   </Pressable>
@@ -171,7 +171,7 @@ export default function Login() {
                     }}
                     disabled={busy}
                   >
-                    <Text className="text-sm font-semibold text-neutral-500">
+                    <Text className="text-sm font-semibold text-neutral-400">
                       {t('auth.changeEmail')}
                     </Text>
                   </Pressable>

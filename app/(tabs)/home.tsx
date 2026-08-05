@@ -58,7 +58,7 @@ export default function Home() {
   const name = displayName(profile)
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-black" edges={['top']}>
       <ScrollView
         contentContainerClassName="p-5 gap-4"
         refreshControl={
@@ -70,21 +70,21 @@ export default function Home() {
             <Logo width={150} />
           </View>
         </View>
-        <Text className="text-2xl font-extrabold text-neutral-900">
+        <Text className="text-2xl font-extrabold text-neutral-100">
           {name ? t('home.greeting', { name }) : t('home.greetingNoName')}
         </Text>
 
         {/* Unread notifications */}
         <Pressable onPress={() => router.push('/(tabs)/notifications')}>
           <Card className="flex-row items-center gap-3">
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-brand-light">
-              <Bell size={20} color="#15803D" />
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
+              <Bell size={20} color="#22C55E" />
             </View>
             <View className="flex-1">
-              <Text className="font-semibold text-neutral-900">
+              <Text className="font-semibold text-neutral-100">
                 {t('notif.title')}
               </Text>
-              <Text className="text-sm text-neutral-500">
+              <Text className="text-sm text-neutral-400">
                 {unreadCount > 0
                   ? t('home.unread', { count: unreadCount })
                   : t('notif.empty')}
@@ -101,57 +101,57 @@ export default function Home() {
         {/* Current theory class */}
         <Card className="gap-2">
           <View className="flex-row items-center gap-2">
-            <BookOpen size={18} color="#15803D" />
-            <Text className="text-sm font-semibold text-neutral-500">
+            <BookOpen size={18} color="#22C55E" />
+            <Text className="text-sm font-semibold text-neutral-400">
               {t('home.currentTopic')}
             </Text>
           </View>
           {topic ? (
             <View>
-              <Text className="text-xs font-bold text-brand-dark">
+              <Text className="text-xs font-bold text-brand">
                 {t('theory.topicN', { n: topic.number })}
               </Text>
-              <Text className="text-lg font-bold text-neutral-900">
+              <Text className="text-lg font-bold text-neutral-100">
                 {locale === 'de' ? topic.title_de : topic.title_en}
               </Text>
             </View>
           ) : (
-            <Text className="text-neutral-500">{t('home.noTopic')}</Text>
+            <Text className="text-neutral-400">{t('home.noTopic')}</Text>
           )}
         </Card>
 
         {/* Next appointment */}
         <Card className="gap-2">
           <View className="flex-row items-center gap-2">
-            <CalendarDays size={18} color="#15803D" />
-            <Text className="text-sm font-semibold text-neutral-500">
+            <CalendarDays size={18} color="#22C55E" />
+            <Text className="text-sm font-semibold text-neutral-400">
               {t('home.nextAppointment')}
             </Text>
           </View>
           {nextClass ? (
             <View>
-              <Text className="text-lg font-bold text-neutral-900">
+              <Text className="text-lg font-bold text-neutral-100">
                 {locale === 'de' ? nextClass.title_de : nextClass.title_en}
               </Text>
-              <Text className="text-sm text-neutral-600">
+              <Text className="text-sm text-neutral-400">
                 {formatDateTime(nextClass.starts_at, locale)}
               </Text>
               {nextClass.location ? (
-                <Text className="text-sm text-neutral-500">
+                <Text className="text-sm text-neutral-400">
                   {t('schedule.location')}: {nextClass.location}
                 </Text>
               ) : null}
             </View>
           ) : (
-            <Text className="text-neutral-500">{t('home.noAppointment')}</Text>
+            <Text className="text-neutral-400">{t('home.noAppointment')}</Text>
           )}
         </Card>
 
         {/* Packages */}
         <Card className="gap-3">
           <View className="flex-row items-center gap-2">
-            <PackageIcon size={18} color="#15803D" />
-            <Text className="text-sm font-semibold text-neutral-500">
+            <PackageIcon size={18} color="#22C55E" />
+            <Text className="text-sm font-semibold text-neutral-400">
               {packages.length > 1 ? t('home.yourPackages') : t('home.yourPackage')}
             </Text>
           </View>
@@ -159,18 +159,18 @@ export default function Home() {
             packages.map((p) => (
               <View
                 key={p.id}
-                className="flex-row items-center justify-between rounded-xl bg-neutral-50 px-3 py-2"
+                className="flex-row items-center justify-between rounded-xl bg-neutral-800 px-3 py-2"
               >
-                <Text className="font-semibold text-neutral-900">
+                <Text className="font-semibold text-neutral-100">
                   {locale === 'de' ? p.name_de : p.name_en}
                 </Text>
-                <Text className="text-sm font-bold text-brand-dark">
+                <Text className="text-sm font-bold text-brand">
                   {formatPrice(Number(p.price_eur), locale)}
                 </Text>
               </View>
             ))
           ) : (
-            <Text className="text-neutral-500">{t('home.noPackage')}</Text>
+            <Text className="text-neutral-400">{t('home.noPackage')}</Text>
           )}
         </Card>
       </ScrollView>

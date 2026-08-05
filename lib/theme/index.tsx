@@ -23,12 +23,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { setColorScheme } = useNwColorScheme()
 
   useEffect(() => {
-    setColorScheme('light')
+    setColorScheme('dark')
   }, [setColorScheme])
 
   return (
     <ThemeContext.Provider
-      value={{ pref: 'light', scheme: 'light', setPref: () => {} }}
+      value={{ pref: 'dark', scheme: 'dark', setPref: () => {} }}
     >
       {children}
     </ThemeContext.Provider>
@@ -37,6 +37,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext)
-  if (!ctx) return { pref: 'light', scheme: 'light', setPref: () => {} }
+  if (!ctx) return { pref: 'dark', scheme: 'dark', setPref: () => {} }
   return ctx
 }

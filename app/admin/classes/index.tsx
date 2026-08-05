@@ -82,7 +82,7 @@ export default function ClassesAdmin() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-black" edges={['bottom']}>
       <Stack.Screen options={{ title: t('admin.classes') }} />
       <ScrollView contentContainerClassName="p-5 gap-3">
         <Pressable
@@ -119,7 +119,7 @@ export default function ClassesAdmin() {
               onChangeText={setLocation}
             />
             <View className="gap-2">
-              <Text className="text-sm font-bold text-neutral-700">
+              <Text className="text-sm font-bold text-neutral-300">
                 {t('admin.topic')}
               </Text>
               <TopicPicker topics={topics} selected={topicId} onSelect={setTopicId} />
@@ -130,7 +130,7 @@ export default function ClassesAdmin() {
         ) : null}
 
         {classes.length === 0 ? (
-          <Text className="mt-8 text-center text-neutral-500">
+          <Text className="mt-8 text-center text-neutral-400">
             {t('admin.noClasses')}
           </Text>
         ) : (
@@ -138,13 +138,13 @@ export default function ClassesAdmin() {
             <Pressable
               key={c.id}
               onPress={() => router.push(`/admin/classes/${c.id}`)}
-              className="flex-row items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-4"
+              className="flex-row items-center gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 p-4"
             >
               <View className="flex-1">
-                <Text className="font-semibold text-neutral-900">
+                <Text className="font-semibold text-neutral-100">
                   {locale === 'de' ? c.title_de : c.title_en}
                 </Text>
-                <Text className="text-sm text-neutral-500">
+                <Text className="text-sm text-neutral-400">
                   {formatDateTime(c.starts_at, locale)}
                   {c.location ? ` • ${c.location}` : ''}
                 </Text>

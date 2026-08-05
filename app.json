@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "abgefahrn",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "primaryColor": "#22C55E",
     "description": "Benachrichtigungs-App für Fahrschüler der Fahrschule Abgefahrn: Theorieklassen, Termine und wichtige Mitteilungen – auf Deutsch und Englisch.",

@@ -27,13 +27,26 @@ function json(body: unknown, status = 200) {
   })
 }
 
-// First present, non-empty value among candidate keys (case-insensitive).
+// Pick the first non-empty value whose key matches a candidate.
+// Handles form plugins that emit field IDs (Forminator's `email-1`,
+// `name-1-first-name`, generic `text-2`, etc.): exact match first, then
+// substring (candidate contained in the key), then label. Candidates are
+// tried in order, so put the most specific first.
 function pick(obj: Record<string, any>, keys: string[]): string | null {
-  const lower: Record<string, any> = {}
-  for (const k of Object.keys(obj)) lower[k.toLowerCase()] = obj[k]
+  const entries = Object.entries(obj).map(
+    ([k, v]) => [k.toLowerCase(), v] as [string, any],
+  )
+  const val = (v: any) =>
+    v != null && String(v).trim() !== '' ? String(v).trim() : null
+  // 1) exact key match
   for (const k of keys) {
-    const v = lower[k.toLowerCase()]
-    if (v != null && String(v).trim() !== '') return String(v).trim()
+    const hit = entries.find(([kk]) => kk === k.toLowerCase())
+    if (hit && val(hit[1])) return val(hit[1])
+  }
+  // 2) key contains the candidate (e.g. `email-1` contains `email`)
+  for (const k of keys) {
+    const hit = entries.find(([kk]) => kk.includes(k.toLowerCase()))
+    if (hit && val(hit[1])) return val(hit[1])
   }
   return null
 }
@@ -64,8 +77,10 @@ Deno.serve(async (req) => {
     return json({ error: 'invalid_body' }, 400)
   }
 
-  const first_name = pick(raw, ['first_name', 'vorname', 'firstname', 'fname'])
-  const last_name = pick(raw, ['last_name', 'nachname', 'lastname', 'lname', 'name'])
+  // Specific candidates first (so Forminator `name-1-first-name` / `-last-name`
+  // resolve correctly and a generic `name-1` only wins as a last resort).
+  const first_name = pick(raw, ['first_name', 'first-name', 'vorname', 'firstname', 'fname', 'first'])
+  const last_name = pick(raw, ['last_name', 'last-name', 'nachname', 'lastname', 'lname', 'last', 'name'])
   const email = pick(raw, ['email', 'e-mail', 'e_mail', 'mail'])
   const phone = pick(raw, ['phone', 'nummer', 'telefon', 'tel', 'mobile', 'handy'])
   const service_label = pick(raw, [

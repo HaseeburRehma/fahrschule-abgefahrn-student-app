@@ -31,12 +31,12 @@ export default function Theory() {
   if (topics === null) return <Loader />
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-black" edges={['top']}>
       <View className="px-5 pb-2 pt-3">
-        <Text className="text-2xl font-extrabold text-neutral-900">
+        <Text className="text-2xl font-extrabold text-neutral-100">
           {t('theory.title')}
         </Text>
-        <Text className="mt-1 text-sm text-neutral-500">
+        <Text className="mt-1 text-sm text-neutral-400">
           {t('theory.subtitle')}
         </Text>
       </View>
@@ -51,24 +51,24 @@ export default function Theory() {
             <View
               className={`flex-row items-center gap-3 rounded-2xl border p-4 ${
                 isCurrent
-                  ? 'border-brand bg-brand-light'
-                  : 'border-neutral-200 bg-white'
+                  ? 'border-brand bg-brand/10'
+                  : 'border-neutral-800 bg-neutral-900'
               }`}
             >
               <View
                 className={`h-9 w-9 items-center justify-center rounded-full ${
-                  isCurrent ? 'bg-brand' : 'bg-neutral-100'
+                  isCurrent ? 'bg-brand' : 'bg-neutral-800'
                 }`}
               >
                 <Text
                   className={`text-sm font-black ${
-                    isCurrent ? 'text-ink' : 'text-neutral-600'
+                    isCurrent ? 'text-ink' : 'text-neutral-400'
                   }`}
                 >
                   {item.number}
                 </Text>
               </View>
-              <Text className="flex-1 font-semibold text-neutral-900">
+              <Text className="flex-1 font-semibold text-neutral-100">
                 {locale === 'de' ? item.title_de : item.title_en}
               </Text>
               {isCurrent ? (
