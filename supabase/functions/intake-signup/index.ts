@@ -1,15 +1,18 @@
 // @ts-nocheck  — Deno edge function (Deno global + https: imports). Checked by
 // the Deno runtime at deploy, not by the app's TypeScript.
 // ============================================================================
-// intake-signup — public endpoint the website's "Online Anmeldung" form POSTs
-// to. Inserts a signup_intake row (status='pending') for an admin to review.
+// intake-signup — the website "Online Anmeldung" (registration + package
+// purchase) POSTs here. It AUTO-CREATES the student's account so they can log
+// in immediately with the email they submitted, assigns the package they
+// picked, drops a welcome notification, and records an audit row.
+//
+// Trigger today = the WordPress form submission (which is the purchase step).
+// When a real payment gateway is connected later, point its webhook at this
+// same function (send the same fields) — the logic is unchanged.
 //
 // Security: a shared secret. Set INTAKE_SECRET as a function secret and send it
-// from the form as an `x-intake-secret` header (or `?secret=` query param).
-//
-// Accepts JSON or form-urlencoded bodies. Field names are matched loosely so it
-// works with whatever the WordPress form plugin emits; the full body is always
-// stored in `raw` for reference.
+// from the form as `?secret=` (or `x-intake-secret` header).
+// Accepts JSON or form-urlencoded. The full body is always stored in `raw`.
 //
 // Deploy:  supabase functions deploy intake-signup --no-verify-jwt
 // ============================================================================
@@ -29,26 +32,38 @@ function json(body: unknown, status = 200) {
   })
 }
 
-// Pick the first non-empty value whose key matches a candidate.
-// Handles form plugins that emit field IDs (Forminator's `email-1`,
-// `name-1-first-name`, generic `text-2`, etc.): exact match first, then
-// substring (candidate contained in the key), then label. Candidates are
-// tried in order, so put the most specific first.
+// First non-empty value whose key matches a candidate (exact, then substring).
 function pick(obj: Record<string, any>, keys: string[]): string | null {
   const entries = Object.entries(obj).map(
     ([k, v]) => [k.toLowerCase(), v] as [string, any],
   )
   const val = (v: any) =>
     v != null && String(v).trim() !== '' ? String(v).trim() : null
-  // 1) exact key match
   for (const k of keys) {
     const hit = entries.find(([kk]) => kk === k.toLowerCase())
     if (hit && val(hit[1])) return val(hit[1])
   }
-  // 2) key contains the candidate (e.g. `email-1` contains `email`)
   for (const k of keys) {
     const hit = entries.find(([kk]) => kk.includes(k.toLowerCase()))
     if (hit && val(hit[1])) return val(hit[1])
+  }
+  return null
+}
+
+const norm = (s: string) => (s ?? '').toLowerCase().replace(/[^a-z0-9]/gi, '')
+
+// Match the selected service text to one of our packages. Packages are passed
+// sorted by `sort`, so the "Grundbetrag" combo (whose label also mentions
+// Intensivkurs) matches Grundbetrag first — the correct package.
+function matchPackageId(
+  packages: { id: string; key: string; name_de: string }[],
+  haystack: string,
+): string | null {
+  const h = norm(haystack)
+  for (const p of packages) {
+    for (const c of [p.key, p.name_de].filter(Boolean).map(norm)) {
+      if (c.length >= 4 && h.includes(c)) return p.id
+    }
   }
   return null
 }
@@ -65,67 +80,119 @@ Deno.serve(async (req) => {
     if (got !== secret) return json({ error: 'unauthorized' }, 401)
   }
 
-  // Parse JSON or form-urlencoded.
   let raw: Record<string, any> = {}
   const ct = req.headers.get('content-type') ?? ''
   try {
-    if (ct.includes('application/json')) {
-      raw = await req.json()
-    } else {
-      const text = await req.text()
-      raw = Object.fromEntries(new URLSearchParams(text))
-    }
+    if (ct.includes('application/json')) raw = await req.json()
+    else raw = Object.fromEntries(new URLSearchParams(await req.text()))
   } catch {
     return json({ error: 'invalid_body' }, 400)
   }
 
-  // Specific candidates first (so Forminator `name-1-first-name` / `-last-name`
-  // resolve correctly and a generic `name-1` only wins as a last resort).
   const first_name = pick(raw, ['first_name', 'first-name', 'vorname', 'firstname', 'fname', 'first'])
   const last_name = pick(raw, ['last_name', 'last-name', 'nachname', 'lastname', 'lname', 'last', 'name'])
   const email = pick(raw, ['email', 'e-mail', 'e_mail', 'mail'])
   const phone = pick(raw, ['phone', 'nummer', 'telefon', 'tel', 'mobile', 'handy'])
-  const service_label = pick(raw, [
-    'service',
-    'service_label',
-    'paket',
-    'package',
-    'kurs',
-    'angebot',
-    'leistung',
-  ])
+  const service_label = pick(raw, ['service', 'service_label', 'paket', 'package', 'kurs', 'angebot', 'leistung'])
   const payment = pick(raw, ['payment', 'zahlung', 'zahlungsart', 'bezahlung'])
   const form_title = pick(raw, ['form_title', 'form_name'])
 
-  // A student sign-up must carry a real email. Forminator "Send test"
-  // submissions send field labels ("E-Mail") as values — skip those (200 so
-  // the webhook doesn't error/retry) to keep the admin queue clean.
+  // Real sign-up must carry a real email. Forminator "Send test" sends field
+  // labels ("E-Mail") — skip those (200 so the webhook doesn't retry).
   const cleanEmail =
     email && email.includes('@') ? email.trim().toLowerCase() : null
-  if (!cleanEmail) {
-    return json({ ok: true, skipped: 'no_valid_email' }, 200)
-  }
+  if (!cleanEmail) return json({ ok: true, skipped: 'no_valid_email' }, 200)
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   )
 
-  const { data, error } = await supabase
-    .from('signup_intake')
-    .insert({
-      first_name,
-      last_name,
-      email: cleanEmail,
-      phone,
-      service_label: service_label ?? form_title,
-      payment,
-      raw,
-      status: 'pending',
-    })
-    .select('id')
-    .single()
+  // Match the chosen package from the whole submission.
+  const { data: packages } = await supabase
+    .from('packages')
+    .select('id, key, name_de')
+    .order('sort', { ascending: true })
+  const haystack = [service_label, form_title, ...Object.values(raw)]
+    .filter((v) => typeof v === 'string')
+    .join(' ')
+  const packageId = matchPackageId((packages ?? []) as any, haystack)
 
-  if (error) return json({ error: error.message }, 500)
-  return json({ ok: true, id: data.id })
+  // Is there already an account for this email?
+  const { data: existing } = await supabase
+    .from('profiles')
+    .select('id, role, first_name, last_name, phone')
+    .eq('email', cleanEmail)
+    .maybeSingle()
+
+  let studentId: string | null = existing?.id ?? null
+  let created = false
+  let accountError: string | null = null
+
+  if (!existing) {
+    // Create a proper, OTP-ready student account (no password, email confirmed).
+    const { data: made, error: cErr } = await supabase.auth.admin.createUser({
+      email: cleanEmail,
+      email_confirm: true,
+      user_metadata: { role: 'student', first_name, last_name },
+    })
+    if (cErr || !made?.user) {
+      accountError = cErr?.message ?? 'create_failed'
+    } else {
+      studentId = made.user.id
+      created = true
+      // Fill the profile the trigger just created.
+      await supabase
+        .from('profiles')
+        .update({
+          first_name: first_name ?? null,
+          last_name: last_name ?? null,
+          phone: phone ?? null,
+        })
+        .eq('id', studentId)
+      // Welcome notification (shows in their feed on first login).
+      await supabase.from('notifications').insert({
+        user_id: studentId,
+        title: 'Willkommen bei Fahrschule Abgefahrn! 🎉',
+        body: 'Dein Konto wurde erstellt. Melde dich mit dieser E-Mail an, um Termine und Mitteilungen zu erhalten.',
+        type: 'general',
+      })
+    }
+  } else if (existing.role === 'student') {
+    // Existing student re-registering: fill any blanks, don't overwrite.
+    const patch: Record<string, any> = {}
+    if (first_name && !existing.first_name) patch.first_name = first_name
+    if (last_name && !existing.last_name) patch.last_name = last_name
+    if (phone && !existing.phone) patch.phone = phone
+    if (Object.keys(patch).length) {
+      await supabase.from('profiles').update(patch).eq('id', existing.id)
+    }
+  }
+  // (If the email belongs to an admin, we leave the account untouched.)
+
+  // Assign the matched package to the student (idempotent).
+  if (studentId && packageId && existing?.role !== 'admin') {
+    await supabase
+      .from('student_packages')
+      .upsert(
+        { student_id: studentId, package_id: packageId },
+        { onConflict: 'student_id,package_id', ignoreDuplicates: true },
+      )
+  }
+
+  // Audit row: 'converted' when an account exists/was made, else 'pending'
+  // (so an admin can retry from the Anmeldungen screen).
+  await supabase.from('signup_intake').insert({
+    first_name,
+    last_name,
+    email: cleanEmail,
+    phone,
+    service_label: service_label ?? form_title,
+    payment,
+    raw,
+    status: studentId ? 'converted' : 'pending',
+  })
+
+  if (!studentId) return json({ ok: false, error: accountError }, 500)
+  return json({ ok: true, student_id: studentId, created, package_id: packageId })
 })
