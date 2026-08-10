@@ -99,6 +99,40 @@ export async function deleteMyAccount(): Promise<void> {
   if ((data as any)?.error) throw new Error((data as any).error)
 }
 
+/** IDs of theory topics the student has marked as completed. */
+export async function fetchMyDoneTopics(userId: string): Promise<Set<string>> {
+  const { data, error } = await getSupabase()
+    .from('topic_progress')
+    .select('topic_id')
+    .eq('student_id', userId)
+  if (error) throw error
+  return new Set((data ?? []).map((r: any) => r.topic_id as string))
+}
+
+export async function setTopicDone(
+  userId: string,
+  topicId: string,
+  done: boolean,
+): Promise<void> {
+  const supabase = getSupabase()
+  if (done) {
+    const { error } = await supabase
+      .from('topic_progress')
+      .upsert(
+        { student_id: userId, topic_id: topicId },
+        { onConflict: 'student_id,topic_id', ignoreDuplicates: true },
+      )
+    if (error) throw error
+  } else {
+    const { error } = await supabase
+      .from('topic_progress')
+      .delete()
+      .eq('student_id', userId)
+      .eq('topic_id', topicId)
+    if (error) throw error
+  }
+}
+
 export function displayName(p: Profile | null): string {
   if (!p) return ''
   const n = [p.first_name, p.last_name].filter(Boolean).join(' ').trim()

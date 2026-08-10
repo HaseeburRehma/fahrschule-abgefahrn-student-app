@@ -177,6 +177,31 @@ const DE: Dict = {
   // Admin: notify by class
   'admin.notifyByClass': 'Nach Klasse',
   'admin.selectClass': 'Klasse wählen',
+  // Info & contact
+  'settings.info': 'Info & Kontakt',
+  'info.title': 'Info & Kontakt',
+  'info.contact': 'Kontakt',
+  'info.call': 'Anrufen',
+  'info.whatsapp': 'WhatsApp',
+  'info.email': 'E-Mail',
+  'info.directions': 'Route',
+  'info.hours': 'Öffnungszeiten',
+  'info.legal': 'Rechtliches',
+  'info.impressum': 'Impressum',
+  'info.datenschutz': 'Datenschutz',
+  'info.website': 'Website',
+  'info.faq': 'Häufige Fragen',
+  // Theory progress
+  'home.progress': 'Theorie-Fortschritt',
+  'theory.done': 'Erledigt',
+  'theory.progress': '{done} von {total} Themen erledigt',
+  // Admin notification history
+  'admin.history': 'Gesendete Mitteilungen',
+  'admin.recipients': '{count} Empfänger',
+  'admin.historyEmpty': 'Noch keine Mitteilungen gesendet.',
+  // Class reminder (local notification)
+  'reminder.title': 'Erinnerung: Theoriestunde',
+  'reminder.body': '{title} startet um {time}.',
 }
 
 const EN: Dict = {
@@ -319,6 +344,27 @@ const EN: Dict = {
   'admin.statUpcoming': 'Upcoming classes',
   'admin.notifyByClass': 'By class',
   'admin.selectClass': 'Select class',
+  'settings.info': 'Info & Contact',
+  'info.title': 'Info & Contact',
+  'info.contact': 'Contact',
+  'info.call': 'Call',
+  'info.whatsapp': 'WhatsApp',
+  'info.email': 'Email',
+  'info.directions': 'Directions',
+  'info.hours': 'Opening hours',
+  'info.legal': 'Legal',
+  'info.impressum': 'Imprint',
+  'info.datenschutz': 'Privacy policy',
+  'info.website': 'Website',
+  'info.faq': 'FAQ',
+  'home.progress': 'Theory progress',
+  'theory.done': 'Done',
+  'theory.progress': '{done} of {total} topics done',
+  'admin.history': 'Sent notifications',
+  'admin.recipients': '{count} recipients',
+  'admin.historyEmpty': 'No notifications sent yet.',
+  'reminder.title': 'Reminder: theory class',
+  'reminder.body': '{title} starts at {time}.',
 }
 
 const DICTIONARY: Record<Locale, Dict> = { de: DE, en: EN }

@@ -7,7 +7,8 @@ import { CalendarDays, MapPin } from 'lucide-react-native'
 import { useTranslation } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
 import { fetchMyClasses, splitByTime } from '@/lib/data'
-import { formatDateTime } from '@/lib/format'
+import { formatDateTime, formatTime } from '@/lib/format'
+import { scheduleReminders, REMINDER_LEAD_HOURS } from '@/lib/reminders'
 import type { TheoryClass } from '@/lib/types'
 
 function ClassRow({ item, dim }: { item: TheoryClass; dim?: boolean }) {
@@ -39,7 +40,7 @@ function ClassRow({ item, dim }: { item: TheoryClass; dim?: boolean }) {
 }
 
 export default function Schedule() {
-  const { t } = useTranslation()
+  const { t, locale } = useTranslation()
   const { profile } = useUser()
   const [upcoming, setUpcoming] = useState<TheoryClass[]>([])
   const [past, setPast] = useState<TheoryClass[]>([])
@@ -52,8 +53,22 @@ export default function Schedule() {
       const { upcoming, past } = splitByTime(classes)
       setUpcoming(upcoming)
       setPast(past)
+      // Schedule an on-device reminder before each upcoming class.
+      scheduleReminders(
+        upcoming.map((c) => ({
+          id: c.id,
+          fireAt: new Date(
+            new Date(c.starts_at).getTime() - REMINDER_LEAD_HOURS * 3600_000,
+          ),
+          title: t('reminder.title'),
+          body: t('reminder.body', {
+            title: locale === 'de' ? c.title_de : c.title_en,
+            time: formatTime(c.starts_at, locale),
+          }),
+        })),
+      )
     } catch {}
-  }, [profile])
+  }, [profile, t, locale])
 
   useFocusEffect(
     useCallback(() => {

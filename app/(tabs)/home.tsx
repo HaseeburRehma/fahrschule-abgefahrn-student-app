@@ -11,6 +11,8 @@ import {
   fetchMyPackages,
   fetchTopicById,
   fetchMyClasses,
+  fetchMyDoneTopics,
+  fetchTheoryTopics,
   splitByTime,
   displayName,
 } from '@/lib/data'
@@ -27,19 +29,25 @@ export default function Home() {
   const [packages, setPackages] = useState<Package[]>([])
   const [topic, setTopic] = useState<TheoryTopic | null>(null)
   const [nextClass, setNextClass] = useState<TheoryClass | null>(null)
+  const [doneCount, setDoneCount] = useState(0)
+  const [totalTopics, setTotalTopics] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
 
   const load = useCallback(async () => {
     if (!profile) return
     try {
-      const [pkgs, tpc, classes] = await Promise.all([
+      const [pkgs, tpc, classes, done, allTopics] = await Promise.all([
         fetchMyPackages(profile.id),
         fetchTopicById(profile.current_theory_topic_id),
         fetchMyClasses(profile.id),
+        fetchMyDoneTopics(profile.id),
+        fetchTheoryTopics(),
       ])
       setPackages(pkgs)
       setTopic(tpc)
       setNextClass(splitByTime(classes).upcoming[0] ?? null)
+      setDoneCount(done.size)
+      setTotalTopics(allTopics.length)
     } catch {}
   }, [profile])
 
@@ -97,6 +105,31 @@ export default function Home() {
             ) : null}
           </Card>
         </Pressable>
+
+        {/* Theory progress */}
+        {totalTopics > 0 ? (
+          <Card className="gap-2">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2">
+                <BookOpen size={18} color="#22C55E" />
+                <Text className="text-sm font-semibold text-neutral-400">
+                  {t('home.progress')}
+                </Text>
+              </View>
+              <Text className="text-sm font-bold text-neutral-100">
+                {doneCount}/{totalTopics}
+              </Text>
+            </View>
+            <View className="h-2.5 w-full overflow-hidden rounded-full bg-neutral-800">
+              <View
+                className="h-full rounded-full bg-brand"
+                style={{
+                  width: `${Math.round((doneCount / totalTopics) * 100)}%`,
+                }}
+              />
+            </View>
+          </Card>
+        ) : null}
 
         {/* Current theory class */}
         <Card className="gap-2">

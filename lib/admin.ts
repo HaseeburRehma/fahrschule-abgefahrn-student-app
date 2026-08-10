@@ -323,6 +323,43 @@ export async function sendNotification(
   return rows.length
 }
 
+// ── notification history ────────────────────────────────────────────────────
+export interface SentNotification {
+  title: string
+  body: string | null
+  type: string
+  created_at: string
+  count: number
+}
+
+/** Groups the per-recipient notification rows back into "sent" batches
+ * (same title/body/type within the same minute) with a recipient count. */
+export async function fetchNotificationHistory(): Promise<SentNotification[]> {
+  const { data, error } = await getSupabase()
+    .from('notifications')
+    .select('title, body, type, created_at')
+    .order('created_at', { ascending: false })
+    .limit(500)
+  if (error) throw error
+  const map = new Map<string, SentNotification>()
+  for (const r of (data ?? []) as any[]) {
+    const m = new Date(r.created_at)
+    m.setSeconds(0, 0)
+    const key = `${r.title}|${r.body ?? ''}|${r.type}|${m.toISOString()}`
+    const ex = map.get(key)
+    if (ex) ex.count += 1
+    else
+      map.set(key, {
+        title: r.title,
+        body: r.body ?? null,
+        type: r.type,
+        created_at: r.created_at,
+        count: 1,
+      })
+  }
+  return [...map.values()]
+}
+
 // ── intake ──────────────────────────────────────────────────────────────────
 export async function fetchIntake(
   status: 'pending' | 'converted' | 'dismissed' = 'pending',

@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   UserCog,
   Trash2,
+  Info,
 } from 'lucide-react-native'
 
 import { useTranslation } from '@/lib/i18n'
@@ -83,6 +84,19 @@ export default function SettingsScreen() {
             </View>
             <Text className="flex-1 font-semibold text-neutral-100">
               {t('settings.editProfile')}
+            </Text>
+            <ChevronRight size={20} color="#6B7280" />
+          </Card>
+        </Pressable>
+
+        {/* Info & contact */}
+        <Pressable onPress={() => router.push('/info' as any)}>
+          <Card className="flex-row items-center gap-3">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
+              <Info size={20} color="#22C55E" />
+            </View>
+            <Text className="flex-1 font-semibold text-neutral-100">
+              {t('settings.info')}
             </Text>
             <ChevronRight size={20} color="#6B7280" />
           </Card>
