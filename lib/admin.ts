@@ -208,6 +208,63 @@ export async function fetchClassEnrollmentIds(classId: string): Promise<string[]
   return (data ?? []).map((r: any) => r.student_id as string)
 }
 
+export async function updateClass(
+  id: string,
+  patch: Partial<{
+    title_de: string
+    title_en: string
+    starts_at: string
+    ends_at: string | null
+    location: string | null
+    topic_id: string | null
+    notes: string | null
+  }>,
+): Promise<void> {
+  const { error } = await getSupabase()
+    .from('theory_classes')
+    .update(patch)
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteClass(id: string): Promise<void> {
+  const { error } = await getSupabase()
+    .from('theory_classes')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}
+
+export interface AdminStats {
+  students: number
+  pendingIntake: number
+  upcomingClasses: number
+}
+
+export async function fetchAdminStats(): Promise<AdminStats> {
+  const supabase = getSupabase()
+  const nowIso = new Date().toISOString()
+  const [students, intake, classes] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('role', 'student'),
+    supabase
+      .from('signup_intake')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending'),
+    supabase
+      .from('theory_classes')
+      .select('id', { count: 'exact', head: true })
+      .gte('starts_at', nowIso),
+  ])
+  return {
+    students: students.count ?? 0,
+    pendingIntake: intake.count ?? 0,
+    upcomingClasses: classes.count ?? 0,
+  }
+}
+
 export async function enrollStudent(
   studentId: string,
   classId: string,

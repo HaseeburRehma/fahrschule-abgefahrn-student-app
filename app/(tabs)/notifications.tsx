@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react'
 import { FlatList, Pressable, RefreshControl, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Bell, CheckCheck } from 'lucide-react-native'
+import { Bell, CheckCheck, Trash2 } from 'lucide-react-native'
 
 import { useTranslation } from '@/lib/i18n'
 import { useNotifications } from '@/lib/notifications-context'
@@ -10,7 +10,7 @@ import type { NotificationRow } from '@/lib/types'
 
 export default function NotificationsScreen() {
   const { t, locale } = useTranslation()
-  const { items, unreadCount, refresh, markAsRead, markAllAsRead } =
+  const { items, unreadCount, refresh, markAsRead, markAllAsRead, deleteNotification } =
     useNotifications()
   const [refreshing, setRefreshing] = useState(false)
 
@@ -47,10 +47,17 @@ export default function NotificationsScreen() {
               {formatDateTime(item.created_at, locale)}
             </Text>
           </View>
+          <Pressable
+            onPress={() => deleteNotification(item.id)}
+            hitSlop={8}
+            className="p-1"
+          >
+            <Trash2 size={16} color="#6B7280" />
+          </Pressable>
         </View>
       </Pressable>
     ),
-    [markAsRead, locale],
+    [markAsRead, deleteNotification, locale],
   )
 
   return (

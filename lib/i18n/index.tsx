@@ -158,6 +158,25 @@ const DE: Dict = {
   'admin.noClassesEnrolled': 'In keiner Klasse angemeldet.',
   'admin.searchStudents': 'Fahrschüler suchen…',
   'common.delete': 'Löschen',
+  'common.edit': 'Bearbeiten',
+  // Student self-service
+  'settings.editProfile': 'Profil bearbeiten',
+  'settings.deleteAccount': 'Konto löschen',
+  'settings.deleteAccountConfirm':
+    'Dein Konto und alle zugehörigen Daten werden dauerhaft gelöscht. Fortfahren?',
+  'profile.title': 'Profil',
+  'profile.saved': 'Profil gespeichert.',
+  // Admin: class edit/delete
+  'admin.editClass': 'Klasse bearbeiten',
+  'admin.deleteClass': 'Klasse löschen',
+  'admin.deleteClassConfirm':
+    'Diese Theorieklasse löschen? Alle Anmeldungen werden entfernt.',
+  // Admin: dashboard stats
+  'admin.statPending': 'Offene Anmeldungen',
+  'admin.statUpcoming': 'Anstehende Klassen',
+  // Admin: notify by class
+  'admin.notifyByClass': 'Nach Klasse',
+  'admin.selectClass': 'Klasse wählen',
 }
 
 const EN: Dict = {
@@ -285,6 +304,21 @@ const EN: Dict = {
   'admin.noClassesEnrolled': 'Not enrolled in any class.',
   'admin.searchStudents': 'Search students…',
   'common.delete': 'Delete',
+  'common.edit': 'Edit',
+  'settings.editProfile': 'Edit profile',
+  'settings.deleteAccount': 'Delete account',
+  'settings.deleteAccountConfirm':
+    'Your account and all associated data will be permanently deleted. Continue?',
+  'profile.title': 'Profile',
+  'profile.saved': 'Profile saved.',
+  'admin.editClass': 'Edit class',
+  'admin.deleteClass': 'Delete class',
+  'admin.deleteClassConfirm':
+    'Delete this theory class? All enrollments will be removed.',
+  'admin.statPending': 'Pending sign-ups',
+  'admin.statUpcoming': 'Upcoming classes',
+  'admin.notifyByClass': 'By class',
+  'admin.selectClass': 'Select class',
 }
 
 const DICTIONARY: Record<Locale, Dict> = { de: DE, en: EN }

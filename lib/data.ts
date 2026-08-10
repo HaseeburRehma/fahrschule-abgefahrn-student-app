@@ -74,6 +74,31 @@ export function splitByTime(classes: TheoryClass[], now = new Date()) {
   return { upcoming, past }
 }
 
+/** Update the signed-in user's own profile (RLS allows self-update; role/active
+ * are protected by a DB trigger). */
+export async function updateMyProfile(
+  userId: string,
+  patch: Partial<Pick<Profile, 'first_name' | 'last_name' | 'phone' | 'locale'>>,
+): Promise<void> {
+  const { error } = await getSupabase()
+    .from('profiles')
+    .update(patch)
+    .eq('id', userId)
+  if (error) throw error
+}
+
+/** Permanently delete the signed-in user's own account via Edge Function. */
+export async function deleteMyAccount(): Promise<void> {
+  const { data, error } = await getSupabase().functions.invoke('delete-account', {
+    body: {},
+  })
+  if (error) {
+    const msg = (data as any)?.error ?? error.message
+    throw new Error(msg)
+  }
+  if ((data as any)?.error) throw new Error((data as any).error)
+}
+
 export function displayName(p: Profile | null): string {
   if (!p) return ''
   const n = [p.first_name, p.last_name].filter(Boolean).join(' ').trim()

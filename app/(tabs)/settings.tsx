@@ -1,20 +1,52 @@
-import React from 'react'
-import { Pressable, ScrollView, Text, View } from 'react-native'
+import React, { useState } from 'react'
+import { Alert, Platform, Pressable, ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
-import { ChevronRight, LogOut, Globe, ShieldCheck } from 'lucide-react-native'
+import {
+  ChevronRight,
+  LogOut,
+  Globe,
+  ShieldCheck,
+  UserCog,
+  Trash2,
+} from 'lucide-react-native'
 
 import { useTranslation } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
 import { ROLE_LABELS } from '@/lib/rbac/permissions'
-import { displayName } from '@/lib/data'
+import { displayName, deleteMyAccount } from '@/lib/data'
 import { Card } from '@/components/ui'
 import type { Locale } from '@/lib/types'
 
+function confirmMsg(msg: string): Promise<boolean> {
+  if (Platform.OS === 'web') return Promise.resolve(window.confirm(msg))
+  return new Promise((resolve) =>
+    Alert.alert('', msg, [
+      { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+      { text: 'OK', style: 'destructive', onPress: () => resolve(true) },
+    ]),
+  )
+}
+
 export default function SettingsScreen() {
   const { t, locale, setLocale } = useTranslation()
-  const { profile, role, isAdmin, signOut } = useUser()
+  const { profile, role, isAdmin, isStudent, signOut } = useUser()
   const router = useRouter()
+  const [deleting, setDeleting] = useState(false)
+
+  async function removeAccount() {
+    const ok = await confirmMsg(t('settings.deleteAccountConfirm'))
+    if (!ok) return
+    setDeleting(true)
+    try {
+      await deleteMyAccount()
+      await signOut()
+    } catch (e: any) {
+      if (Platform.OS === 'web') window.alert(e?.message ?? t('common.error'))
+      else Alert.alert(e?.message ?? t('common.error'))
+      setDeleting(false)
+    }
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-black" edges={['top']}>
@@ -42,6 +74,19 @@ export default function SettingsScreen() {
             </View>
           ) : null}
         </Card>
+
+        {/* Edit profile */}
+        <Pressable onPress={() => router.push('/edit-profile' as any)}>
+          <Card className="flex-row items-center gap-3">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
+              <UserCog size={20} color="#22C55E" />
+            </View>
+            <Text className="flex-1 font-semibold text-neutral-100">
+              {t('settings.editProfile')}
+            </Text>
+            <ChevronRight size={20} color="#6B7280" />
+          </Card>
+        </Pressable>
 
         {/* Language */}
         <Card className="gap-3">
@@ -83,13 +128,13 @@ export default function SettingsScreen() {
         {isAdmin ? (
           <Pressable onPress={() => router.push('/admin')}>
             <Card className="flex-row items-center gap-3">
-              <View className="h-10 w-10 items-center justify-center rounded-full bg-violet-100">
-                <ShieldCheck size={20} color="#7C3AED" />
+              <View className="h-10 w-10 items-center justify-center rounded-full bg-violet-500/15">
+                <ShieldCheck size={20} color="#A78BFA" />
               </View>
               <Text className="flex-1 font-semibold text-neutral-100">
                 {t('settings.adminArea')}
               </Text>
-              <ChevronRight size={20} color="#9CA3AF" />
+              <ChevronRight size={20} color="#6B7280" />
             </Card>
           </Pressable>
         ) : null}
@@ -97,7 +142,7 @@ export default function SettingsScreen() {
         {/* Sign out */}
         <Pressable onPress={signOut}>
           <Card className="flex-row items-center gap-3">
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-red-50">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-red-500/15">
               <LogOut size={20} color="#EF4444" />
             </View>
             <Text className="flex-1 font-semibold text-red-500">
@@ -105,6 +150,22 @@ export default function SettingsScreen() {
             </Text>
           </Card>
         </Pressable>
+
+        {/* Delete account (students; admins are removed from the dashboard) */}
+        {isStudent ? (
+          <Pressable onPress={removeAccount} disabled={deleting}>
+            <Card
+              className={`flex-row items-center gap-3 ${deleting ? 'opacity-50' : ''}`}
+            >
+              <View className="h-10 w-10 items-center justify-center rounded-full bg-red-500/15">
+                <Trash2 size={20} color="#EF4444" />
+              </View>
+              <Text className="flex-1 font-semibold text-red-500">
+                {t('settings.deleteAccount')}
+              </Text>
+            </Card>
+          </Pressable>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   )
