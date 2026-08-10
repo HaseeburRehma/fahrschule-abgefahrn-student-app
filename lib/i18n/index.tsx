@@ -246,6 +246,17 @@ const DE: Dict = {
   'admin.appointments': 'Termine',
   'admin.apptEmpty': 'Keine Termine gebucht.',
   'admin.confirm': 'Bestätigen',
+  // Availability slots
+  'appt.available': 'Verfügbare Termine',
+  'appt.freeForm': 'Eigenen Termin anfragen',
+  'appt.slotBooked': 'Termin gebucht.',
+  'appt.slotFull': 'Dieser Termin ist leider schon vergeben.',
+  'admin.availability': 'Verfügbarkeit',
+  'admin.newSlot': 'Termin freigeben',
+  'admin.capacity': 'Plätze',
+  'admin.slotCount': '{booked}/{capacity} gebucht',
+  'admin.slotsEmpty': 'Keine freien Termine. Gib Zeiten frei, die Fahrschüler buchen können.',
+  'admin.createSlot': 'Freigeben',
 }
 
 const EN: Dict = {
@@ -448,6 +459,16 @@ const EN: Dict = {
   'admin.appointments': 'Appointments',
   'admin.apptEmpty': 'No appointments booked.',
   'admin.confirm': 'Confirm',
+  'appt.available': 'Available slots',
+  'appt.freeForm': 'Request your own time',
+  'appt.slotBooked': 'Appointment booked.',
+  'appt.slotFull': 'Sorry, this slot is already taken.',
+  'admin.availability': 'Availability',
+  'admin.newSlot': 'Open a slot',
+  'admin.capacity': 'Capacity',
+  'admin.slotCount': '{booked}/{capacity} booked',
+  'admin.slotsEmpty': 'No open slots. Open times that students can book.',
+  'admin.createSlot': 'Open slot',
 }
 
 const DICTIONARY: Record<Locale, Dict> = { de: DE, en: EN }

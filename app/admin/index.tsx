@@ -37,6 +37,7 @@ export default function AdminHome() {
     { href: '/admin/documents', label: t('admin.documents'), icon: <FileText size={20} color="#22C55E" /> },
     { href: '/admin/classes', label: t('admin.classes'), icon: <CalendarPlus size={20} color="#22C55E" /> },
     { href: '/admin/appointments', label: t('admin.appointments'), icon: <CalendarClock size={20} color="#22C55E" /> },
+    { href: '/admin/availability', label: t('admin.availability'), icon: <CalendarClock size={20} color="#22C55E" /> },
   ]
 
   return (

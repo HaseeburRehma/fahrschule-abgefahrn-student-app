@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from 'react'
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
+import { Alert, Platform, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useFocusEffect } from 'expo-router'
-import { CalendarDays, CalendarPlus, MapPin, Check, X, Plus } from 'lucide-react-native'
+import { CalendarDays, CalendarClock, CalendarPlus, MapPin, Check, X, Plus } from 'lucide-react-native'
 
 import { useTranslation } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
@@ -14,6 +14,7 @@ import {
   cancelAppointment,
   type Appointment,
 } from '@/lib/appointments'
+import { fetchAvailableSlots, bookSlot, type SlotWithCount } from '@/lib/availability'
 import { addToCalendar } from '@/lib/calendar'
 import { formatDateTime, formatTime, parseLocalDateTime } from '@/lib/format'
 import { scheduleReminders, REMINDER_LEAD_HOURS } from '@/lib/reminders'
@@ -162,6 +163,7 @@ export default function Schedule() {
   const [upcoming, setUpcoming] = useState<TheoryClass[]>([])
   const [past, setPast] = useState<TheoryClass[]>([])
   const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [slots, setSlots] = useState<SlotWithCount[]>([])
   const [rsvp, setRsvpMap] = useState<Map<string, boolean>>(new Map())
   const [refreshing, setRefreshing] = useState(false)
 
@@ -178,16 +180,18 @@ export default function Schedule() {
   const load = useCallback(async () => {
     if (!profile) return
     try {
-      const [classes, myRsvp, appts] = await Promise.all([
+      const [classes, myRsvp, appts, avail] = await Promise.all([
         fetchMyClasses(profile.id),
         uid ? fetchMyRsvp(uid) : Promise.resolve(new Map<string, boolean>()),
         uid ? fetchMyAppointments(uid) : Promise.resolve([] as Appointment[]),
+        fetchAvailableSlots().catch(() => [] as SlotWithCount[]),
       ])
       const { upcoming, past } = splitByTime(classes)
       setUpcoming(upcoming)
       setPast(past)
       setRsvpMap(myRsvp)
       setAppointments(appts)
+      setSlots(avail)
 
       const classReminders = upcoming.map((c) => ({
         id: c.id,
@@ -271,6 +275,20 @@ export default function Schedule() {
     }
   }
 
+  async function onBookSlot(slot: SlotWithCount) {
+    if (!uid) return
+    try {
+      await bookSlot(uid, slot, t('appt.defaultTitle'))
+      const msg = t('appt.slotBooked')
+      Platform.OS === 'web' ? window.alert(msg) : Alert.alert(msg)
+      await load()
+    } catch {
+      const msg = t('appt.slotFull')
+      Platform.OS === 'web' ? window.alert(msg) : Alert.alert(msg)
+      load()
+    }
+  }
+
   const empty =
     upcoming.length === 0 && past.length === 0 && appointments.length === 0
 
@@ -287,13 +305,43 @@ export default function Schedule() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22C55E" />
         }
       >
-        {/* Book appointment */}
+        {/* Available slots to grab (auto-confirmed) */}
+        {slots.length ? (
+          <>
+            <Text className="mb-1 text-xs font-bold uppercase tracking-wide text-neutral-400">
+              {t('appt.available')}
+            </Text>
+            {slots.map((s) => (
+              <Pressable
+                key={s.id}
+                onPress={() => onBookSlot(s)}
+                className="flex-row items-center gap-3 rounded-2xl border border-brand/40 bg-brand/10 p-4"
+              >
+                <CalendarClock size={18} color="#22C55E" />
+                <View className="flex-1">
+                  <Text className="font-semibold text-neutral-100">
+                    {formatDateTime(s.starts_at, locale)}
+                    {s.ends_at ? ` – ${formatTime(s.ends_at, locale)}` : ''}
+                  </Text>
+                  {s.note ? (
+                    <Text className="text-xs text-neutral-400">{s.note}</Text>
+                  ) : null}
+                </View>
+                <Text className="text-xs font-bold text-brand">
+                  {t('appt.book')}
+                </Text>
+              </Pressable>
+            ))}
+          </>
+        ) : null}
+
+        {/* Free-form request */}
         <Pressable
           onPress={() => setShowForm((s) => !s)}
-          className="flex-row items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3"
+          className="mt-1 flex-row items-center justify-center gap-2 rounded-2xl border border-neutral-700 px-4 py-3"
         >
-          <Plus size={18} color="#0A0A0A" />
-          <Text className="font-bold text-ink">{t('appt.add')}</Text>
+          <Plus size={18} color="#22C55E" />
+          <Text className="font-bold text-neutral-100">{t('appt.freeForm')}</Text>
         </Pressable>
 
         {showForm ? (
