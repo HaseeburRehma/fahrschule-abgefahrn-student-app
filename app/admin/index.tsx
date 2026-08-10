@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack, useFocusEffect, useRouter } from 'expo-router'
-import { Users, Inbox, Send, CalendarPlus, History, FileText, ChevronRight } from 'lucide-react-native'
+import { Users, Inbox, Send, MessageCircle, CalendarPlus, History, FileText, ChevronRight } from 'lucide-react-native'
 
 import { useTranslation } from '@/lib/i18n'
 import { fetchAdminStats, type AdminStats } from '@/lib/admin'
@@ -31,6 +31,7 @@ export default function AdminHome() {
   const links: { href: string; label: string; icon: React.ReactNode }[] = [
     { href: '/admin/students', label: t('admin.students'), icon: <Users size={20} color="#22C55E" /> },
     { href: '/admin/intake', label: t('admin.intake'), icon: <Inbox size={20} color="#22C55E" /> },
+    { href: '/admin/chat', label: t('admin.chat'), icon: <MessageCircle size={20} color="#22C55E" /> },
     { href: '/admin/notify', label: t('admin.notify'), icon: <Send size={20} color="#22C55E" /> },
     { href: '/admin/history', label: t('admin.history'), icon: <History size={20} color="#22C55E" /> },
     { href: '/admin/documents', label: t('admin.documents'), icon: <FileText size={20} color="#22C55E" /> },

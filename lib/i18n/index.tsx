@@ -219,6 +219,14 @@ const DE: Dict = {
   'admin.attendance': '{yes} Zusagen · {no} Absagen',
   // Biometric
   'settings.biometric': 'App-Sperre (Face ID / Fingerabdruck)',
+  // Chat
+  'home.messages': 'Nachrichten',
+  'chat.title': 'Nachrichten',
+  'chat.withSchool': 'Fahrschule Abgefahrn',
+  'chat.placeholder': 'Nachricht schreiben…',
+  'chat.empty': 'Noch keine Nachrichten. Schreib der Fahrschule!',
+  'admin.chat': 'Nachrichten',
+  'admin.chatEmpty': 'Noch keine Unterhaltungen.',
 }
 
 const EN: Dict = {

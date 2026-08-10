@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react'
 import { RefreshControl, ScrollView, Text, View, Pressable } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { Bell, BookOpen, CalendarDays, FileText, Package as PackageIcon } from 'lucide-react-native'
+import { Bell, BookOpen, CalendarDays, FileText, MessageCircle, Package as PackageIcon } from 'lucide-react-native'
 
 import { useTranslation } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
@@ -215,6 +215,18 @@ export default function Home() {
             </View>
             <Text className="flex-1 font-semibold text-neutral-100">
               {t('home.documents')}
+            </Text>
+          </Card>
+        </Pressable>
+
+        {/* Messages */}
+        <Pressable onPress={() => router.push('/chat' as any)}>
+          <Card className="flex-row items-center gap-3">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
+              <MessageCircle size={20} color="#22C55E" />
+            </View>
+            <Text className="flex-1 font-semibold text-neutral-100">
+              {t('home.messages')}
             </Text>
           </Card>
         </Pressable>
