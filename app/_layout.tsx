@@ -14,6 +14,7 @@ import { NotificationsProvider } from '@/lib/notifications-context'
 import { AuthGuard } from '@/components/auth-guard'
 import { SessionGuardRunner } from '@/components/session-guard-runner'
 import { PushRegistrar } from '@/components/push-registrar'
+import { BiometricGate } from '@/components/biometric-gate'
 
 export default function RootLayout() {
   return (
@@ -27,14 +28,16 @@ export default function RootLayout() {
                 <AuthGuard>
                   <SessionGuardRunner />
                   <PushRegistrar />
-                  {/* On web, center the app in a phone-width column so wide
-                      desktop screens don't stretch the UI. On native the
-                      web:* variants are no-ops (full width). */}
-                  <View className="flex-1 w-full bg-black web:items-center">
-                    <View className="flex-1 w-full web:max-w-2xl">
-                      <Stack screenOptions={{ headerShown: false }} />
+                  <BiometricGate>
+                    {/* On web, center the app in a phone-width column so wide
+                        desktop screens don't stretch the UI. On native the
+                        web:* variants are no-ops (full width). */}
+                    <View className="flex-1 w-full bg-black web:items-center">
+                      <View className="flex-1 w-full web:max-w-2xl">
+                        <Stack screenOptions={{ headerShown: false }} />
+                      </View>
                     </View>
-                  </View>
+                  </BiometricGate>
                 </AuthGuard>
               </NotificationsProvider>
             </UserProvider>

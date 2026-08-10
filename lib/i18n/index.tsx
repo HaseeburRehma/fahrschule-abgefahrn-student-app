@@ -202,6 +202,23 @@ const DE: Dict = {
   // Class reminder (local notification)
   'reminder.title': 'Erinnerung: Theoriestunde',
   'reminder.body': '{title} startet um {time}.',
+  'common.yes': 'Ja',
+  'common.no': 'Nein',
+  // Documents
+  'home.documents': 'Dokumente',
+  'documents.title': 'Dokumente',
+  'documents.empty': 'Keine Dokumente vorhanden.',
+  'documents.upload': 'Dokument hochladen',
+  'documents.docTitle': 'Titel',
+  'documents.pickFile': 'PDF auswählen',
+  'documents.uploaded': 'Hochgeladen.',
+  'admin.documents': 'Dokumente',
+  // RSVP / attendance / calendar
+  'schedule.rsvp': 'Teilnahme?',
+  'schedule.addCalendar': 'Zum Kalender',
+  'admin.attendance': '{yes} Zusagen · {no} Absagen',
+  // Biometric
+  'settings.biometric': 'App-Sperre (Face ID / Fingerabdruck)',
 }
 
 const EN: Dict = {
@@ -365,6 +382,20 @@ const EN: Dict = {
   'admin.historyEmpty': 'No notifications sent yet.',
   'reminder.title': 'Reminder: theory class',
   'reminder.body': '{title} starts at {time}.',
+  'common.yes': 'Yes',
+  'common.no': 'No',
+  'home.documents': 'Documents',
+  'documents.title': 'Documents',
+  'documents.empty': 'No documents yet.',
+  'documents.upload': 'Upload document',
+  'documents.docTitle': 'Title',
+  'documents.pickFile': 'Choose PDF',
+  'documents.uploaded': 'Uploaded.',
+  'admin.documents': 'Documents',
+  'schedule.rsvp': 'Attending?',
+  'schedule.addCalendar': 'Add to calendar',
+  'admin.attendance': '{yes} yes · {no} no',
+  'settings.biometric': 'App lock (Face ID / fingerprint)',
 }
 
 const DICTIONARY: Record<Locale, Dict> = { de: DE, en: EN }

@@ -1,25 +1,38 @@
 import React, { useCallback, useState } from 'react'
-import { RefreshControl, ScrollView, Text, View } from 'react-native'
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useFocusEffect } from 'expo-router'
-import { CalendarDays, MapPin } from 'lucide-react-native'
+import { CalendarDays, CalendarPlus, MapPin, Check, X } from 'lucide-react-native'
 
 import { useTranslation } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
 import { fetchMyClasses, splitByTime } from '@/lib/data'
+import { fetchMyRsvp, setRsvp } from '@/lib/rsvp'
+import { addToCalendar } from '@/lib/calendar'
 import { formatDateTime, formatTime } from '@/lib/format'
 import { scheduleReminders, REMINDER_LEAD_HOURS } from '@/lib/reminders'
 import type { TheoryClass } from '@/lib/types'
 
-function ClassRow({ item, dim }: { item: TheoryClass; dim?: boolean }) {
+function ClassRow({
+  item,
+  dim,
+  showRsvp,
+  rsvp,
+  onRsvp,
+}: {
+  item: TheoryClass
+  dim?: boolean
+  showRsvp?: boolean
+  rsvp?: boolean
+  onRsvp?: (attending: boolean) => void
+}) {
   const { t, locale } = useTranslation()
+  const title = locale === 'de' ? item.title_de : item.title_en
   return (
     <View
       className={`rounded-2xl border border-neutral-800 bg-neutral-900 p-4 ${dim ? 'opacity-60' : ''}`}
     >
-      <Text className="text-base font-bold text-neutral-100">
-        {locale === 'de' ? item.title_de : item.title_en}
-      </Text>
+      <Text className="text-base font-bold text-neutral-100">{title}</Text>
       <View className="mt-1 flex-row items-center gap-1.5">
         <CalendarDays size={14} color="#6B7280" />
         <Text className="text-sm text-neutral-400">
@@ -35,25 +48,74 @@ function ClassRow({ item, dim }: { item: TheoryClass; dim?: boolean }) {
       {item.notes ? (
         <Text className="mt-1 text-sm text-neutral-400">{item.notes}</Text>
       ) : null}
+
+      {showRsvp ? (
+        <View className="mt-3 flex-row items-center gap-2">
+          <Text className="text-sm font-semibold text-neutral-300">
+            {t('schedule.rsvp')}
+          </Text>
+          <Pressable
+            onPress={() => onRsvp?.(true)}
+            className={`flex-row items-center gap-1 rounded-full border px-3 py-1 ${
+              rsvp === true ? 'border-brand bg-brand' : 'border-neutral-700'
+            }`}
+          >
+            {rsvp === true ? <Check size={12} color="#0A0A0A" /> : null}
+            <Text
+              className={`text-xs font-bold ${rsvp === true ? 'text-ink' : 'text-neutral-300'}`}
+            >
+              {t('common.yes')}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => onRsvp?.(false)}
+            className={`flex-row items-center gap-1 rounded-full border px-3 py-1 ${
+              rsvp === false ? 'border-red-500 bg-red-500' : 'border-neutral-700'
+            }`}
+          >
+            {rsvp === false ? <X size={12} color="#FFFFFF" /> : null}
+            <Text
+              className={`text-xs font-bold ${rsvp === false ? 'text-white' : 'text-neutral-300'}`}
+            >
+              {t('common.no')}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      <Pressable
+        onPress={() => addToCalendar(item, title)}
+        className="mt-3 flex-row items-center gap-1.5 self-start"
+      >
+        <CalendarPlus size={14} color="#22C55E" />
+        <Text className="text-xs font-semibold text-brand">
+          {t('schedule.addCalendar')}
+        </Text>
+      </Pressable>
     </View>
   )
 }
 
 export default function Schedule() {
   const { t, locale } = useTranslation()
-  const { profile } = useUser()
+  const { profile, session } = useUser()
+  const uid: string | null = session?.user?.id ?? null
   const [upcoming, setUpcoming] = useState<TheoryClass[]>([])
   const [past, setPast] = useState<TheoryClass[]>([])
+  const [rsvp, setRsvpMap] = useState<Map<string, boolean>>(new Map())
   const [refreshing, setRefreshing] = useState(false)
 
   const load = useCallback(async () => {
     if (!profile) return
     try {
-      const classes = await fetchMyClasses(profile.id)
+      const [classes, myRsvp] = await Promise.all([
+        fetchMyClasses(profile.id),
+        uid ? fetchMyRsvp(uid) : Promise.resolve(new Map<string, boolean>()),
+      ])
       const { upcoming, past } = splitByTime(classes)
       setUpcoming(upcoming)
       setPast(past)
-      // Schedule an on-device reminder before each upcoming class.
+      setRsvpMap(myRsvp)
       scheduleReminders(
         upcoming.map((c) => ({
           id: c.id,
@@ -68,7 +130,7 @@ export default function Schedule() {
         })),
       )
     } catch {}
-  }, [profile, t, locale])
+  }, [profile, uid, t, locale])
 
   useFocusEffect(
     useCallback(() => {
@@ -81,6 +143,16 @@ export default function Schedule() {
     await load()
     setRefreshing(false)
   }, [load])
+
+  async function handleRsvp(classId: string, attending: boolean) {
+    if (!uid) return
+    setRsvpMap((prev) => new Map(prev).set(classId, attending)) // optimistic
+    try {
+      await setRsvp(uid, classId, attending)
+    } catch {
+      load()
+    }
+  }
 
   const empty = upcoming.length === 0 && past.length === 0
 
@@ -112,7 +184,13 @@ export default function Schedule() {
           </Text>
         ) : null}
         {upcoming.map((c) => (
-          <ClassRow key={c.id} item={c} />
+          <ClassRow
+            key={c.id}
+            item={c}
+            showRsvp
+            rsvp={rsvp.get(c.id)}
+            onRsvp={(a) => handleRsvp(c.id, a)}
+          />
         ))}
 
         {past.length ? (

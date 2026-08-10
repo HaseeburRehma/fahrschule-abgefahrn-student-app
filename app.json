@@ -139,7 +139,14 @@
         }
       ],
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      "expo-document-picker",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Fahrschule Abgefahrn nutzt Face ID, um die App zu entsperren. Du kannst die App-Sperre in den Einstellungen deaktivieren."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

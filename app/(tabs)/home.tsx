@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react'
 import { RefreshControl, ScrollView, Text, View, Pressable } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { Bell, BookOpen, CalendarDays, Package as PackageIcon } from 'lucide-react-native'
+import { Bell, BookOpen, CalendarDays, FileText, Package as PackageIcon } from 'lucide-react-native'
 
 import { useTranslation } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
@@ -206,6 +206,18 @@ export default function Home() {
             <Text className="text-neutral-400">{t('home.noPackage')}</Text>
           )}
         </Card>
+
+        {/* Documents */}
+        <Pressable onPress={() => router.push('/documents' as any)}>
+          <Card className="flex-row items-center gap-3">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
+              <FileText size={20} color="#22C55E" />
+            </View>
+            <Text className="flex-1 font-semibold text-neutral-100">
+              {t('home.documents')}
+            </Text>
+          </Card>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   )

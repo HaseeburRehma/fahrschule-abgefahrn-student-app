@@ -1,5 +1,13 @@
-import React, { useState } from 'react'
-import { Alert, Platform, Pressable, ScrollView, Text, View } from 'react-native'
+import React, { useEffect, useState } from 'react'
+import {
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  Switch,
+  Text,
+  View,
+} from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import {
@@ -10,12 +18,19 @@ import {
   UserCog,
   Trash2,
   Info,
+  Fingerprint,
 } from 'lucide-react-native'
 
 import { useTranslation } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
 import { ROLE_LABELS } from '@/lib/rbac/permissions'
 import { displayName, deleteMyAccount } from '@/lib/data'
+import {
+  isBiometricAvailable,
+  getBiometricEnabled,
+  setBiometricEnabled,
+  authenticate,
+} from '@/lib/biometric'
 import { Card } from '@/components/ui'
 import type { Locale } from '@/lib/types'
 
@@ -34,6 +49,22 @@ export default function SettingsScreen() {
   const { profile, role, isAdmin, isStudent, signOut } = useUser()
   const router = useRouter()
   const [deleting, setDeleting] = useState(false)
+  const [bioAvailable, setBioAvailable] = useState(false)
+  const [bioEnabled, setBioEnabled] = useState(false)
+
+  useEffect(() => {
+    isBiometricAvailable().then(setBioAvailable)
+    getBiometricEnabled().then(setBioEnabled)
+  }, [])
+
+  async function toggleBiometric(next: boolean) {
+    if (next) {
+      const ok = await authenticate('Fahrschule Abgefahrn')
+      if (!ok) return
+    }
+    await setBiometricEnabled(next)
+    setBioEnabled(next)
+  }
 
   async function removeAccount() {
     const ok = await confirmMsg(t('settings.deleteAccountConfirm'))
@@ -137,6 +168,23 @@ export default function SettingsScreen() {
             ))}
           </View>
         </Card>
+
+        {/* Biometric lock (native, when available) */}
+        {bioAvailable ? (
+          <Card className="flex-row items-center gap-3">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
+              <Fingerprint size={20} color="#22C55E" />
+            </View>
+            <Text className="flex-1 font-semibold text-neutral-100">
+              {t('settings.biometric')}
+            </Text>
+            <Switch
+              value={bioEnabled}
+              onValueChange={toggleBiometric}
+              trackColor={{ true: '#22C55E', false: '#3F3F46' }}
+            />
+          </Card>
+        ) : null}
 
         {/* Admin area */}
         {isAdmin ? (

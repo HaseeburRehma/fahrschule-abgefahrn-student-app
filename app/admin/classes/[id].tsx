@@ -16,6 +16,7 @@ import {
   fetchTopics,
 } from '@/lib/admin'
 import { displayName } from '@/lib/data'
+import { fetchClassAttendance } from '@/lib/rsvp'
 import { formatDateTime, parseLocalDateTime } from '@/lib/format'
 import { Button, Card, ErrorText, Loader, TextField } from '@/components/ui'
 import { TopicPicker } from '@/components/admin-pickers'
@@ -50,6 +51,7 @@ export default function ClassDetail() {
   const [students, setStudents] = useState<Profile[]>([])
   const [enrolled, setEnrolled] = useState<string[]>([])
   const [topics, setTopics] = useState<TheoryTopic[]>([])
+  const [attendance, setAttendance] = useState<{ yes: number; no: number }>({ yes: 0, no: 0 })
   const [pending, setPending] = useState<string | null>(null)
 
   // edit form
@@ -74,16 +76,18 @@ export default function ClassDetail() {
   useEffect(() => {
     if (!id) return
     ;(async () => {
-      const [c, s, e, tp] = await Promise.all([
+      const [c, s, e, tp, att] = await Promise.all([
         fetchClass(id),
         fetchStudents(),
         fetchClassEnrollmentIds(id),
         fetchTopics(),
+        fetchClassAttendance(id),
       ])
       if (c) hydrate(c)
       setStudents(s)
       setEnrolled(e)
       setTopics(tp)
+      setAttendance(att)
     })().catch(() => {})
   }, [id])
 
@@ -200,9 +204,14 @@ export default function ClassDetail() {
           </Card>
         )}
 
-        <Text className="text-sm font-bold text-neutral-300">
-          {t('admin.enrolled')} ({enrolled.length})
-        </Text>
+        <View className="flex-row items-center justify-between">
+          <Text className="text-sm font-bold text-neutral-300">
+            {t('admin.enrolled')} ({enrolled.length})
+          </Text>
+          <Text className="text-xs font-semibold text-neutral-400">
+            {t('admin.attendance', { yes: attendance.yes, no: attendance.no })}
+          </Text>
+        </View>
 
         <View className="gap-2">
           {students.map((s) => {
