@@ -126,7 +126,7 @@ export default function AdminAvailability() {
               key={s.id}
               className="flex-row items-center gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 p-4"
             >
-              <CalendarClock size={18} color="#22C55E" />
+              <CalendarClock size={18} color="#00FF24" />
               <View className="flex-1">
                 <Text className="font-semibold text-neutral-100">
                   {formatDateTime(s.starts_at, locale)}

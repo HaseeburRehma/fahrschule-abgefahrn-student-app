@@ -19,6 +19,14 @@ export interface Profile {
   push_token_platform: string | null
   push_token_updated_at: string | null
   current_theory_topic_id: string | null
+  driving_lessons_count: number
+  drive_autobahn: boolean
+  drive_night: boolean
+  drive_overland: boolean
+  theory_exam_date: string | null
+  practical_exam_date: string | null
+  theory_passed: boolean | null
+  practical_passed: boolean | null
   created_at: string
   updated_at: string
 }

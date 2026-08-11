@@ -87,25 +87,25 @@ export default function InfoScreen() {
             {SCHOOL.legalName}
           </Text>
           <Row
-            icon={<Phone size={18} color="#22C55E" />}
+            icon={<Phone size={18} color="#00FF24" />}
             label={t('info.call')}
             value={SCHOOL.phone}
             onPress={() => open(`tel:${SCHOOL.phoneTel}`)}
           />
           <Row
-            icon={<MessageCircle size={18} color="#22C55E" />}
+            icon={<MessageCircle size={18} color="#00FF24" />}
             label={t('info.whatsapp')}
             value={SCHOOL.mobile}
             onPress={() => open(whatsappUrl())}
           />
           <Row
-            icon={<Mail size={18} color="#22C55E" />}
+            icon={<Mail size={18} color="#00FF24" />}
             label={t('info.email')}
             value={SCHOOL.email}
             onPress={() => open(`mailto:${SCHOOL.email}`)}
           />
           <Row
-            icon={<MapPin size={18} color="#22C55E" />}
+            icon={<MapPin size={18} color="#00FF24" />}
             label={t('info.directions')}
             value={`${SCHOOL.street}, ${SCHOOL.city}`}
             onPress={() => open(mapsUrl())}
@@ -115,7 +115,7 @@ export default function InfoScreen() {
         {/* Hours */}
         <Card className="gap-2">
           <View className="flex-row items-center gap-2">
-            <Clock size={18} color="#22C55E" />
+            <Clock size={18} color="#00FF24" />
             <Text className="font-semibold text-neutral-100">
               {t('info.hours')}
             </Text>
@@ -149,17 +149,17 @@ export default function InfoScreen() {
             {t('info.legal')}
           </Text>
           <Row
-            icon={<FileText size={18} color="#22C55E" />}
+            icon={<FileText size={18} color="#00FF24" />}
             label={t('info.impressum')}
             onPress={() => open(SCHOOL.impressumUrl)}
           />
           <Row
-            icon={<FileText size={18} color="#22C55E" />}
+            icon={<FileText size={18} color="#00FF24" />}
             label={t('info.datenschutz')}
             onPress={() => open(SCHOOL.datenschutzUrl)}
           />
           <Row
-            icon={<Globe size={18} color="#22C55E" />}
+            icon={<Globe size={18} color="#00FF24" />}
             label={t('info.website')}
             onPress={() => open(SCHOOL.websiteUrl)}
           />

@@ -166,7 +166,7 @@ export default function ClassDetail() {
           title: locale === 'de' ? cls.title_de : cls.title_en,
           headerRight: () => (
             <Pressable onPress={() => setShowEdit((s) => !s)} hitSlop={8} className="px-2">
-              <Pencil size={18} color="#22C55E" />
+              <Pencil size={18} color="#00FF24" />
             </Pressable>
           ),
         }}

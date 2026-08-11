@@ -8,7 +8,7 @@
     "scheme": "abgefahrn",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "primaryColor": "#22C55E",
+    "primaryColor": "#00FF24",
     "description": "Benachrichtigungs-App für Fahrschüler der Fahrschule Abgefahrn: Theorieklassen, Termine und wichtige Mitteilungen – auf Deutsch und Englisch.",
     "splash": {
       "image": "./assets/splash.png",
@@ -17,7 +17,7 @@
     },
     "notification": {
       "icon": "./assets/notification-icon.png",
-      "color": "#22C55E",
+      "color": "#00FF24",
       "iosDisplayInForeground": true,
       "androidMode": "default"
     },
@@ -120,7 +120,7 @@
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#22C55E",
+          "color": "#00FF24",
           "defaultChannel": "default"
         }
       ],

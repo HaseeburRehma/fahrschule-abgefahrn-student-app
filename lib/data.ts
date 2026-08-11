@@ -78,7 +78,23 @@ export function splitByTime(classes: TheoryClass[], now = new Date()) {
  * are protected by a DB trigger). */
 export async function updateMyProfile(
   userId: string,
-  patch: Partial<Pick<Profile, 'first_name' | 'last_name' | 'phone' | 'locale'>>,
+  patch: Partial<
+    Pick<
+      Profile,
+      | 'first_name'
+      | 'last_name'
+      | 'phone'
+      | 'locale'
+      | 'driving_lessons_count'
+      | 'drive_autobahn'
+      | 'drive_night'
+      | 'drive_overland'
+      | 'theory_exam_date'
+      | 'practical_exam_date'
+      | 'theory_passed'
+      | 'practical_passed'
+    >
+  >,
 ): Promise<void> {
   const { error } = await getSupabase()
     .from('profiles')

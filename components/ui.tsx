@@ -131,7 +131,7 @@ export function ErrorText({ children }: { children: React.ReactNode }) {
 export function Loader({ label }: { label?: string }) {
   return (
     <View className="flex-1 items-center justify-center bg-neutral-900">
-      <ActivityIndicator color="#22C55E" size="large" />
+      <ActivityIndicator color="#00FF24" size="large" />
       {label ? (
         <Text className="mt-3 text-sm text-neutral-400">{label}</Text>
       ) : null}

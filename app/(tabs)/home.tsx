@@ -1,8 +1,19 @@
 import React, { useCallback, useState } from 'react'
-import { RefreshControl, ScrollView, Text, View, Pressable } from 'react-native'
+import { Linking, RefreshControl, ScrollView, Text, View, Pressable } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { Bell, BookOpen, CalendarDays, FileText, MessageCircle, Package as PackageIcon } from 'lucide-react-native'
+import {
+  Bell,
+  BookOpen,
+  CalendarDays,
+  FileText,
+  GraduationCap,
+  HelpCircle,
+  MessageCircle,
+  Package as PackageIcon,
+  TrendingUp,
+} from 'lucide-react-native'
+import { whatsappUrl } from '@/lib/school'
 
 import { useTranslation } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
@@ -19,6 +30,27 @@ import {
 import { formatDateTime, formatPrice } from '@/lib/format'
 import { Card, Logo } from '@/components/ui'
 import type { Package, TheoryClass, TheoryTopic } from '@/lib/types'
+
+function LinkCard({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: React.ReactNode
+  label: string
+  onPress: () => void
+}) {
+  return (
+    <Pressable onPress={onPress}>
+      <Card className="flex-row items-center gap-3">
+        <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
+          {icon}
+        </View>
+        <Text className="flex-1 font-semibold text-neutral-100">{label}</Text>
+      </Card>
+    </Pressable>
+  )
+}
 
 export default function Home() {
   const { t, locale } = useTranslation()
@@ -70,7 +102,7 @@ export default function Home() {
       <ScrollView
         contentContainerClassName="p-5 gap-4"
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22C55E" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00FF24" />
         }
       >
         <View className="mb-1 flex-row items-center justify-between">
@@ -86,7 +118,7 @@ export default function Home() {
         <Pressable onPress={() => router.push('/(tabs)/notifications')}>
           <Card className="flex-row items-center gap-3">
             <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
-              <Bell size={20} color="#22C55E" />
+              <Bell size={20} color="#00FF24" />
             </View>
             <View className="flex-1">
               <Text className="font-semibold text-neutral-100">
@@ -111,7 +143,7 @@ export default function Home() {
           <Card className="gap-2">
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center gap-2">
-                <BookOpen size={18} color="#22C55E" />
+                <BookOpen size={18} color="#00FF24" />
                 <Text className="text-sm font-semibold text-neutral-400">
                   {t('home.progress')}
                 </Text>
@@ -134,7 +166,7 @@ export default function Home() {
         {/* Current theory class */}
         <Card className="gap-2">
           <View className="flex-row items-center gap-2">
-            <BookOpen size={18} color="#22C55E" />
+            <BookOpen size={18} color="#00FF24" />
             <Text className="text-sm font-semibold text-neutral-400">
               {t('home.currentTopic')}
             </Text>
@@ -156,7 +188,7 @@ export default function Home() {
         {/* Next appointment */}
         <Card className="gap-2">
           <View className="flex-row items-center gap-2">
-            <CalendarDays size={18} color="#22C55E" />
+            <CalendarDays size={18} color="#00FF24" />
             <Text className="text-sm font-semibold text-neutral-400">
               {t('home.nextAppointment')}
             </Text>
@@ -183,7 +215,7 @@ export default function Home() {
         {/* Packages */}
         <Card className="gap-3">
           <View className="flex-row items-center gap-2">
-            <PackageIcon size={18} color="#22C55E" />
+            <PackageIcon size={18} color="#00FF24" />
             <Text className="text-sm font-semibold text-neutral-400">
               {packages.length > 1 ? t('home.yourPackages') : t('home.yourPackage')}
             </Text>
@@ -207,29 +239,16 @@ export default function Home() {
           )}
         </Card>
 
-        {/* Documents */}
-        <Pressable onPress={() => router.push('/documents' as any)}>
-          <Card className="flex-row items-center gap-3">
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
-              <FileText size={20} color="#22C55E" />
-            </View>
-            <Text className="flex-1 font-semibold text-neutral-100">
-              {t('home.documents')}
-            </Text>
-          </Card>
-        </Pressable>
-
-        {/* Messages */}
-        <Pressable onPress={() => router.push('/chat' as any)}>
-          <Card className="flex-row items-center gap-3">
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
-              <MessageCircle size={20} color="#22C55E" />
-            </View>
-            <Text className="flex-1 font-semibold text-neutral-100">
-              {t('home.messages')}
-            </Text>
-          </Card>
-        </Pressable>
+        {/* Quick actions */}
+        <LinkCard icon={<TrendingUp size={20} color="#00FF24" />} label={t('home.progressCard')} onPress={() => router.push('/progress' as any)} />
+        <LinkCard icon={<GraduationCap size={20} color="#00FF24" />} label={t('home.exam')} onPress={() => router.push('/exam' as any)} />
+        <LinkCard icon={<FileText size={20} color="#00FF24" />} label={t('home.documents')} onPress={() => router.push('/documents' as any)} />
+        <LinkCard icon={<MessageCircle size={20} color="#00FF24" />} label={t('home.messages')} onPress={() => router.push('/chat' as any)} />
+        <LinkCard
+          icon={<HelpCircle size={20} color="#00FF24" />}
+          label={t('home.askUs')}
+          onPress={() => Linking.openURL(whatsappUrl()).catch(() => {})}
+        />
       </ScrollView>
     </SafeAreaView>
   )

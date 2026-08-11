@@ -129,7 +129,7 @@ export default function AdminDocuments() {
         renderItem={({ item }) => (
           <View className="flex-row items-center gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 p-4">
             <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
-              <FileText size={20} color="#22C55E" />
+              <FileText size={20} color="#00FF24" />
             </View>
             <View className="flex-1">
               <Text className="font-semibold text-neutral-100">{item.title}</Text>

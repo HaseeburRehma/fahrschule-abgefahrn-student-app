@@ -166,7 +166,7 @@ export default function EditStudent() {
             <Switch
               value={active}
               onValueChange={setActive}
-              trackColor={{ true: '#22C55E', false: '#D4D4D4' }}
+              trackColor={{ true: '#00FF24', false: '#D4D4D4' }}
             />
           </View>
         </Card>
@@ -192,7 +192,7 @@ export default function EditStudent() {
         {/* Enrolled theory classes (read-only; manage from a class screen) */}
         <Card className="gap-2">
           <View className="flex-row items-center gap-2">
-            <CalendarDays size={16} color="#22C55E" />
+            <CalendarDays size={16} color="#00FF24" />
             <Text className="text-sm font-bold text-neutral-300">
               {t('admin.enrolledClasses')}
             </Text>

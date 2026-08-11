@@ -8,9 +8,9 @@ module.exports = {
       colors: {
         // Fahrschule Abgefahrn brand — neon green on near-black.
         brand: {
-          DEFAULT: '#22C55E', // green-500
-          dark: '#15803D', // green-700
-          light: '#DCFCE7', // green-100
+          DEFAULT: '#00FF24', // Abgefahrn neon green (brand CI)
+          dark: '#00CC1D',
+          light: '#00FF24',
         },
         ink: {
           DEFAULT: '#0A0A0A', // near-black surfaces

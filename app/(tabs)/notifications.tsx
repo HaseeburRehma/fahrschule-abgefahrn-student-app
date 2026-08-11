@@ -71,7 +71,7 @@ export default function NotificationsScreen() {
             onPress={markAllAsRead}
             className="flex-row items-center gap-1 rounded-full bg-neutral-900 px-3 py-1.5"
           >
-            <CheckCheck size={16} color="#22C55E" />
+            <CheckCheck size={16} color="#00FF24" />
             <Text className="text-xs font-semibold text-brand">
               {t('notif.markAllRead')}
             </Text>
@@ -85,7 +85,7 @@ export default function NotificationsScreen() {
         renderItem={renderItem}
         contentContainerClassName="px-5 pb-6 pt-1"
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22C55E" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00FF24" />
         }
         ListEmptyComponent={
           <View className="mt-24 items-center gap-3">

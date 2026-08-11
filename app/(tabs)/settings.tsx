@@ -111,7 +111,7 @@ export default function SettingsScreen() {
         <Pressable onPress={() => router.push('/edit-profile' as any)}>
           <Card className="flex-row items-center gap-3">
             <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
-              <UserCog size={20} color="#22C55E" />
+              <UserCog size={20} color="#00FF24" />
             </View>
             <Text className="flex-1 font-semibold text-neutral-100">
               {t('settings.editProfile')}
@@ -124,7 +124,7 @@ export default function SettingsScreen() {
         <Pressable onPress={() => router.push('/info' as any)}>
           <Card className="flex-row items-center gap-3">
             <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
-              <Info size={20} color="#22C55E" />
+              <Info size={20} color="#00FF24" />
             </View>
             <Text className="flex-1 font-semibold text-neutral-100">
               {t('settings.info')}
@@ -136,7 +136,7 @@ export default function SettingsScreen() {
         {/* Language */}
         <Card className="gap-3">
           <View className="flex-row items-center gap-2">
-            <Globe size={18} color="#22C55E" />
+            <Globe size={18} color="#00FF24" />
             <Text className="font-semibold text-neutral-100">
               {t('settings.language')}
             </Text>
@@ -173,7 +173,7 @@ export default function SettingsScreen() {
         {bioAvailable ? (
           <Card className="flex-row items-center gap-3">
             <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
-              <Fingerprint size={20} color="#22C55E" />
+              <Fingerprint size={20} color="#00FF24" />
             </View>
             <Text className="flex-1 font-semibold text-neutral-100">
               {t('settings.biometric')}
@@ -181,7 +181,7 @@ export default function SettingsScreen() {
             <Switch
               value={bioEnabled}
               onValueChange={toggleBiometric}
-              trackColor={{ true: '#22C55E', false: '#3F3F46' }}
+              trackColor={{ true: '#00FF24', false: '#3F3F46' }}
             />
           </Card>
         ) : null}

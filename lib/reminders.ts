@@ -1,13 +1,14 @@
 /**
- * Local class reminders — schedules an on-device notification a couple of hours
- * before each upcoming theory class the student is enrolled in. No server / push
- * token needed (works before the native push pipeline is live). Web is a no-op.
+ * Local on-device notifications — class/appointment reminders and the daily
+ * pre-exam motivation pushes. No server / push token needed; web is a no-op.
  *
- * Call `scheduleReminders(items)` whenever the schedule loads; it clears the
- * previously scheduled set first, so re-running never duplicates.
+ * Each caller passes a `category` so its set can be rescheduled independently
+ * (we store the scheduled ids per category and cancel only those — so the
+ * schedule screen never wipes the exam motivation pushes and vice versa).
  */
 
 import { Platform } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Device from 'expo-device'
 import * as Notifications from 'expo-notifications'
 
@@ -18,7 +19,23 @@ export interface ReminderItem {
   body: string
 }
 
-export async function scheduleReminders(items: ReminderItem[]): Promise<void> {
+const storeKey = (category: string) => `abgefahrn.sched.${category}`
+
+async function cancelStored(category: string) {
+  try {
+    const raw = await AsyncStorage.getItem(storeKey(category))
+    if (raw) {
+      for (const id of JSON.parse(raw) as string[]) {
+        await Notifications.cancelScheduledNotificationAsync(id).catch(() => {})
+      }
+    }
+  } catch {}
+}
+
+export async function scheduleReminders(
+  items: ReminderItem[],
+  category = 'reminders',
+): Promise<void> {
   if (Platform.OS === 'web') return
   if (!Device.isDevice) return
   try {
@@ -27,25 +44,26 @@ export async function scheduleReminders(items: ReminderItem[]): Promise<void> {
       const req = await Notifications.requestPermissionsAsync()
       if (!req.granted && req.status !== 'granted') return
     }
-    // Clear our previously scheduled reminders so re-runs don't duplicate.
-    await Notifications.cancelAllScheduledNotificationsAsync()
-
+    await cancelStored(category)
+    const ids: string[] = []
     const now = Date.now()
     for (const it of items) {
       if (it.fireAt.getTime() <= now) continue
-      await Notifications.scheduleNotificationAsync({
+      const id = await Notifications.scheduleNotificationAsync({
         content: {
           title: it.title,
           body: it.body,
-          data: { type: 'schedule', classId: it.id },
+          data: { type: category === 'motivation' ? 'exam' : 'schedule', refId: it.id },
         },
         trigger: { date: it.fireAt } as any,
       })
+      ids.push(id)
     }
+    await AsyncStorage.setItem(storeKey(category), JSON.stringify(ids))
   } catch {
     // best-effort; a failed reminder must never break the screen
   }
 }
 
-/** Hours before a class to fire the reminder. */
+/** Hours before a class/appointment to fire the reminder. */
 export const REMINDER_LEAD_HOURS = 2

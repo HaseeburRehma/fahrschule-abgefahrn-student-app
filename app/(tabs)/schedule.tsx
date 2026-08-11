@@ -91,7 +91,7 @@ function ClassRow({
         onPress={() => addToCalendar(item, title)}
         className="mt-3 flex-row items-center gap-1.5 self-start"
       >
-        <CalendarPlus size={14} color="#22C55E" />
+        <CalendarPlus size={14} color="#00FF24" />
         <Text className="text-xs font-semibold text-brand">{t('schedule.addCalendar')}</Text>
       </Pressable>
     </View>
@@ -138,7 +138,7 @@ function AppointmentRow({
           onPress={() => addToCalendar(item, item.title)}
           className="flex-row items-center gap-1.5"
         >
-          <CalendarPlus size={14} color="#22C55E" />
+          <CalendarPlus size={14} color="#00FF24" />
           <Text className="text-xs font-semibold text-brand">
             {t('schedule.addCalendar')}
           </Text>
@@ -302,7 +302,7 @@ export default function Schedule() {
       <ScrollView
         contentContainerClassName="px-5 pb-6 pt-1 gap-2"
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22C55E" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00FF24" />
         }
       >
         {/* Available slots to grab (auto-confirmed) */}
@@ -317,7 +317,7 @@ export default function Schedule() {
                 onPress={() => onBookSlot(s)}
                 className="flex-row items-center gap-3 rounded-2xl border border-brand/40 bg-brand/10 p-4"
               >
-                <CalendarClock size={18} color="#22C55E" />
+                <CalendarClock size={18} color="#00FF24" />
                 <View className="flex-1">
                   <Text className="font-semibold text-neutral-100">
                     {formatDateTime(s.starts_at, locale)}
@@ -340,7 +340,7 @@ export default function Schedule() {
           onPress={() => setShowForm((s) => !s)}
           className="mt-1 flex-row items-center justify-center gap-2 rounded-2xl border border-neutral-700 px-4 py-3"
         >
-          <Plus size={18} color="#22C55E" />
+          <Plus size={18} color="#00FF24" />
           <Text className="font-bold text-neutral-100">{t('appt.freeForm')}</Text>
         </Pressable>
 

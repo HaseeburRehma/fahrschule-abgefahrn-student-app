@@ -67,6 +67,13 @@ export default function Theory() {
         <Text className="mt-1 text-sm text-neutral-400">
           {t('theory.progress', { done: done.size, total: topics.length })}
         </Text>
+        {topics.length > 0 && done.size >= topics.length ? (
+          <View className="mt-2 rounded-xl border border-brand/40 bg-brand/10 px-3 py-2">
+            <Text className="text-sm font-bold text-brand">
+              {t('theory.allDone')}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <FlatList
