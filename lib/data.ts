@@ -93,6 +93,7 @@ export async function updateMyProfile(
       | 'practical_exam_date'
       | 'theory_passed'
       | 'practical_passed'
+      | 'birth_date'
     >
   >,
 ): Promise<void> {

@@ -1,137 +1,275 @@
-import React, { useCallback, useState } from 'react'
-import { FlatList, Pressable, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { useFocusEffect } from 'expo-router'
-import { Check } from 'lucide-react-native'
+/**
+ * Figma "Theorie" (1281:1340): progress summary + the 14 mandatory topics
+ * with done / current / upcoming states. Each topic opens /theory/[id].
+ */
 
+import React, { useCallback, useRef, useState } from 'react'
+import { Pressable, RefreshControl, View } from 'react-native'
+import { router, useFocusEffect } from 'expo-router'
+import { BookOpen } from 'phosphor-react-native/src/icons/BookOpen'
+import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight'
+import { Check } from 'phosphor-react-native/src/icons/Check'
+import { LockSimple } from 'phosphor-react-native/src/icons/LockSimple'
+
+import { C, EmptyState, ErrorState, PageHeader, Screen, Skeleton, T } from '@/components/ds'
 import { useTranslation } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
-import { fetchTheoryTopics, fetchMyDoneTopics, setTopicDone } from '@/lib/data'
-import { Loader } from '@/components/ui'
+import { fetchMyDoneTopics, fetchTheoryTopics } from '@/lib/data'
+import { topicTitle } from '@/lib/theory-content'
 import type { TheoryTopic } from '@/lib/types'
 
-export default function Theory() {
+type TopicState = 'done' | 'current' | 'locked' | 'open'
+
+export default function TheoryScreen() {
   const { t, locale } = useTranslation()
   const { profile, session } = useUser()
   const uid: string | null = session?.user?.id ?? null
-  const [topics, setTopics] = useState<TheoryTopic[] | null>(null)
+
+  const [topics, setTopics] = useState<TheoryTopic[]>([])
   const [done, setDone] = useState<Set<string>>(new Set())
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState(false)
+  const loadedOnce = useRef(false)
+
+  const load = useCallback(async () => {
+    try {
+      const [rows, doneSet] = await Promise.all([
+        fetchTheoryTopics(),
+        uid ? fetchMyDoneTopics(uid) : Promise.resolve(new Set<string>()),
+      ])
+      setTopics(rows)
+      setDone(doneSet)
+      setError(false)
+      loadedOnce.current = true
+    } catch {
+      if (!loadedOnce.current) setError(true)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [uid])
 
   useFocusEffect(
     useCallback(() => {
-      let alive = true
-      fetchTheoryTopics()
-        .then((rows) => alive && setTopics(rows))
-        .catch(() => alive && setTopics([]))
-      if (uid) {
-        fetchMyDoneTopics(uid)
-          .then((s) => alive && setDone(s))
-          .catch(() => {})
-      }
-      return () => {
-        alive = false
-      }
-    }, [uid]),
+      load()
+    }, [load]),
   )
 
-  async function toggleDone(topicId: string) {
-    if (!uid) return
-    const isDone = done.has(topicId)
-    // optimistic
-    setDone((prev) => {
-      const next = new Set(prev)
-      isDone ? next.delete(topicId) : next.add(topicId)
-      return next
-    })
-    try {
-      await setTopicDone(uid, topicId, !isDone)
-    } catch {
-      setDone((prev) => {
-        const next = new Set(prev)
-        isDone ? next.add(topicId) : next.delete(topicId)
-        return next
-      })
-    }
-  }
+  const onRefresh = useCallback(() => {
+    setRefreshing(true)
+    load()
+  }, [load])
+
+  const total = topics.length
+  const doneCount = topics.filter((x) => done.has(x.id)).length
+  const remaining = Math.max(total - doneCount, 0)
+  const pct = total ? Math.round((doneCount / total) * 100) : 0
 
   const currentId = profile?.current_theory_topic_id ?? null
+  const currentNumber = topics.find((x) => x.id === currentId)?.number ?? null
 
-  if (topics === null) return <Loader />
+  function stateOf(topic: TheoryTopic): TopicState {
+    if (done.has(topic.id)) return 'done'
+    if (topic.id === currentId) return 'current'
+    if (currentNumber !== null && topic.number > currentNumber) return 'locked'
+    return 'open'
+  }
+
+  const refresh = <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.brand} colors={[C.brand]} />
+
+  if (loading) {
+    return (
+      <Screen tabBar glow={-90} gap={14} contentStyle={{ paddingTop: 6 }}>
+        <View style={{ gap: 8 }}>
+          <Skeleton width={130} height={26} />
+          <Skeleton width={190} height={14} />
+        </View>
+        <Skeleton height={104} radius={18} />
+        <Skeleton width={100} height={16} />
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} height={64} radius={18} />
+        ))}
+      </Screen>
+    )
+  }
+
+  if (error) {
+    return (
+      <Screen tabBar glow={-90} refreshControl={refresh}>
+        <ErrorState
+          onRetry={() => {
+            setLoading(true)
+            load()
+          }}
+        />
+      </Screen>
+    )
+  }
 
   return (
-    <SafeAreaView className="flex-1 bg-black" edges={['top']}>
-      <View className="px-5 pb-2 pt-3">
-        <Text className="text-2xl font-extrabold text-neutral-100">
-          {t('theory.title')}
-        </Text>
-        <Text className="mt-1 text-sm text-neutral-400">
-          {t('theory.progress', { done: done.size, total: topics.length })}
-        </Text>
-        {topics.length > 0 && done.size >= topics.length ? (
-          <View className="mt-2 rounded-xl border border-brand/40 bg-brand/10 px-3 py-2">
-            <Text className="text-sm font-bold text-brand">
-              {t('theory.allDone')}
-            </Text>
-          </View>
-        ) : null}
-      </View>
+    <Screen tabBar glow={-90} gap={14} contentStyle={{ paddingTop: 6 }} refreshControl={refresh}>
+      <PageHeader title={t('theory.v2.title')} subtitle={t('theory.v2.subtitle', { total: total || 14 })} />
 
-      <FlatList
-        data={topics}
-        keyExtractor={(x) => x.id}
-        contentContainerClassName="px-5 pb-6 pt-1 gap-2"
-        renderItem={({ item }) => {
-          const isCurrent = item.id === currentId
-          const isDone = done.has(item.id)
-          return (
-            <View
-              className={`flex-row items-center gap-3 rounded-2xl border p-4 ${
-                isCurrent
-                  ? 'border-brand bg-brand/10'
-                  : 'border-neutral-800 bg-neutral-900'
-              }`}
-            >
-              <View
-                className={`h-9 w-9 items-center justify-center rounded-full ${
-                  isCurrent ? 'bg-brand' : 'bg-neutral-800'
-                }`}
-              >
-                <Text
-                  className={`text-sm font-black ${
-                    isCurrent ? 'text-ink' : 'text-neutral-400'
-                  }`}
-                >
-                  {item.number}
-                </Text>
+      {total === 0 ? (
+        <EmptyState icon={BookOpen} title={t('theory.v2.empty.title')} body={t('theory.v2.empty.body')} />
+      ) : (
+        <>
+          {/* Progress summary */}
+          <View
+            style={{
+              backgroundColor: C.card,
+              borderWidth: 1,
+              borderColor: C.lineGreen,
+              borderRadius: 18,
+              padding: 18,
+              gap: 12,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{ flex: 1, gap: 1 }}>
+                <T variant="titleM">{t('theory.v2.summary', { done: doneCount, total })}</T>
+                <T variant="bodyS" color={C.muted}>
+                  {remaining > 0 ? t('theory.v2.remaining', { n: remaining }) : t('theory.v2.allDone')}
+                </T>
               </View>
-              <Text
-                className={`flex-1 font-semibold ${
-                  isDone ? 'text-neutral-500 line-through' : 'text-neutral-100'
-                }`}
-              >
-                {locale === 'de' ? item.title_de : item.title_en}
-              </Text>
-              {isCurrent ? (
-                <View className="rounded-full bg-brand px-2 py-0.5">
-                  <Text className="text-[10px] font-bold text-ink">
-                    {t('theory.current')}
-                  </Text>
-                </View>
-              ) : null}
-              {/* Done checkbox */}
-              <Pressable
-                onPress={() => toggleDone(item.id)}
-                hitSlop={8}
-                className={`h-7 w-7 items-center justify-center rounded-full border ${
-                  isDone ? 'border-brand bg-brand' : 'border-neutral-600'
-                }`}
-              >
-                {isDone ? <Check size={16} color="#0A0A0A" /> : null}
-              </Pressable>
+              <T variant="displayL" color={C.brand}>{`${pct}%`}</T>
             </View>
-          )
-        }}
-      />
-    </SafeAreaView>
+            <View style={{ height: 8, borderRadius: 4, backgroundColor: C.surface, overflow: 'visible' }}>
+              {pct > 0 ? (
+                <View
+                  style={{
+                    width: `${pct}%`,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: C.brand,
+                    shadowColor: C.brand,
+                    shadowOpacity: 0.45,
+                    shadowRadius: 6,
+                    shadowOffset: { width: 0, height: 0 },
+                  }}
+                />
+              ) : null}
+            </View>
+          </View>
+
+          <T variant="titleM">{t('theory.v2.allTopics')}</T>
+
+          <View style={{ gap: 10 }}>
+            {topics.map((topic) => (
+              <TopicRow
+                key={topic.id}
+                number={topic.number}
+                title={topicTitle(topic, locale)}
+                state={stateOf(topic)}
+                label={t(`theory.v2.state.${stateOf(topic)}`)}
+                onPress={() => router.push(`/theory/${topic.id}` as any)}
+              />
+            ))}
+          </View>
+        </>
+      )}
+    </Screen>
+  )
+}
+
+function TopicRow({
+  number,
+  title,
+  state,
+  label,
+  onPress,
+}: {
+  number: number
+  title: string
+  state: TopicState
+  label: string
+  onPress: () => void
+}) {
+  const current = state === 'current'
+  const isDone = state === 'done'
+  const locked = state === 'locked'
+
+  const circle = isDone ? (
+    <View
+      style={{
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: C.brand,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: C.brand,
+        shadowOpacity: 0.45,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 0 },
+        elevation: 4,
+      }}
+    >
+      <Check size={20} color={C.onBrand} weight="bold" />
+    </View>
+  ) : current ? (
+    <View
+      style={{
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: C.tile,
+        borderWidth: 2,
+        borderColor: C.brand,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: C.brand,
+        shadowOpacity: 0.45,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 0 },
+        elevation: 4,
+      }}
+    >
+      <T variant="labelL" color={C.brand}>{String(number)}</T>
+    </View>
+  ) : (
+    <View
+      style={{
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: C.surface,
+        borderWidth: 1,
+        borderColor: C.line,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <T variant="labelL" color={C.dim}>{String(number)}</T>
+    </View>
+  )
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${number}. ${title} – ${label}`}
+      style={({ pressed }) => [
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 14,
+          padding: current ? 11.5 : 12,
+          borderRadius: 18,
+          backgroundColor: C.card,
+          borderWidth: current ? 1.5 : 1,
+          borderColor: current ? C.brand : C.line,
+        },
+        pressed ? { opacity: 0.85 } : null,
+      ]}
+    >
+      {circle}
+      <View style={{ flex: 1, gap: 2 }}>
+        <T variant="titleM" color={isDone || current ? C.white : C.muted}>{title}</T>
+        <T variant="caption" color={current ? C.brand : C.dim}>{label}</T>
+      </View>
+      {locked ? <LockSimple size={20} color={C.dim} /> : <CaretRight size={20} color={C.dim} />}
+    </Pressable>
   )
 }

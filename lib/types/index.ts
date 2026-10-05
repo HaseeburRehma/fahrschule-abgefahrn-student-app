@@ -27,6 +27,11 @@ export interface Profile {
   practical_exam_date: string | null
   theory_passed: boolean | null
   practical_passed: boolean | null
+  /** v2 (Figma redesign) — optional until migration 20261005000001 is applied */
+  license_class?: string | null
+  birth_date?: string | null
+  streak_days?: number | null
+  last_active_on?: string | null
   created_at: string
   updated_at: string
 }
@@ -51,6 +56,12 @@ export interface TheoryTopic {
   number: number
   title_de: string
   title_en: string
+  /** v2 — optional until migration 20261005000001 is applied */
+  description_de?: string | null
+  description_en?: string | null
+  learn_points_de?: string[] | null
+  learn_points_en?: string[] | null
+  duration_min?: number | null
 }
 
 export interface TheoryClass {

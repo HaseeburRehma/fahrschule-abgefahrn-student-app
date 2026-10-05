@@ -18,6 +18,7 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 import type { Locale } from '@/lib/types'
+import { V2 } from './v2'
 
 const STORAGE_KEY = 'abgefahrn.locale'
 
@@ -537,7 +538,8 @@ const EN: Dict = {
   'admin.addMessage': 'Add message',
 }
 
-const DICTIONARY: Record<Locale, Dict> = { de: DE, en: EN }
+// v2 (Figma redesign) keys are merged on top; per-area files live in ./v2.
+const DICTIONARY: Record<Locale, Dict> = { de: { ...DE, ...V2.de }, en: { ...EN, ...V2.en } }
 
 function interpolate(s: string, vars?: Record<string, string | number>): string {
   if (!vars) return s
@@ -604,4 +606,9 @@ export function useTranslation(): I18nContextValue {
 export function useL() {
   const { locale } = useTranslation()
   return (de: string, en: string) => (locale === 'de' ? de : en)
+}
+
+/** Shorthand: const t = useT(); t('home.greeting', { name }) */
+export function useT() {
+  return useTranslation().t
 }

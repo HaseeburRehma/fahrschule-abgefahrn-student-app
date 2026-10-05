@@ -1,52 +1,98 @@
 /**
- * Reusable 1:1 chat thread. Used by the student ("message the school") and by
- * the admin (reply to a student). "Mine" bubbles sit on the right.
+ * Reusable 1:1 chat thread (Figma "DE/Chat" 1287:1544 — bubbles + input bar).
+ * Used by the student ("message the school", app/chat.tsx) and by the admin
+ * (reply to a student, app/admin/chat/[id].tsx). "Mine" bubbles sit on the right.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from 'react-native'
-import { Send } from 'lucide-react-native'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { differenceInCalendarDays, format, isSameYear } from 'date-fns'
+import { de as deLocale, enUS } from 'date-fns/locale'
+import { PaperPlaneTilt } from 'phosphor-react-native/src/icons/PaperPlaneTilt'
 
+import { C, F, T, useToast } from '@/components/ds'
 import { getSupabase } from '@/lib/supabase/client'
 import { uniqueChannelName } from '@/lib/supabase/channel'
 import { useTranslation } from '@/lib/i18n'
-import {
-  fetchThread,
-  sendMessage,
-  markThreadRead,
-  type ChatMessage,
-} from '@/lib/chat'
+import { fetchThread, sendMessage, markThreadRead, type ChatMessage } from '@/lib/chat'
 import { formatTime } from '@/lib/format'
+import type { Locale } from '@/lib/types'
+
+type Row = { kind: 'day'; key: string; label: string } | { kind: 'msg'; key: string; msg: ChatMessage }
+
+function dayLabel(iso: string, locale: Locale, t: (k: string) => string): string {
+  const d = new Date(iso)
+  const now = new Date()
+  const diff = differenceInCalendarDays(now, d)
+  if (diff === 0) return t('chat.v2.today')
+  if (diff === 1) return t('chat.v2.yesterday')
+  const loc = locale === 'de' ? deLocale : enUS
+  const pattern = isSameYear(d, now)
+    ? locale === 'de' ? 'EEE, d. MMM' : 'EEE, d MMM'
+    : locale === 'de' ? 'd. MMM yyyy' : 'd MMM yyyy'
+  return format(d, pattern, { locale: loc })
+}
+
+function Bubble({ msg, mine, locale }: { msg: ChatMessage; mine: boolean; locale: Locale }) {
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: mine ? 'flex-end' : 'flex-start' }}>
+      <View
+        style={{
+          maxWidth: '80%',
+          backgroundColor: mine ? C.brand : C.surface,
+          borderTopLeftRadius: mine ? 18 : 6,
+          borderTopRightRadius: mine ? 6 : 18,
+          borderBottomLeftRadius: 18,
+          borderBottomRightRadius: 18,
+          paddingTop: 10,
+          paddingBottom: 8,
+          paddingHorizontal: 14,
+          gap: 4,
+        }}
+      >
+        <T variant="bodyM" color={mine ? C.onBrand : C.white} selectable>
+          {msg.body}
+        </T>
+        <T variant="caption" color={mine ? '#0A3A10' : C.dim} style={{ textAlign: mine ? 'right' : 'left' }}>
+          {formatTime(msg.created_at, locale)}
+        </T>
+      </View>
+    </View>
+  )
+}
 
 export function ChatThread({
   studentId,
   senderId,
   isAdmin,
+  keyboardOffset = 90,
 }: {
   studentId: string
   senderId: string
   isAdmin: boolean
+  /** distance from the screen top to this view (header height); iOS keyboard avoidance */
+  keyboardOffset?: number
 }) {
   const { t, locale } = useTranslation()
+  const toast = useToast()
+  const insets = useSafeAreaInsets()
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [loading, setLoading] = useState(true)
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
-  const listRef = useRef<FlatList<ChatMessage>>(null)
+  const listRef = useRef<FlatList<Row>>(null)
 
   const load = useCallback(async () => {
     try {
       const rows = await fetchThread(studentId)
       setMessages(rows)
       markThreadRead(studentId, isAdmin).catch(() => {})
-    } catch {}
+    } catch {
+      // keep whatever we have
+    } finally {
+      setLoading(false)
+    }
   }, [studentId, isAdmin])
 
   useEffect(() => {
@@ -64,9 +110,7 @@ export function ChatThread({
         },
         (payload: any) => {
           const row = payload.new as ChatMessage
-          setMessages((prev) =>
-            prev.some((m) => m.id === row.id) ? prev : [...prev, row],
-          )
+          setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]))
           // If the incoming message is from the other side, mark read.
           if (row.from_admin !== isAdmin) markThreadRead(studentId, isAdmin).catch(() => {})
         },
@@ -79,6 +123,21 @@ export function ChatThread({
     }
   }, [studentId, isAdmin, load])
 
+  const rows = useMemo<Row[]>(() => {
+    const out: Row[] = []
+    let lastDay = ''
+    for (const m of messages) {
+      const day = (m.created_at || '').slice(0, 10)
+      const localDay = new Date(m.created_at).toDateString()
+      if (localDay !== lastDay) {
+        out.push({ kind: 'day', key: `d-${day}-${out.length}`, label: dayLabel(m.created_at, locale, t) })
+        lastDay = localDay
+      }
+      out.push({ kind: 'msg', key: m.id, msg: m })
+    }
+    return out
+  }, [messages, locale, t])
+
   async function onSend() {
     const body = text.trim()
     if (!body || sending) return
@@ -86,73 +145,125 @@ export function ChatThread({
     setText('')
     try {
       const msg = await sendMessage({ studentId, senderId, fromAdmin: isAdmin, body })
-      setMessages((prev) =>
-        prev.some((m) => m.id === msg.id) ? prev : [...prev, msg],
-      )
+      setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]))
     } catch {
       setText(body) // restore on failure
+      toast.show(t('chat.v2.sendError'), 'error')
     } finally {
       setSending(false)
     }
   }
 
+  const canSend = !!text.trim() && !sending
+
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-black"
+      style={{ flex: 1, backgroundColor: C.bg }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
+      keyboardVerticalOffset={keyboardOffset}
     >
-      <FlatList
-        ref={listRef}
-        data={messages}
-        keyExtractor={(m) => m.id}
-        contentContainerClassName="p-4 gap-2"
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
-        renderItem={({ item }) => {
-          const mine = item.from_admin === isAdmin
-          return (
-            <View className={`max-w-[80%] ${mine ? 'self-end' : 'self-start'}`}>
-              <View
-                className={`rounded-2xl px-3.5 py-2.5 ${
-                  mine ? 'bg-brand' : 'bg-neutral-800'
-                }`}
-              >
-                <Text className={mine ? 'text-ink' : 'text-neutral-100'}>
-                  {item.body}
-                </Text>
+      {loading ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={C.brand} />
+        </View>
+      ) : (
+        <FlatList
+          ref={listRef}
+          style={{ flex: 1 }}
+          data={rows}
+          keyExtractor={(r) => r.key}
+          contentContainerStyle={{ paddingTop: 18, paddingHorizontal: 20, paddingBottom: 12, gap: 12, flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+          renderItem={({ item }) =>
+            item.kind === 'day' ? (
+              <View style={{ alignItems: 'center' }}>
+                <View style={{ backgroundColor: C.surface, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 }}>
+                  <T variant="caption" color={C.dim}>{item.label}</T>
+                </View>
               </View>
-              <Text
-                className={`mt-0.5 text-[10px] text-neutral-500 ${mine ? 'text-right' : ''}`}
-              >
-                {formatTime(item.created_at, locale)}
-              </Text>
+            ) : (
+              <Bubble msg={item.msg} mine={item.msg.from_admin === isAdmin} locale={locale} />
+            )
+          }
+          ListEmptyComponent={
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+              <T variant="bodyM" color={C.dim} style={{ textAlign: 'center' }}>{t('chat.v2.empty')}</T>
             </View>
-          )
-        }}
-        ListEmptyComponent={
-          <Text className="mt-24 text-center text-neutral-500">
-            {t('chat.empty')}
-          </Text>
-        }
-      />
-      <View className="flex-row items-end gap-2 border-t border-neutral-800 bg-black p-3">
-        <TextInput
-          value={text}
-          onChangeText={setText}
-          placeholder={t('chat.placeholder')}
-          placeholderTextColor="#6B7280"
-          multiline
-          className="max-h-28 flex-1 rounded-2xl border border-neutral-700 bg-neutral-900 px-4 py-2.5 text-base text-neutral-100"
+          }
         />
-        <Pressable
-          onPress={onSend}
-          disabled={!text.trim() || sending}
-          className={`h-11 w-11 items-center justify-center rounded-full bg-brand ${
-            !text.trim() || sending ? 'opacity-50' : ''
-          }`}
+      )}
+
+      {/* Input bar */}
+      <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: Math.max(insets.bottom, 12) + 4 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'flex-end',
+            gap: 10,
+            minHeight: 52,
+            borderRadius: 26,
+            backgroundColor: C.surface,
+            borderWidth: 1,
+            borderColor: C.line,
+            paddingLeft: 16,
+            paddingRight: 5,
+            paddingVertical: 5,
+          }}
         >
-          <Send size={18} color="#0A0A0A" />
-        </Pressable>
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            placeholder={t('chat.v2.placeholder')}
+            placeholderTextColor={C.dim}
+            selectionColor={C.brand}
+            cursorColor={C.brand}
+            multiline
+            style={
+              {
+                flex: 1,
+                maxHeight: 120,
+                minHeight: 40,
+                paddingTop: 9,
+                paddingBottom: 9,
+                color: C.white,
+                fontFamily: F.regular,
+                fontSize: 15,
+                lineHeight: 22,
+                outlineWidth: 0,
+              } as any
+            }
+          />
+          <Pressable
+            onPress={onSend}
+            disabled={!canSend}
+            accessibilityRole="button"
+            accessibilityLabel={t('chat.v2.send')}
+            style={({ pressed }) => [
+              {
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: C.brand,
+                alignItems: 'center',
+                justifyContent: 'center',
+                shadowColor: C.brand,
+                shadowOpacity: 0.5,
+                shadowRadius: 6,
+                shadowOffset: { width: 0, height: 0 },
+                elevation: 6,
+                opacity: canSend ? (pressed ? 0.85 : 1) : 0.5,
+              },
+            ]}
+          >
+            {sending ? (
+              <ActivityIndicator size="small" color={C.onBrand} />
+            ) : (
+              <PaperPlaneTilt size={20} color={C.onBrand} weight="fill" />
+            )}
+          </Pressable>
+        </View>
       </View>
     </KeyboardAvoidingView>
   )

@@ -1,0 +1,91 @@
+// @ts-nocheck  — Deno edge function (Deno global + https: imports). Checked by
+// the Deno runtime at deploy, not by the app's TypeScript.
+// ============================================================================
+// signup-with-code — public self sign-up for students (Figma "Registrieren").
+//
+// The app sends { first_name, last_name, email, password, school_code, locale }.
+// The school code must match app_settings.signup_code (e.g. "ABG-2026"); only
+// then a confirmed auth user + student profile is created. The app signs in
+// with the password right after.
+//
+//   400 invalid_input | 403 invalid_code | 409 email_exists | 429 rate_limited
+//
+// Deploy:  supabase functions deploy signup-with-code --no-verify-jwt
+// ============================================================================
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS, 'content-type': 'application/json' },
+  })
+}
+
+// Best-effort per-instance throttle against code guessing.
+const hits = new Map<string, number[]>()
+function limited(ip: string) {
+  const now = Date.now()
+  const arr = (hits.get(ip) ?? []).filter((t) => now - t < 10 * 60_000)
+  arr.push(now)
+  hits.set(ip, arr)
+  return arr.length > 8
+}
+
+const norm = (s: unknown) => String(s ?? '').trim().toUpperCase().replace(/\s+/g, '')
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
+  if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
+
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  if (limited(ip)) return json({ error: 'rate_limited' }, 429)
+
+  let body: any
+  try {
+    body = await req.json()
+  } catch {
+    return json({ error: 'invalid_input' }, 400)
+  }
+
+  const email = String(body.email ?? '').trim().toLowerCase()
+  const password = String(body.password ?? '')
+  const first = String(body.first_name ?? '').trim().slice(0, 60)
+  const last = String(body.last_name ?? '').trim().slice(0, 60)
+  const locale = body.locale === 'en' ? 'en' : 'de'
+  if (!email.includes('@') || password.length < 8 || !first) return json({ error: 'invalid_input' }, 400)
+
+  const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+
+  const { data: setting } = await admin.from('app_settings').select('value').eq('key', 'signup_code').maybeSingle()
+  const expected = norm(setting?.value)
+  if (!expected || norm(body.school_code) !== expected) return json({ error: 'invalid_code' }, 403)
+
+  const { data: created, error: createErr } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { role: 'student', first_name: first, last_name: last },
+  })
+  if (createErr || !created?.user) {
+    const msg = String(createErr?.message ?? '').toLowerCase()
+    if (msg.includes('already') || msg.includes('exists') || msg.includes('registered')) {
+      return json({ error: 'email_exists' }, 409)
+    }
+    return json({ error: createErr?.message ?? 'create_failed' }, 400)
+  }
+
+  const { error: updErr } = await admin
+    .from('profiles')
+    .update({ email, first_name: first, last_name: last || null, role: 'student', locale })
+    .eq('id', created.user.id)
+  if (updErr) return json({ error: updErr.message }, 500)
+
+  return json({ id: created.user.id })
+})

@@ -1,3 +1,6 @@
+import { Linking } from 'react-native'
+import * as WebBrowser from 'expo-web-browser'
+
 import { getSupabase } from '@/lib/supabase/client'
 
 export interface DocRow {
@@ -16,6 +19,60 @@ export async function fetchDocuments(): Promise<DocRow[]> {
   return (data ?? []) as DocRow[]
 }
 
+/** One document row by id (null if missing / not visible). */
+export async function fetchDocument(id: string): Promise<DocRow | null> {
+  const { data, error } = await getSupabase()
+    .from('documents')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+  if (error) throw error
+  return (data as DocRow) ?? null
+}
+
+/** File sizes (bytes) keyed by storage path. Best-effort: {} on any error. */
+export async function fetchDocumentSizes(): Promise<Record<string, number>> {
+  try {
+    const { data, error } = await getSupabase()
+      .storage.from('documents')
+      .list('', { limit: 1000 })
+    if (error || !data) return {}
+    const out: Record<string, number> = {}
+    for (const f of data as any[]) {
+      const size = f?.metadata?.size
+      if (f?.name && typeof size === 'number') out[f.name] = size
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+export type DocKind = 'pdf' | 'image' | 'other'
+
+/** File type from the storage path extension. */
+export function docKind(path: string): DocKind {
+  const ext = (path.split('.').pop() || '').toLowerCase()
+  if (ext === 'pdf') return 'pdf'
+  if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic'].includes(ext)) return 'image'
+  return 'other'
+}
+
+/** Upper-case extension label ("PDF", "JPG"). */
+export function docExtLabel(path: string): string {
+  const ext = (path.split('.').pop() || '').toUpperCase()
+  return ext.length > 0 && ext.length <= 5 ? ext : ''
+}
+
+/** Human file size in German/English notation ("240 KB", "1,2 MB"). */
+export function formatFileSize(bytes: number, locale: 'de' | 'en' = 'de'): string {
+  const fmt = (n: number) =>
+    n.toLocaleString(locale === 'de' ? 'de-DE' : 'en-GB', { maximumFractionDigits: 1 })
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${fmt(bytes / (1024 * 1024))} MB`
+}
+
 /** Short-lived signed URL to view/download a private document. */
 export async function getDocumentUrl(path: string): Promise<string> {
   const { data, error } = await getSupabase()
@@ -23,6 +80,22 @@ export async function getDocumentUrl(path: string): Promise<string> {
     .createSignedUrl(path, 3600)
   if (error) throw error
   return data.signedUrl
+}
+
+/** Open a document in the in-app browser (falls back to the system handler).
+ * Returns false when no signed URL could be created. */
+export async function openDocumentExternally(path: string): Promise<boolean> {
+  try {
+    const url = await getDocumentUrl(path)
+    try {
+      await WebBrowser.openBrowserAsync(url)
+    } catch {
+      await Linking.openURL(url)
+    }
+    return true
+  } catch {
+    return false
+  }
 }
 
 /** Upload a picked file (Blob/ArrayBuffer/Uint8Array) + record its metadata. */

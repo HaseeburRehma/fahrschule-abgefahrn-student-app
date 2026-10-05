@@ -10,6 +10,7 @@
 
 import { useEffect, useRef } from 'react'
 import { Platform } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useRouter } from 'expo-router'
 import Constants from 'expo-constants'
 import * as Device from 'expo-device'
@@ -31,7 +32,7 @@ function configureForegroundHandler() {
   })
 }
 
-async function ensurePermission(): Promise<boolean> {
+export async function ensurePermission(): Promise<boolean> {
   const current = await Notifications.getPermissionsAsync()
   if (current.granted || current.status === 'granted') return true
   const req = await Notifications.requestPermissionsAsync()
@@ -47,7 +48,7 @@ async function ensureAndroidChannel() {
   })
 }
 
-async function getExpoPushToken(): Promise<string | null> {
+export async function getExpoPushToken(): Promise<string | null> {
   const projectId =
     (Constants.expoConfig?.extra as any)?.eas?.projectId ??
     (Constants as any)?.easConfig?.projectId
@@ -71,7 +72,7 @@ function routeForNotification(
   const type = data?.type
   if (type === 'schedule') router.push('/(tabs)/schedule')
   else if (type === 'theory') router.push('/(tabs)/theory')
-  else router.push('/(tabs)/notifications')
+  else router.push('/notifications' as any)
 }
 
 export function usePushRegistration(): void {
@@ -89,8 +90,11 @@ export function usePushRegistration(): void {
     ;(async () => {
       configureForegroundHandler()
       if (!Device.isDevice) return // simulators can't get push tokens
-      const ok = await ensurePermission()
-      if (!ok || cancelled) return
+      if (!(await getPushEnabled())) return // user switched push off (Profil)
+      // Never trigger the OS prompt here — the "Push erlauben" screen owns it.
+      // Only register when permission was already granted.
+      const perm = await Notifications.getPermissionsAsync()
+      if (!(perm.granted || perm.status === 'granted') || cancelled) return
       await ensureAndroidChannel()
       const token = await getExpoPushToken()
       if (!token || cancelled || token === lastToken.current) return
@@ -132,4 +136,59 @@ export function usePushRegistration(): void {
     })
     return () => sub.remove()
   }, [router])
+}
+
+/* ---------------------------------------------------------------- preference */
+
+const PUSH_PREF_KEY = 'abgefahrn.pref.push'
+
+/** User preference (Profil → Push-Benachrichtigungen). Defaults to on. */
+export async function getPushEnabled(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(PUSH_PREF_KEY)) !== '0'
+  } catch {
+    return true
+  }
+}
+
+/**
+ * Switch remote push on/off. Off clears the stored token so the dispatcher
+ * stops sending; on re-requests permission and stores a fresh token.
+ * Returns the effective state (false if permission was denied).
+ */
+export async function setPushEnabled(userId: string | null, enabled: boolean): Promise<boolean> {
+  try {
+    await AsyncStorage.setItem(PUSH_PREF_KEY, enabled ? '1' : '0')
+  } catch {}
+  if (Platform.OS === 'web' || !userId) return enabled
+  const supabase = getSupabase()
+  if (!enabled) {
+    try {
+      await supabase.from('profiles').update({ push_token: null }).eq('id', userId)
+    } catch {}
+    return false
+  }
+  if (!Device.isDevice) return true
+  const ok = await ensurePermission().catch(() => false)
+  if (!ok) {
+    try {
+      await AsyncStorage.setItem(PUSH_PREF_KEY, '0')
+    } catch {}
+    return false
+  }
+  await ensureAndroidChannel().catch(() => {})
+  const token = await getExpoPushToken()
+  if (token) {
+    try {
+      await supabase
+        .from('profiles')
+        .update({
+          push_token: token,
+          push_token_platform: Platform.OS,
+          push_token_updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId)
+    } catch {}
+  }
+  return true
 }

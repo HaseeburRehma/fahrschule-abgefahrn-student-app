@@ -1,187 +1,150 @@
-import React, { useState } from 'react'
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+/**
+ * Login — Figma DE/Login (1295:1821, EN 1296:2335) + error state 05/Login Fehler (1301:2344, EN 1314:3076).
+ * Email + password. Students created before passwords existed set one via "Passwort vergessen".
+ */
 
+import React, { useRef, useState } from 'react'
+import { View, type TextInput } from 'react-native'
+import { router } from 'expo-router'
+import { ArrowRight } from 'phosphor-react-native/src/icons/ArrowRight'
+import { EnvelopeSimple } from 'phosphor-react-native/src/icons/EnvelopeSimple'
+import { LockSimple } from 'phosphor-react-native/src/icons/LockSimple'
+
+import { Button, C, HeroTitle, Input, LinkButton, Logo, Screen, T } from '@/components/ds'
+import { FooterPrompt, Spacer } from '@/components/auth/ui'
 import { getSupabase } from '@/lib/supabase/client'
-import { useTranslation } from '@/lib/i18n'
-import { classifyAuthError, authErrorKey } from '@/lib/auth/errors'
-import { Logo, Button, TextField, ErrorText } from '@/components/ui'
-import type { Locale } from '@/lib/types'
+import { classifyPasswordError, passwordErrorKey } from '@/lib/auth/errors'
+import { useT } from '@/lib/i18n'
 
-type Step = 'email' | 'code'
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function Login() {
-  const { t, locale, setLocale } = useTranslation()
-  const [step, setStep] = useState<Step>('email')
+  const t = useT()
   const [email, setEmail] = useState('')
-  const [code, setCode] = useState('')
+  const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [emailErr, setEmailErr] = useState<string | null>(null)
+  const [pwErr, setPwErr] = useState<string | null>(null)
+  /** wrong credentials → both inputs red, message under the password (Figma "Login Fehler") */
+  const [badCreds, setBadCreds] = useState(false)
+  const pwRef = useRef<TextInput>(null)
 
-  const cleanEmail = email.trim().toLowerCase()
-
-  async function sendCode() {
-    setError(null)
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      setError(t('common.required'))
-      return
-    }
-    setBusy(true)
-    try {
-      const supabase = getSupabase()
-      const { error: err } = await supabase.auth.signInWithOtp({
-        email: cleanEmail,
-        // Only admin-provisioned emails may sign in.
-        options: { shouldCreateUser: false },
-      })
-      if (err) throw err
-      setStep('code')
-    } catch (e) {
-      setError(t(authErrorKey(classifyAuthError(e))))
-    } finally {
-      setBusy(false)
-    }
+  const clear = () => {
+    setEmailErr(null)
+    setPwErr(null)
+    setBadCreds(false)
   }
 
-  async function verify() {
-    setError(null)
-    if (code.trim().length < 6) {
-      setError(t('auth.err.invalidCode'))
-      return
+  const goForgot = () => {
+    const clean = email.trim().toLowerCase()
+    router.push({ pathname: '/(auth)/forgot', params: clean ? { email: clean } : {} } as any)
+  }
+
+  async function submit() {
+    clear()
+    const cleanEmail = email.trim().toLowerCase()
+    let ok = true
+    if (!cleanEmail) {
+      setEmailErr(t('auth.val.emailRequired'))
+      ok = false
+    } else if (!EMAIL_RE.test(cleanEmail)) {
+      setEmailErr(t('auth.val.emailInvalid'))
+      ok = false
     }
+    if (!password) {
+      setPwErr(t('auth.val.passwordRequired'))
+      ok = false
+    }
+    if (!ok) return
+
     setBusy(true)
     try {
-      const supabase = getSupabase()
-      const { error: err } = await supabase.auth.verifyOtp({
-        email: cleanEmail,
-        token: code.trim(),
-        type: 'email',
-      })
-      if (err) throw err
-      // AuthGuard reacts to the new session and routes onward.
+      const { error } = await getSupabase().auth.signInWithPassword({ email: cleanEmail, password })
+      if (error) throw error
+      // AuthGuard sees the new session and routes to Home.
     } catch (e) {
-      setError(t(authErrorKey(classifyAuthError(e))))
+      const kind = classifyPasswordError(e)
+      if (kind === 'invalid_credentials') setBadCreds(true)
+      setPwErr(t(passwordErrorKey(kind)))
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-ink">
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerClassName="flex-grow justify-center px-6 py-10"
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Language toggle */}
-          <View className="mb-8 flex-row justify-end gap-2">
-            {(['de', 'en'] as Locale[]).map((l) => (
-              <Pressable
-                key={l}
-                onPress={() => setLocale(l)}
-                className={`rounded-full px-3 py-1 ${
-                  locale === l ? 'bg-brand' : 'bg-neutral-800'
-                }`}
-              >
-                <Text
-                  className={`text-xs font-bold ${
-                    locale === l ? 'text-ink' : 'text-neutral-300'
-                  }`}
-                >
-                  {l.toUpperCase()}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+    <Screen
+      glow={-20}
+      keyboard
+      padded={false}
+      gap={0}
+      contentStyle={{ paddingHorizontal: 24, paddingTop: 16 }}
+      footer={
+        <FooterPrompt
+          text={t('auth.login.noAccount')}
+          link={t('auth.login.signup')}
+          onPress={() => router.push('/(auth)/signup' as any)}
+        />
+      }
+    >
+      <Logo width={170} />
+      <Spacer h={40} />
+      <HeroTitle line1={t('auth.login.line1')} line2={t('auth.login.line2')} />
+      <Spacer h={12} />
+      <T variant="bodyL" color={C.muted}>{t('auth.login.body')}</T>
+      <Spacer h={26} />
 
-          <View className="items-center">
-            <Logo width={280} />
-          </View>
+      <View style={{ gap: 16 }}>
+        <Input
+          label={t('auth.field.email')}
+          icon={EnvelopeSimple}
+          placeholder={t('auth.field.emailPh')}
+          value={email}
+          onChangeText={(v) => {
+            setEmail(v)
+            if (emailErr || badCreds) clear()
+          }}
+          error={emailErr ?? badCreds}
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="email"
+          textContentType="username"
+          keyboardType="email-address"
+          inputMode="email"
+          returnKeyType="next"
+          onSubmitEditing={() => pwRef.current?.focus()}
+          submitBehavior="submit"
+        />
+        <Input
+          {...({ ref: pwRef } as object)}
+          label={t('auth.field.password')}
+          icon={LockSimple}
+          placeholder={t('auth.field.passwordPh')}
+          value={password}
+          onChangeText={(v) => {
+            setPassword(v)
+            if (pwErr || badCreds) {
+              setPwErr(null)
+              setBadCreds(false)
+            }
+          }}
+          error={pwErr ?? badCreds}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="current-password"
+          textContentType="password"
+          returnKeyType="go"
+          onSubmitEditing={submit}
+        />
+        <LinkButton label={t('auth.login.forgot')} align="right" onPress={goForgot} />
+      </View>
 
-          <View className="mt-10 rounded-3xl bg-neutral-900 p-6">
-            {step === 'email' ? (
-              <View className="gap-4">
-                <View>
-                  <Text className="text-xl font-bold text-neutral-100">
-                    {t('auth.title')}
-                  </Text>
-                  <Text className="mt-1 text-sm text-neutral-400">
-                    {t('auth.subtitle')}
-                  </Text>
-                </View>
-                <TextField
-                  label={t('auth.email')}
-                  placeholder={t('auth.emailPlaceholder')}
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="email-address"
-                  inputMode="email"
-                  onSubmitEditing={sendCode}
-                  returnKeyType="send"
-                />
-                <ErrorText>{error}</ErrorText>
-                <Button label={t('auth.sendCode')} onPress={sendCode} loading={busy} />
-              </View>
-            ) : (
-              <View className="gap-4">
-                <View>
-                  <Text className="text-xl font-bold text-neutral-100">
-                    {t('auth.codeSentTitle')}
-                  </Text>
-                  <Text className="mt-1 text-sm text-neutral-400">
-                    {t('auth.codeSentSubtitle', { email: cleanEmail })}
-                  </Text>
-                </View>
-                <TextField
-                  label={t('auth.code')}
-                  placeholder="123456"
-                  value={code}
-                  onChangeText={(v) => setCode(v.replace(/[^0-9]/g, '').slice(0, 6))}
-                  keyboardType="number-pad"
-                  inputMode="numeric"
-                  maxLength={6}
-                  onSubmitEditing={verify}
-                  returnKeyType="done"
-                />
-                <ErrorText>{error}</ErrorText>
-                <Button label={t('auth.verify')} onPress={verify} loading={busy} />
-                <View className="flex-row justify-between">
-                  <Pressable onPress={sendCode} disabled={busy}>
-                    <Text className="text-sm font-semibold text-brand">
-                      {t('auth.resend')}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      setStep('email')
-                      setCode('')
-                      setError(null)
-                    }}
-                    disabled={busy}
-                  >
-                    <Text className="text-sm font-semibold text-neutral-400">
-                      {t('auth.changeEmail')}
-                    </Text>
-                  </Pressable>
-                </View>
-                <Text className="text-xs text-neutral-400">{t('auth.checkSpam')}</Text>
-              </View>
-            )}
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      <Spacer h={10} />
+      <Button label={t('auth.login.submit')} iconRight={ArrowRight} onPress={submit} loading={busy} />
+      <Spacer h={18} />
+      <T variant="caption" color={C.dim} style={{ textAlign: 'center', paddingHorizontal: 8 }}>
+        {t('auth.login.legacyHint')}
+      </T>
+    </Screen>
   )
 }

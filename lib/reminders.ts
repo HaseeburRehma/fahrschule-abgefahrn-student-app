@@ -32,12 +32,41 @@ async function cancelStored(category: string) {
   } catch {}
 }
 
+/* ---------------------------------------------------------------- preference */
+
+const PREF_KEY = 'abgefahrn.pref.reminders'
+const CATEGORIES = ['reminders', 'motivation']
+
+/** User preference (Profil → Erinnerungen). Defaults to on. */
+export async function getRemindersEnabled(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(PREF_KEY)) !== '0'
+  } catch {
+    return true
+  }
+}
+
+/** Turning reminders off cancels everything already scheduled; screens
+ * re-schedule on their next load once it is switched back on. */
+export async function setRemindersEnabled(v: boolean): Promise<void> {
+  try {
+    await AsyncStorage.setItem(PREF_KEY, v ? '1' : '0')
+  } catch {}
+  if (!v && Platform.OS !== 'web') {
+    for (const c of CATEGORIES) await cancelStored(c)
+  }
+}
+
 export async function scheduleReminders(
   items: ReminderItem[],
   category = 'reminders',
 ): Promise<void> {
   if (Platform.OS === 'web') return
   if (!Device.isDevice) return
+  if (items.length && !(await getRemindersEnabled())) {
+    await cancelStored(category)
+    return
+  }
   try {
     const perm = await Notifications.getPermissionsAsync()
     if (!perm.granted && perm.status !== 'granted') {

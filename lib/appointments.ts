@@ -12,6 +12,11 @@ export interface Appointment {
   note: string | null
   status: AppointmentStatus
   created_at: string
+  /** v2 — optional until migration 20261005000001 is applied */
+  instructor_name?: string | null
+  meeting_point?: string | null
+  lesson_type?: string | null
+  slot_id?: string | null
 }
 
 export async function fetchMyAppointments(
@@ -32,20 +37,43 @@ export async function createAppointment(input: {
   starts_at: string
   ends_at?: string | null
   note?: string | null
+  /** book an availability slot (DB trigger capacity-checks + auto-confirms) */
+  slot_id?: string | null
+  /** v2 optional column — dropped automatically if the migration isn't applied */
+  lesson_type?: string | null
 }): Promise<Appointment> {
+  const base: Record<string, unknown> = {
+    student_id: input.studentId,
+    title: input.title,
+    starts_at: input.starts_at,
+    ends_at: input.ends_at ?? null,
+    note: input.note ?? null,
+  }
+  if (input.slot_id) base.slot_id = input.slot_id
+  const insert = (row: Record<string, unknown>) =>
+    getSupabase().from('appointments').insert(row).select('*').single()
+
+  let res = input.lesson_type ? await insert({ ...base, lesson_type: input.lesson_type }) : await insert(base)
+  if (res.error && input.lesson_type && isMissingColumn(res.error)) {
+    res = await insert(base)
+  }
+  if (res.error) throw res.error
+  return res.data as Appointment
+}
+
+/** Postgres/PostgREST "column does not exist" (optional v2 columns not migrated yet). */
+function isMissingColumn(err: { code?: string; message?: string }): boolean {
+  return err.code === '42703' || err.code === 'PGRST204' || /column/i.test(err.message ?? '')
+}
+
+export async function fetchAppointment(id: string): Promise<Appointment | null> {
   const { data, error } = await getSupabase()
     .from('appointments')
-    .insert({
-      student_id: input.studentId,
-      title: input.title,
-      starts_at: input.starts_at,
-      ends_at: input.ends_at ?? null,
-      note: input.note ?? null,
-    })
     .select('*')
-    .single()
+    .eq('id', id)
+    .maybeSingle()
   if (error) throw error
-  return data as Appointment
+  return (data as Appointment) ?? null
 }
 
 export async function cancelAppointment(id: string): Promise<void> {

@@ -14,6 +14,7 @@
 import 'react-native-url-polyfill/auto'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { Platform } from 'react-native'
 import Constants from 'expo-constants'
 
 const SupabaseStorage = AsyncStorage
@@ -44,6 +45,10 @@ type AuthLike = {
     token: string
     type: string
   }) => Promise<any>
+  signInWithPassword: (params: { email: string; password: string }) => Promise<any>
+  resetPasswordForEmail: (email: string, options?: { redirectTo?: string }) => Promise<any>
+  setSession: (params: { access_token: string; refresh_token: string }) => Promise<any>
+  exchangeCodeForSession: (code: string) => Promise<any>
   signOut: () => Promise<any>
   updateUser: (attrs: any) => Promise<any>
   getUser: () => Promise<any>
@@ -65,7 +70,8 @@ export function getSupabase(): AppSupabase {
       storage: SupabaseStorage as any,
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: false,
+      // Web: parse password-recovery links (#access_token…      detectSessionInUrl: false,type=recovery).
+      detectSessionInUrl: Platform.OS === 'web',
     },
   })
   return cached as unknown as AppSupabase

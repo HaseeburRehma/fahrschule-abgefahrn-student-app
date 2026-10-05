@@ -17,11 +17,18 @@ export const SCHOOL = {
   hours: [
     { de: 'Montag – Freitag', en: 'Monday – Friday', time: '10:30 – 19:00' },
     { de: 'Samstag', en: 'Saturday', time: '10:30 – 15:00' },
-    { de: 'Sonntag', en: 'Sunday', time: 'geschlossen / closed' },
+    { de: 'Sonntag', en: 'Sunday', time: 'geschlossen / closed', closed: true },
   ],
   impressumUrl: 'https://fahrschule-abgefahrn.de/impressum/',
   datenschutzUrl: 'https://fahrschule-abgefahrn.de/datenschutz/',
   websiteUrl: 'https://fahrschule-abgefahrn.de/',
+  /** Official social profiles (linked from fahrschule-abgefahrn.de). */
+  social: {
+    instagram: 'https://www.instagram.com/fahrschule_abgefahrn/',
+    facebook: 'https://www.facebook.com/Fahrschuleabgefahrn',
+    tiktok: 'https://www.tiktok.com/@fahrschule_abgefahrn',
+    youtube: 'https://www.youtube.com/@fahrschuleabgefahrn',
+  },
 }
 
 export const mapsUrl = () =>
