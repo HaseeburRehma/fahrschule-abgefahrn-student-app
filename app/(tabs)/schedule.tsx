@@ -40,6 +40,7 @@ import {
   hm,
   lessonIcon,
   lessonSubtitle,
+  lessonTitle,
   lessonTypeOf,
   shortDate,
 } from '@/components/schedule/helpers'
@@ -217,7 +218,7 @@ export default function Schedule() {
         <ScheduleCard
           key={`a-${a.id}`}
           icon={lessonIcon(type)}
-          title={a.title}
+          title={lessonTitle(a, t, locale)}
           subtitle={lessonSubtitle(a, t) || undefined}
           pill={pill}
           date={shortDate(a.starts_at, locale)}

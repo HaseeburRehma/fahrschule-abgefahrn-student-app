@@ -12,7 +12,7 @@ import { CalendarDots } from 'phosphor-react-native/src/icons/CalendarDots'
 import { Info } from 'phosphor-react-native/src/icons/Info'
 import { WarningCircle } from 'phosphor-react-native/src/icons/WarningCircle'
 
-import { Button, C, F, LinkButton, Sheet, SheetTitle, T, useToast } from '@/components/ds'
+import { Button, C, F, Sheet, SheetTitle, T, useToast } from '@/components/ds'
 import { useT } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
 import { updateMyProfile } from '@/lib/data'
@@ -71,6 +71,12 @@ export function ExamDateSheet({
   }
 
   function save() {
+    // Figma has no separate "remove" control: saving an empty field clears the date.
+    if (!value.trim()) {
+      if (current) persist(null)
+      else onClose()
+      return
+    }
     const iso = deDateToIso(value)
     if (!iso) {
       setError(t('exams.v2.sheet.invalid'))
@@ -160,9 +166,6 @@ export function ExamDateSheet({
       </View>
 
       <Button label={t('exams.v2.sheet.save')} onPress={save} loading={saving} />
-      {current ? (
-        <LinkButton label={t('exams.v2.sheet.remove')} color={C.danger} onPress={() => !saving && persist(null)} />
-      ) : null}
     </Sheet>
   )
 }

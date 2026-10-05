@@ -36,7 +36,7 @@ import {
 } from '@/components/ds'
 import { ActionsSheet, type SheetAction } from '@/components/schedule/actions-sheet'
 import { CancelSheet } from '@/components/schedule/cancel-sheet'
-import { endTime, lessonIcon, lessonTypeOf, longDate, timeRange } from '@/components/schedule/helpers'
+import { endTime, lessonIcon, lessonTitle, lessonTypeOf, longDate, timeRange } from '@/components/schedule/helpers'
 import { useTranslation } from '@/lib/i18n'
 import { fetchAppointment, type Appointment } from '@/lib/appointments'
 import { addToCalendar } from '@/lib/calendar'
@@ -174,7 +174,7 @@ export default function AppointmentDetail() {
             <Icon size={26} color={C.brand} />
           </View>
           <View style={{ flex: 1, gap: 3 }}>
-            <T variant="headingL" numberOfLines={1}>{appt.title}</T>
+            <T variant="headingL" numberOfLines={1}>{lessonTitle(appt, t, locale)}</T>
             {typeLabel ? (
               <T variant="bodyS" color={C.muted} numberOfLines={1}>{typeLabel}</T>
             ) : null}
@@ -231,7 +231,7 @@ export default function AppointmentDetail() {
       <ActionsSheet
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
-        title={appt.title}
+        title={lessonTitle(appt, t, locale)}
         subtitle={`${longDate(appt.starts_at, locale)} · ${timeRange(appt.starts_at, appt.ends_at, t)}`}
         actions={actions}
       />

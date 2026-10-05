@@ -4,11 +4,21 @@ import type { Locale } from '@/lib/types'
 
 const LOCALES = { de, en: enUS }
 
+/**
+ * date-fns' German abbreviations end in a period ("Fr.", "Okt."); the Figma design
+ * writes them without ("Fr, 2. Okt"). Removes periods that don't follow a digit.
+ */
+export function stripAbbrDots(s: string): string {
+  return s.replace(/\./g, (m, i: number, str: string) => (/\d/.test(str[i - 1] ?? '') ? m : ''))
+}
+
 export function formatDateTime(iso: string, locale: Locale): string {
   try {
-    return format(new Date(iso), 'EEE, d. MMM yyyy • HH:mm', {
-      locale: LOCALES[locale],
-    })
+    return stripAbbrDots(
+      format(new Date(iso), 'EEE, d. MMM yyyy • HH:mm', {
+        locale: LOCALES[locale],
+      }),
+    )
   } catch {
     return iso
   }
@@ -16,7 +26,7 @@ export function formatDateTime(iso: string, locale: Locale): string {
 
 export function formatDate(iso: string, locale: Locale): string {
   try {
-    return format(new Date(iso), 'd. MMM yyyy', { locale: LOCALES[locale] })
+    return stripAbbrDots(format(new Date(iso), 'd. MMM yyyy', { locale: LOCALES[locale] }))
   } catch {
     return iso
   }

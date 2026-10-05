@@ -32,6 +32,8 @@ export const de: Record<string, string> = {
   'schedule.v2.error': 'Konnte nicht gespeichert werden',
 
   // Lesson types
+  'schedule.v2.title.lesson': 'Fahrstunde',
+  'schedule.v2.title.theory': 'Theoriestunde',
   'schedule.v2.type.regular': 'Regelfahrt',
   'schedule.v2.type.autobahn': 'Autobahnfahrt',
   'schedule.v2.type.night': 'Nachtfahrt',
@@ -116,6 +118,8 @@ export const en: Record<string, string> = {
   'schedule.v2.error': 'Could not be saved',
 
   // Lesson types
+  'schedule.v2.title.lesson': 'Lesson',
+  'schedule.v2.title.theory': 'Theory lesson',
   'schedule.v2.type.regular': 'Standard lesson',
   'schedule.v2.type.autobahn': 'Highway drive',
   'schedule.v2.type.night': 'Night drive',

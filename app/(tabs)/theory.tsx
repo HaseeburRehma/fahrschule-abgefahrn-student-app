@@ -80,7 +80,7 @@ export default function TheoryScreen() {
 
   if (loading) {
     return (
-      <Screen tabBar glow={-90} gap={14} contentStyle={{ paddingTop: 6 }}>
+      <Screen tabBar gap={14} contentStyle={{ paddingTop: 6 }}>
         <View style={{ gap: 8 }}>
           <Skeleton width={130} height={26} />
           <Skeleton width={190} height={14} />
@@ -96,7 +96,7 @@ export default function TheoryScreen() {
 
   if (error) {
     return (
-      <Screen tabBar glow={-90} refreshControl={refresh}>
+      <Screen tabBar refreshControl={refresh}>
         <ErrorState
           onRetry={() => {
             setLoading(true)

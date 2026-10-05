@@ -18,14 +18,17 @@ const GLOW_IMG = require('@/assets/brand/hero-glow.png')
  * use it at 240×240). The PNG covers the glow's full bleed: 47.44 % left/right, 66.67 % up.
  */
 export function ScaledGlow({ width, height }: { width: number; height: number }) {
-  const bleedX = width * 0.4744
-  const bleedY = height * 0.6667
+  // Fitted to the rendered Figma Onboarding frames (pixel comparison): the onboarding glow
+  // is brighter and larger than the scaled component. Relative to the 240×240 art frame
+  // at (75,150) it's a 750×650 box at (-175,-210) at 1.8× strength (two stacked layers).
+  const kx = width / 240
+  const ky = height / 240
+  const box = { position: 'absolute' as const, left: -175 * kx, top: -210 * ky, width: 750 * kx, height: 650 * ky }
   return (
-    <Image
-      source={GLOW_IMG}
-      resizeMode="stretch"
-      style={{ position: 'absolute', left: -bleedX, top: -bleedY, width: width + bleedX * 2, height: height + bleedY }}
-    />
+    <>
+      <Image source={GLOW_IMG} resizeMode="stretch" style={box} />
+      <Image source={GLOW_IMG} resizeMode="stretch" style={[box, { opacity: 0.8 }]} />
+    </>
   )
 }
 

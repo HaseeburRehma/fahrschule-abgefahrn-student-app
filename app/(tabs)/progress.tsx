@@ -125,7 +125,8 @@ export default function ProgressScreen() {
 
   if (loading || error) {
     return (
-      <Screen glow={-80} tabBar gap={16} contentStyle={{ paddingTop: 6 }}>
+      // Figma state frames: no hero glow
+      <Screen tabBar gap={16} contentStyle={{ paddingTop: 6 }}>
         {error ? (
           <ErrorState
             onRetry={() => {

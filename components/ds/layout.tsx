@@ -18,7 +18,8 @@ const GLOW_IMG = require('@/assets/brand/hero-glow.png')
 
 /**
  * Figma "FX/Hero Glow": a 390×360 frame whose blurred green ellipse bleeds 185px left / 240px up.
- * The exported PNG covers the full 760×600 bleed, so we center it horizontally.
+ * The PNG (760×760 @2x, transparent) is rendered from the component's vector (ellipse
+ * 520×340 #00FF24, Gaussian blur + 5 light lines), blur/opacity fitted to Figma's renders.
  * `top` = the frame's y in the screen (home −60, login −20, detail −30, Termine −100, Profil −50).
  */
 export function HeroGlow({ top = -60, opacity = 1 }: { top?: number; opacity?: number }) {
@@ -26,8 +27,8 @@ export function HeroGlow({ top = -60, opacity = 1 }: { top?: number; opacity?: n
     // Own full-size clipping layer: the 760px image must not make the screen
     // container scrollable (on web, focusing an input would scroll it sideways).
     <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
-      <View style={{ position: 'absolute', width: 760, height: 600, top: top - 240, left: '50%', marginLeft: -380, opacity }}>
-        <Image source={GLOW_IMG} resizeMode="stretch" style={{ width: 760, height: 600 }} />
+      <View style={{ position: 'absolute', width: 760, height: 760, top: top - 240, left: '50%', marginLeft: -380, opacity }}>
+        <Image source={GLOW_IMG} resizeMode="stretch" style={{ width: 760, height: 760 }} />
       </View>
     </View>
   )

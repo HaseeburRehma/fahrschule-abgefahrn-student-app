@@ -16,7 +16,7 @@ import { getSupabase } from '@/lib/supabase/client'
 import { uniqueChannelName } from '@/lib/supabase/channel'
 import { useTranslation } from '@/lib/i18n'
 import { fetchThread, sendMessage, markThreadRead, type ChatMessage } from '@/lib/chat'
-import { formatTime } from '@/lib/format'
+import { formatTime, stripAbbrDots } from '@/lib/format'
 import type { Locale } from '@/lib/types'
 
 type Row = { kind: 'day'; key: string; label: string } | { kind: 'msg'; key: string; msg: ChatMessage }
@@ -31,7 +31,7 @@ function dayLabel(iso: string, locale: Locale, t: (k: string) => string): string
   const pattern = isSameYear(d, now)
     ? locale === 'de' ? 'EEE, d. MMM' : 'EEE, d MMM'
     : locale === 'de' ? 'd. MMM yyyy' : 'd MMM yyyy'
-  return format(d, pattern, { locale: loc })
+  return stripAbbrDots(format(d, pattern, { locale: loc }))
 }
 
 function Bubble({ msg, mine, locale }: { msg: ChatMessage; mine: boolean; locale: Locale }) {
@@ -220,6 +220,8 @@ export function ChatThread({
             selectionColor={C.brand}
             cursorColor={C.brand}
             multiline
+            // web renders a <textarea>; start at one row like the Figma pill (grows up to maxHeight)
+            numberOfLines={1}
             style={
               {
                 flex: 1,
@@ -253,7 +255,8 @@ export function ChatThread({
                 shadowRadius: 6,
                 shadowOffset: { width: 0, height: 0 },
                 elevation: 6,
-                opacity: canSend ? (pressed ? 0.85 : 1) : 0.5,
+                // Figma shows the send button at full strength even with an empty field
+                opacity: pressed && canSend ? 0.85 : 1,
               },
             ]}
           >

@@ -22,6 +22,7 @@ import { GraduationCap } from 'phosphor-react-native/src/icons/GraduationCap'
 import { Package } from 'phosphor-react-native/src/icons/Package'
 
 import { C, EmptyState, Screen, SectionLabel, Skeleton, T, TopBar, useToast } from '@/components/ds'
+import { stripAbbrDots } from '@/lib/format'
 import { useTranslation } from '@/lib/i18n'
 import { useNotifications } from '@/lib/notifications-context'
 import type { Locale, NotificationRow } from '@/lib/types'
@@ -74,9 +75,11 @@ function relativeTime(iso: string, locale: Locale, t: (k: string, v?: Record<str
     return t('notifications.v2.hoursAgo', { n: Math.floor(mins / 60) })
   }
   if (days === 1) return t('notifications.v2.yesterday')
-  if (days < 7) return format(d, locale === 'de' ? 'EEE, d. MMM' : 'EEE, d MMM', { locale: loc })
-  if (isSameYear(d, now)) return format(d, locale === 'de' ? 'd. MMM' : 'd MMM', { locale: loc })
-  return format(d, locale === 'de' ? 'd. MMM yyyy' : 'd MMM yyyy', { locale: loc })
+  // Figma style: "Mo, 29. Sep" / "5. Aug" — date-fns de abbreviations carry trailing dots ("Fr.", "Okt.").
+  const fmt = (pattern: string) => stripAbbrDots(format(d, pattern, { locale: loc }))
+  if (days < 7) return fmt(locale === 'de' ? 'EEE, d. MMM' : 'EEE, d MMM')
+  if (isSameYear(d, now)) return fmt(locale === 'de' ? 'd. MMM' : 'd MMM')
+  return fmt(locale === 'de' ? 'd. MMM yyyy' : 'd MMM yyyy')
 }
 
 function confirmDelete(msg: string, cancel: string): Promise<boolean> {

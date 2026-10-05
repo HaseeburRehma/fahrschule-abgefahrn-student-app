@@ -37,6 +37,7 @@ import { useUser } from '@/lib/user-context'
 import { useNotifications } from '@/lib/notifications-context'
 import { fetchMyAppointments, type Appointment } from '@/lib/appointments'
 import { shouldOfferPushPrompt } from '@/lib/auth/push'
+import { instructorFirstName, lessonTitle } from '@/components/schedule/helpers'
 import { getSupabase } from '@/lib/supabase/client'
 
 const AMBER = '#FFC83D'
@@ -153,7 +154,8 @@ export default function Home() {
 
   if (loading || error) {
     return (
-      <Screen glow={-60} tabBar gap={16} contentStyle={{ paddingTop: 6 }}>
+      // Figma Laden / Verbindungsfehler: plain background, no hero glow
+      <Screen tabBar gap={16} contentStyle={{ paddingTop: 6 }}>
         {error ? <ErrorState onRetry={retry} /> : <LoadingScreenSkeleton />}
       </Screen>
     )
@@ -248,7 +250,11 @@ export default function Home() {
           <View style={{ flex: 1, gap: 3 }}>
             {nextAppt ? (
               <>
-                <T variant="titleM" numberOfLines={1}>{nextAppt.title}</T>
+                <T variant="titleM" numberOfLines={1}>
+                  {instructorFirstName(nextAppt)
+                    ? t('schedule.v2.with', { type: lessonTitle(nextAppt, t, locale), name: instructorFirstName(nextAppt)! })
+                    : lessonTitle(nextAppt, t, locale)}
+                </T>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <CalendarDots size={15} color={C.muted} />

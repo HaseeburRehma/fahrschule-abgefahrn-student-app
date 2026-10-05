@@ -20,7 +20,6 @@ import {
   Card,
   Divider,
   IconTile,
-  LinkButton,
   Pill,
   Screen,
   SectionLabel,
@@ -154,7 +153,12 @@ export default function ExamsScreen() {
         onAnswer={(p) => setPassed('theory', p)}
         onEdit={() => openSheet('theory')}
       >
-        {theoryRemainingText ? <T variant="bodyS" color={C.muted}>{theoryRemainingText}</T> : null}
+        {theoryRemainingText ? (
+          // Figma: single line (nowrap) that may run into the card's right padding.
+          <T variant="bodyS" color={C.muted} numberOfLines={1} style={{ letterSpacing: -0.4 }}>
+            {theoryRemainingText}
+          </T>
+        ) : null}
       </ExamCard>
 
       <ExamCard
@@ -244,6 +248,8 @@ function ExamCard({
       highlight={highlight}
       radius={22}
       padding={20}
+      // Figma has no extra "add date" control — tapping the exam card opens the Prüfungstermin sheet.
+      onPress={passed !== true && !awaitingResult ? onEdit : undefined}
       style={[{ gap: 14 }, highlight ? { shadowOpacity: 0.16, shadowRadius: 20 } : null]}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -306,10 +312,6 @@ function ExamCard({
       {passed === false ? <T variant="bodyS" color={C.muted}>{t('exams.v2.failedBody')}</T> : null}
 
       {kind === 'theory' ? children : null}
-
-      {passed !== true ? (
-        <LinkButton align="left" label={day ? t('exams.v2.editDate') : t('exams.v2.addDate')} onPress={onEdit} />
-      ) : null}
 
       {kind === 'practical' ? children : null}
     </Card>

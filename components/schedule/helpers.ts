@@ -53,11 +53,39 @@ export function lessonSubtitle(
 ): string {
   const type = lessonTypeOf(a)
   const typeLabel = type ? (isSpecial(type) ? t('schedule.v2.type.special') : t(`schedule.v2.type.${type}`)) : null
-  const name = a.instructor_name?.trim()
+  // Figma uses the first name only ("Regelfahrt mit Marco"); the detail screen shows the full name.
+  const name = instructorFirstName(a)
   if (typeLabel && name) return t('schedule.v2.with', { type: typeLabel, name })
   if (typeLabel) return typeLabel
   if (name) return t('schedule.v2.withOnly', { name })
   return ''
+}
+
+/**
+ * Display title: appointments store a German title ("Fahrstunde", "Autobahnfahrt" …).
+ * In English, translate the standard titles (Figma EN: "Lesson with Marco"); custom titles stay as entered.
+ */
+export function lessonTitle(
+  a: Pick<Appointment, 'title'>,
+  t: (k: string, v?: Record<string, string | number>) => string,
+  locale: Locale,
+): string {
+  if (locale === 'de') return a.title
+  const key: Record<string, string> = {
+    fahrstunde: 'schedule.v2.title.lesson',
+    theoriestunde: 'schedule.v2.title.theory',
+    autobahnfahrt: 'schedule.v2.type.autobahn',
+    nachtfahrt: 'schedule.v2.type.night',
+    'überlandfahrt': 'schedule.v2.type.overland',
+    sonderfahrt: 'schedule.v2.type.special',
+    'prüfungsvorbereitung': 'schedule.v2.type.exam_prep',
+  }
+  const k = key[(a.title ?? '').trim().toLowerCase()]
+  return k ? t(k) : a.title
+}
+
+export function instructorFirstName(a: Pick<Appointment, 'instructor_name'>): string | null {
+  return a.instructor_name?.trim().split(/\s+/)[0] || null
 }
 
 /* ------------------------------------------------------------------ dates */

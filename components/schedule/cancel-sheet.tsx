@@ -11,7 +11,7 @@ import { WarningCircle } from 'phosphor-react-native/src/icons/WarningCircle'
 import { Button, Sheet, SheetHero, useToast } from '@/components/ds'
 import { useTranslation } from '@/lib/i18n'
 import { cancelAppointment, type Appointment } from '@/lib/appointments'
-import { shortDate } from './helpers'
+import { lessonTitle, shortDate } from './helpers'
 
 export function CancelSheet({
   visible,
@@ -52,7 +52,7 @@ export function CancelSheet({
         body={
           appointment
             ? t('appointment.v2.cancelSheet.body', {
-                title: appointment.title,
+                title: lessonTitle(appointment, t, locale),
                 date: shortDate(appointment.starts_at, locale),
               })
             : undefined
