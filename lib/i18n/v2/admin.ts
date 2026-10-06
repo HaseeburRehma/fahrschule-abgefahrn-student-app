@@ -1,5 +1,17 @@
 /** Admin area — appointment details, student progress, sign-up code. */
 export const de: Record<string, string> = {
+  'admin.v2.admins.title': 'Administratoren',
+  'admin.v2.admins.help': 'Admins verwalten Fahrschüler, Termine, Dokumente und Mitteilungen. Es bleibt immer mindestens ein Admin.',
+  'admin.v2.admins.you': 'du',
+  'admin.v2.admins.inactive': 'inaktiv',
+  'admin.v2.admins.add': 'Admin hinzufügen',
+  'admin.v2.admins.search': 'Fahrschüler suchen…',
+  'admin.v2.admins.promote': 'Zum Admin machen',
+  'admin.v2.admins.demote': 'Entfernen',
+  'admin.v2.admins.promoteConfirm': '{name} zum Admin machen? Diese Person kann dann alle Fahrschülerdaten sehen und ändern.',
+  'admin.v2.admins.demoteConfirm': 'Adminrechte von {name} entfernen? Das Konto wird wieder ein Fahrschüler-Konto.',
+  'admin.v2.admins.lastAdmin': 'Der letzte Admin kann nicht entfernt werden.',
+  'admin.v2.admins.notAllowed': 'Diese Änderung ist nicht erlaubt.',
   'admin.v2.appt.cancelConfirm': 'Termin wirklich absagen? Der Fahrschüler wird benachrichtigt.',
   // Appointments
   'admin.v2.type.regular': 'Regelfahrt',
@@ -72,6 +84,18 @@ export const de: Record<string, string> = {
 }
 
 export const en: Record<string, string> = {
+  'admin.v2.admins.title': 'Administrators',
+  'admin.v2.admins.help': 'Admins manage students, appointments, documents and messages. There is always at least one admin.',
+  'admin.v2.admins.you': 'you',
+  'admin.v2.admins.inactive': 'inactive',
+  'admin.v2.admins.add': 'Add admin',
+  'admin.v2.admins.search': 'Search students…',
+  'admin.v2.admins.promote': 'Make admin',
+  'admin.v2.admins.demote': 'Remove',
+  'admin.v2.admins.promoteConfirm': 'Make {name} an admin? They will be able to see and change all student data.',
+  'admin.v2.admins.demoteConfirm': 'Remove admin rights from {name}? The account becomes a student account again.',
+  'admin.v2.admins.lastAdmin': 'The last admin cannot be removed.',
+  'admin.v2.admins.notAllowed': 'This change is not allowed.',
   'admin.v2.appt.cancelConfirm': 'Really cancel this appointment? The student will be notified.',
   // Appointments
   'admin.v2.type.regular': 'Regular lesson',

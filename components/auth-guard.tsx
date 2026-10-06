@@ -19,6 +19,7 @@ import {
   PUBLIC_ROUTES,
   SIGNED_IN_AUTH_ROUTES,
   hasSeenOnboarding,
+  markOnboardingSeen,
   takePostAuthRoute,
 } from '@/lib/auth/flow'
 
@@ -33,6 +34,14 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let alive = true
+    if (session) {
+      // anyone who has signed in once knows the app → never show the pager again
+      markOnboardingSeen()
+      setOnboarded(true)
+      return () => {
+        alive = false
+      }
+    }
     hasSeenOnboarding()
       .then((v) => alive && setOnboarded(v))
       .catch(() => alive && setOnboarded(true))

@@ -18,6 +18,7 @@ import { getSupabase } from '@/lib/supabase/client'
 import { classifyPasswordError, passwordErrorKey, readFunctionError } from '@/lib/auth/errors'
 import { setPostAuthRoute } from '@/lib/auth/flow'
 import { PASSWORD_MAX, passwordIssue, passwordIssueKey } from '@/lib/auth/password'
+import { isPwnedPassword } from '@/lib/auth/pwned'
 import { useT, useTranslation } from '@/lib/i18n'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -82,6 +83,11 @@ export default function SignUp() {
     busyRef.current = true
     setBusy(true)
     try {
+      // leaked-password check (k-anonymity, fails open) — the server checks again
+      if (await isPwnedPassword(password)) {
+        setErrs({ password: t('auth.val.passwordPwned') })
+        return
+      }
       const supabase = getSupabase()
       const { error } = await supabase.functions.invoke('signup-with-code', {
         body: { first_name, last_name, email: cleanEmail, password, school_code: cleanCode, locale },
@@ -90,6 +96,7 @@ export default function SignUp() {
         const fe = await readFunctionError(error)
         if (fe.network) setFormErr(t('auth.err.network'))
         else if (fe.code === 'weak_password') setErrs({ password: t('auth.val.passwordRule') })
+        else if (fe.code === 'pwned_password') setErrs({ password: t('auth.val.passwordPwned') })
         else if (fe.status === 403 || fe.code === 'invalid_code') setErrs({ code: t('auth.signup.errCode') })
         else if (fe.status === 409 || fe.code === 'email_exists') {
           setErrs({ email: t('auth.signup.errExists') })

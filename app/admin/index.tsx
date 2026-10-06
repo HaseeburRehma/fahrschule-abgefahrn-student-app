@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack, useFocusEffect, useRouter } from 'expo-router'
-import { Users, Inbox, Send, MessageCircle, CalendarPlus, CalendarClock, History, FileText, Sparkles, ChevronRight, KeyRound } from 'lucide-react-native'
+import { Users, Inbox, Send, MessageCircle, CalendarPlus, CalendarClock, History, FileText, Sparkles, ChevronRight, KeyRound, ShieldCheck } from 'lucide-react-native'
 
 import { useTranslation } from '@/lib/i18n'
 import { fetchAdminStats, type AdminStats } from '@/lib/admin'
@@ -40,6 +40,7 @@ export default function AdminHome() {
     { href: '/admin/appointments', label: t('admin.appointments'), icon: <CalendarClock size={20} color="#00FF24" /> },
     { href: '/admin/availability', label: t('admin.availability'), icon: <CalendarClock size={20} color="#00FF24" /> },
     { href: '/admin/settings', label: t('admin.v2.signupCode'), icon: <KeyRound size={20} color="#00FF24" /> },
+    { href: '/admin/admins', label: t('admin.v2.admins.title'), icon: <ShieldCheck size={20} color="#00FF24" /> },
   ]
 
   return (

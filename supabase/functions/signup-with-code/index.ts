@@ -38,6 +38,28 @@ function limited(ip: string) {
   return arr.length > 8
 }
 
+/** HaveIBeenPwned k-anonymity check (only a 5-char SHA-1 prefix leaves the server). Fails open. */
+async function isPwned(password: string): Promise<boolean> {
+  try {
+    const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(password))
+    const hex = [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('').toUpperCase()
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 4000)
+    const res = await fetch(`https://api.pwnedpasswords.com/range/${hex.slice(0, 5)}`, {
+      headers: { 'Add-Padding': 'true' },
+      signal: ctrl.signal,
+    }).finally(() => clearTimeout(timer))
+    if (!res.ok) return false
+    const suffix = hex.slice(5)
+    return (await res.text()).split('\n').some((l) => {
+      const [s, c] = l.trim().split(':')
+      return s === suffix && Number(c) > 0
+    })
+  } catch {
+    return false
+  }
+}
+
 const norm = (s: unknown) => String(s ?? '').trim().toUpperCase().replace(/\s+/g, '')
 
 Deno.serve(async (req) => {
@@ -64,6 +86,7 @@ Deno.serve(async (req) => {
   if (password.length < 8 || password.length > 72 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
     return json({ error: 'weak_password' }, 400)
   }
+  if (await isPwned(password)) return json({ error: 'pwned_password' }, 400)
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 

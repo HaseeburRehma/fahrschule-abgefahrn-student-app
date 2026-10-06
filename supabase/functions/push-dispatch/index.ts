@@ -107,8 +107,19 @@ Deno.serve(async (req) => {
 
   const expoJson = await expoRes.json().catch(() => null)
 
+  // Expo says the token is dead (app uninstalled / token rotated) → forget it,
+  // so we stop pushing to it; the app registers a fresh token on next launch.
+  const ticket = Array.isArray(expoJson?.data) ? expoJson.data[0] : expoJson?.data
+  if (ticket?.status === 'error' && ticket?.details?.error === 'DeviceNotRegistered') {
+    await supabase
+      .from('profiles')
+      .update({ push_token: null })
+      .eq('id', record.user_id)
+      .eq('push_token', profile.push_token)
+  }
+
   return new Response(
-    JSON.stringify({ delivered: expoRes.ok, expo: expoJson }),
+    JSON.stringify({ delivered: expoRes.ok && ticket?.status === 'ok', expo: expoJson }),
     {
       status: expoRes.ok ? 200 : 502,
       headers: { 'content-type': 'application/json' },

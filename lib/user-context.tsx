@@ -47,6 +47,16 @@ function clearProfileCache(uid: string | null | undefined) {
   if (uid) AsyncStorage.removeItem(profileCacheKey(uid)).catch(() => {})
 }
 
+/** Signed out with an unknown previous user (e.g. dead session on cold start) → drop every cached profile. */
+function clearAllProfileCaches() {
+  AsyncStorage.getAllKeys()
+    .then((keys) => {
+      const ours = keys.filter((k) => k.startsWith('abgefahrn.profile.'))
+      if (ours.length) return AsyncStorage.multiRemove(ours)
+    })
+    .catch(() => {})
+}
+
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
@@ -141,6 +151,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         setProfileValidated(false)
         if (uid) defer(() => loadProfile(uid))
         else setProfileLoading(false)
+      } else if (!uid) {
+        clearAllProfileCaches()
       } else if (uid && (event === 'USER_UPDATED' || event === 'SIGNED_IN')) {
         // Same user — refresh quietly (token refreshes don't touch the profile).
         defer(() => loadProfile(uid))

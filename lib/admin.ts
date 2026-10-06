@@ -427,3 +427,31 @@ export async function setSignupCode(input: string): Promise<string> {
   if (error) throw error
   return code
 }
+
+/* ------------------------------------------------------------------ admins */
+
+/** All admin accounts (active and inactive), oldest first. */
+export async function fetchAdmins(): Promise<Profile[]> {
+  const { data, error } = await getSupabase()
+    .from('profiles')
+    .select('*')
+    .eq('role', 'admin')
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return (data ?? []) as Profile[]
+}
+
+/**
+ * Promote a student to admin or demote an admin to student. The DB refuses to
+ * remove the last active admin (raises 'last_admin').
+ */
+export async function setUserRole(id: string, role: 'admin' | 'student'): Promise<void> {
+  const { data, error } = await getSupabase()
+    .from('profiles')
+    .update({ role })
+    .eq('id', id)
+    .select('role')
+    .maybeSingle()
+  if (error) throw error
+  if (!data || (data as { role: string }).role !== role) throw new Error('not_allowed')
+}

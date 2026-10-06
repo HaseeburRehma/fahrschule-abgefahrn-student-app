@@ -20,6 +20,7 @@ import { getSupabase } from '@/lib/supabase/client'
 import { classifyPasswordError, passwordErrorKey } from '@/lib/auth/errors'
 import { parseAuthParams } from '@/lib/auth/recovery'
 import { PASSWORD_MAX, passwordIssue, passwordIssueKey } from '@/lib/auth/password'
+import { isPwnedPassword } from '@/lib/auth/pwned'
 import { TimeoutError, withTimeout } from '@/lib/async'
 import { useUser } from '@/lib/user-context'
 import { useT } from '@/lib/i18n'
@@ -110,6 +111,10 @@ export default function ResetPassword() {
     busyRef.current = true
     setBusy(true)
     try {
+      if (await isPwnedPassword(password)) {
+        setPwErr(t('auth.val.passwordPwned'))
+        return
+      }
       const { error } = await withTimeout(getSupabase().auth.updateUser({ password }), 20_000)
       if (error) throw error
       saved.current = true
