@@ -30,22 +30,33 @@ export async function fetchDocument(id: string): Promise<DocRow | null> {
   return (data as DocRow) ?? null
 }
 
-/** File sizes (bytes) keyed by storage path. Best-effort: {} on any error. */
-export async function fetchDocumentSizes(): Promise<Record<string, number>> {
-  try {
-    const { data, error } = await getSupabase()
-      .storage.from('documents')
-      .list('', { limit: 1000 })
-    if (error || !data) return {}
-    const out: Record<string, number> = {}
-    for (const f of data as any[]) {
-      const size = f?.metadata?.size
-      if (f?.name && typeof size === 'number') out[f.name] = size
-    }
-    return out
-  } catch {
-    return {}
+/**
+ * File sizes (bytes) keyed by storage path. Best-effort: {} on any error.
+ * Pass the documents' paths so files in sub-folders (`general/…`,
+ * `students/<id>/…`) are found too; without paths only the bucket root is listed.
+ */
+export async function fetchDocumentSizes(paths?: string[]): Promise<Record<string, number>> {
+  const folders = new Set<string>([''])
+  for (const p of paths ?? []) {
+    const i = p.lastIndexOf('/')
+    if (i > 0) folders.add(p.slice(0, i))
   }
+  const out: Record<string, number> = {}
+  await Promise.all(
+    [...folders].map(async (folder) => {
+      try {
+        const { data, error } = await getSupabase()
+          .storage.from('documents')
+          .list(folder, { limit: 1000 })
+        if (error || !data) return
+        for (const f of data as any[]) {
+          const size = f?.metadata?.size
+          if (f?.name && typeof size === 'number') out[folder ? `${folder}/${f.name}` : f.name] = size
+        }
+      } catch {}
+    }),
+  )
+  return out
 }
 
 export type DocKind = 'pdf' | 'image' | 'other'
@@ -98,24 +109,108 @@ export async function openDocumentExternally(path: string): Promise<boolean> {
   }
 }
 
-/** Upload a picked file (Blob/ArrayBuffer/Uint8Array) + record its metadata. */
+/** Upload a picked file (Blob/ArrayBuffer/Uint8Array) + record its metadata.
+ * With `studentId` the document is personal: stored under
+ * `students/<studentId>/…` (private file) and `student_id` is set on the row;
+ * otherwise it is school-wide and stored under `general/…`. */
 export async function uploadDocument(
   title: string,
   filename: string,
   mime: string,
   data: Blob | ArrayBuffer | Uint8Array,
+  studentId?: string | null,
 ): Promise<void> {
   const supabase = getSupabase()
   const ext = (filename.split('.').pop() || 'pdf').toLowerCase()
-  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const contentType = resolveDocumentMime(filename, mime) ?? mime
+  const problem = validateDocumentFile(filename, contentType, byteSize(data))
+  if (problem) throw new Error(problem)
+  const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const path = studentId ? `students/${studentId}/${name}` : `general/${name}`
   const { error: upErr } = await supabase.storage
     .from('documents')
-    .upload(path, data as any, { contentType: mime, upsert: false })
+    .upload(path, data as any, { contentType, upsert: false })
   if (upErr) throw upErr
-  const { error: insErr } = await supabase
+  const row: Record<string, unknown> = { title, path }
+  if (studentId) row.student_id = studentId
+  const { error: insErr } = await supabase.from('documents').insert(row)
+  if (insErr) {
+    // Don't leave an orphaned file behind when the row can't be written.
+    await supabase.storage.from('documents').remove([path]).catch(() => {})
+    throw insErr
+  }
+}
+
+// ── admin: personal documents + upload limits ───────────────────────────────
+/** Bucket limits (mirrors the 'documents' bucket config). */
+export const DOCUMENT_MAX_BYTES = 25 * 1024 * 1024
+export const DOCUMENT_MIME_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/heic',
+  'image/webp',
+] as const
+
+const EXT_MIME: Record<string, (typeof DOCUMENT_MIME_TYPES)[number]> = {
+  pdf: 'application/pdf',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  heic: 'image/heic',
+  webp: 'image/webp',
+}
+
+/** Allowed MIME type for a file (from its MIME, else its extension); null if not allowed. */
+export function resolveDocumentMime(filename: string, mime?: string | null): string | null {
+  const m = (mime ?? '').toLowerCase()
+  if ((DOCUMENT_MIME_TYPES as readonly string[]).includes(m)) return m
+  const ext = (filename.split('.').pop() || '').toLowerCase()
+  return EXT_MIME[ext] ?? null
+}
+
+/** 'too_large' | 'bad_type' | null (ok). Size is skipped when unknown. */
+export function validateDocumentFile(
+  filename: string,
+  mime: string | null | undefined,
+  size: number | null | undefined,
+): 'too_large' | 'bad_type' | null {
+  if (!resolveDocumentMime(filename, mime)) return 'bad_type'
+  if (typeof size === 'number' && size > DOCUMENT_MAX_BYTES) return 'too_large'
+  return null
+}
+
+function byteSize(data: Blob | ArrayBuffer | Uint8Array): number | null {
+  if (data instanceof Uint8Array) return data.byteLength
+  if (data instanceof ArrayBuffer) return data.byteLength
+  const size = (data as Blob)?.size
+  return typeof size === 'number' ? size : null
+}
+
+/** Document row incl. its audience (null = school-wide). */
+export interface AdminDocRow extends DocRow {
+  student_id: string | null
+}
+
+/** All documents (admin sees school-wide + every personal one). */
+export async function fetchAllDocumentsAdmin(): Promise<AdminDocRow[]> {
+  const { data, error } = await getSupabase()
     .from('documents')
-    .insert({ title, path })
-  if (insErr) throw insErr
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return ((data ?? []) as any[]).map((d) => ({ ...d, student_id: d.student_id ?? null }))
+}
+
+/** Personal documents of one student. */
+export async function fetchStudentDocuments(studentId: string): Promise<AdminDocRow[]> {
+  const { data, error } = await getSupabase()
+    .from('documents')
+    .select('*')
+    .eq('student_id', studentId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as AdminDocRow[]
 }
 
 export async function deleteDocument(doc: DocRow): Promise<void> {

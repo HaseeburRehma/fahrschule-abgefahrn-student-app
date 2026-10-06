@@ -49,7 +49,7 @@ type AuthLike = {
   resetPasswordForEmail: (email: string, options?: { redirectTo?: string }) => Promise<any>
   setSession: (params: { access_token: string; refresh_token: string }) => Promise<any>
   exchangeCodeForSession: (code: string) => Promise<any>
-  signOut: () => Promise<any>
+  signOut: (opts?: { scope?: 'global' | 'local' | 'others' }) => Promise<any>
   updateUser: (attrs: any) => Promise<any>
   getUser: () => Promise<any>
   getSession: () => Promise<any>
@@ -70,7 +70,7 @@ export function getSupabase(): AppSupabase {
       storage: SupabaseStorage as any,
       autoRefreshToken: true,
       persistSession: true,
-      // Web: parse password-recovery links (#access_token…      detectSessionInUrl: false,type=recovery).
+      // Web: parse password-recovery links (#access_token=…&type=recovery).
       detectSessionInUrl: Platform.OS === 'web',
     },
   })

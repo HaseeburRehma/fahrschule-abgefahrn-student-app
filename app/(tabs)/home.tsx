@@ -1,7 +1,7 @@
 /** Figma "DE/Home" (1276:1288) · EN 1296:1982. */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Pressable, RefreshControl, View, type StyleProp, type ViewStyle } from 'react-native'
+import { Pressable, RefreshControl, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 import { Bell } from 'phosphor-react-native/src/icons/Bell'
@@ -28,6 +28,7 @@ import {
   Pill,
   Screen,
   T,
+  useToast,
 } from '@/components/ds'
 import { ProgressRing } from '@/components/home/progress-ring'
 import { SpecialDrivesSheet } from '@/components/home/special-drives-sheet'
@@ -39,11 +40,13 @@ import { fetchMyAppointments, type Appointment } from '@/lib/appointments'
 import { shouldOfferPushPrompt } from '@/lib/auth/push'
 import { instructorFirstName, lessonTitle } from '@/components/schedule/helpers'
 import { getSupabase } from '@/lib/supabase/client'
+import { useRequestGuard } from '@/lib/use-request-guard'
 
 const AMBER = '#FFC83D'
 
 export default function Home() {
   const { t, locale } = useTranslation()
+  const narrow = useWindowDimensions().width < 360
   const router = useRouter()
   const { profile, session, refreshProfile } = useUser()
   const { unreadCount } = useNotifications()
@@ -56,29 +59,40 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false)
   const [sheet, setSheet] = useState(false)
   const loadedOnce = useRef(false)
+  const toast = useToast()
+  const guard = useRequestGuard()
 
-  const load = useCallback(async () => {
+  /** Resolves to false when the request failed (pull-to-refresh shows a toast). */
+  const load = useCallback(async (): Promise<boolean> => {
+    const req = guard.begin()
     if (!uid) {
       setLoading(false)
-      return
+      return true
     }
     try {
       const [counts, appts] = await Promise.all([loadTheoryCounts(uid), fetchMyAppointments(uid)])
+      if (!guard.isCurrent(req)) return true
       const now = Date.now()
+      const startOf = (a: Appointment) => new Date(a.starts_at).getTime()
       const upcoming = appts
-        .filter((a) => a.status !== 'cancelled' && new Date(a.ends_at ?? a.starts_at).getTime() >= now)
-        .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
+        .filter((a) => {
+          const end = new Date(a.ends_at ?? a.starts_at).getTime()
+          return a.status !== 'cancelled' && Number.isFinite(end) && end >= now
+        })
+        .sort((a, b) => startOf(a) - startOf(b))
       setTheory(counts)
       setNextAppt(upcoming[0] ?? null)
       setError(false)
       loadedOnce.current = true
+      return true
     } catch {
       // only replace the screen with the error state if we have nothing to show yet
-      if (!loadedOnce.current) setError(true)
+      if (guard.isCurrent(req) && !loadedOnce.current) setError(true)
+      return false
     } finally {
-      setLoading(false)
+      if (guard.isCurrent(req)) setLoading(false)
     }
-  }, [uid])
+  }, [uid, guard])
 
   useFocusEffect(
     useCallback(() => {
@@ -106,19 +120,27 @@ export default function Home() {
   // Existing students who log in (no sign-up flow) get the "Push erlauben" screen once.
   useEffect(() => {
     if (!uid) return
-    shouldOfferPushPrompt().then((offer) => {
-      if (offer) router.push('/push-permission' as any)
-    })
+    let alive = true
+    shouldOfferPushPrompt()
+      .then((offer) => {
+        if (offer && alive) router.push('/push-permission' as any)
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid])
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
     try {
-      await Promise.all([load(), refreshProfile().catch(() => {})])
+      const [ok] = await Promise.all([load(), refreshProfile().catch(() => {})])
+      if (!ok) toast.show(t('ds.error.refresh'), 'error')
     } finally {
-      setRefreshing(false)
+      if (guard.isMounted()) setRefreshing(false)
     }
-  }, [load, refreshProfile])
+  }, [load, refreshProfile, toast, t, guard])
 
   const retry = useCallback(() => {
     setError(false)
@@ -197,8 +219,9 @@ export default function Home() {
             </View>
           ) : null}
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-          <ProgressRing percent={journey.percent} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: narrow ? 12 : 16 }}>
+          {/* small phones (< 360pt): smaller ring so "Theorieprüfung" never breaks mid-word */}
+          <ProgressRing percent={journey.percent} size={narrow ? 66 : 84} stroke={narrow ? 7 : 8} />
           <View style={{ flex: 1, gap: 4 }}>
             <T variant="caption" color={C.brand}>{t('home.v2.nextStep').toUpperCase()}</T>
             <T variant="headingM">{next.title}</T>
@@ -238,10 +261,10 @@ export default function Home() {
         onPress={() => router.push((nextAppt ? `/appointment/${nextAppt.id}` : '/booking') as any)}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <T variant="titleM">{t('home.v2.nextAppt')}</T>
+          <T variant="titleM" numberOfLines={1} style={{ flexShrink: 1 }}>{t('home.v2.nextAppt')}</T>
           {nextAppt?.status === 'requested' ? <Pill label={t('home.v2.requested')} tone="amber" /> : null}
           <View style={{ flex: 1 }} />
-          <Pressable onPress={() => router.push('/schedule' as any)} hitSlop={10} accessibilityRole="link">
+          <Pressable onPress={() => router.push('/schedule' as any)} hitSlop={14} accessibilityRole="link" accessibilityLabel={`${t('home.v2.all')} – ${t('home.v2.nextAppt')}`}>
             <T variant="labelM" color={C.brand}>{t('home.v2.all')}</T>
           </Pressable>
         </View>

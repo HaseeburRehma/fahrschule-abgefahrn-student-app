@@ -3,7 +3,7 @@
  * title, description, learn points, linked theory class, mark-as-done.
  */
 
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import { View } from 'react-native'
 import { useFocusEffect, useLocalSearchParams } from 'expo-router'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
@@ -19,6 +19,7 @@ import { fetchMyClasses, fetchMyDoneTopics, fetchTopicById, setTopicDone, splitB
 import { topicDetail, topicTitle } from '@/lib/theory-content'
 import type { TheoryClass, TheoryTopic } from '@/lib/types'
 import { hhmm, shortDate } from '@/components/theory/dates'
+import { useRequestGuard } from '@/lib/use-request-guard'
 
 /** Button renders its icons with weight="bold"; Figma uses the filled check-circle here. */
 const CheckCircleFill = ((props: any) => <CheckCircle {...props} weight="fill" />) as unknown as PhosphorIcon
@@ -36,31 +37,43 @@ export default function TheoryDetailScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
+  const loadedOnce = useRef(false)
+  const guard = useRequestGuard()
+  const topicId = Array.isArray(id) ? id[0] : id
 
   const load = useCallback(async () => {
-    if (!id) {
+    const req = guard.begin()
+    if (!topicId) {
       setLoading(false)
       return
     }
     try {
-      const row = await fetchTopicById(String(id))
+      const row = await fetchTopicById(String(topicId))
+      const [doneSet, classes] =
+        uid && row
+          ? await Promise.all([
+              fetchMyDoneTopics(uid).catch(() => null),
+              fetchMyClasses(uid).catch(() => [] as TheoryClass[]),
+            ])
+          : [null, [] as TheoryClass[]]
+      // ignore stale results (refocus while loading) and don't clobber an in-flight toggle
+      if (!guard.isCurrent(req)) return
       setTopic(row)
       setError(false)
-      if (uid && row) {
-        const [doneSet, classes] = await Promise.all([
-          fetchMyDoneTopics(uid).catch(() => new Set<string>()),
-          fetchMyClasses(uid).catch(() => [] as TheoryClass[]),
-        ])
-        setIsDone(doneSet.has(row.id))
+      loadedOnce.current = true
+      if (row) {
+        if (doneSet && !savingRef.current) setIsDone(doneSet.has(row.id))
         const { upcoming } = splitByTime(classes.filter((c) => c.topic_id === row.id))
         setNextClass(upcoming[0] ?? null)
       }
     } catch {
-      setError(true)
+      // keep the content on a failed background refetch
+      if (guard.isCurrent(req) && !loadedOnce.current) setError(true)
     } finally {
-      setLoading(false)
+      if (guard.isCurrent(req)) setLoading(false)
     }
-  }, [id, uid])
+  }, [topicId, uid, guard])
 
   useFocusEffect(
     useCallback(() => {
@@ -69,18 +82,22 @@ export default function TheoryDetailScreen() {
   )
 
   async function toggleDone() {
-    if (!uid || !topic || saving) return
+    if (!uid || !topic || savingRef.current) return
     const next = !isDone
+    savingRef.current = true
     setSaving(true)
     setIsDone(next) // optimistic
     try {
       await setTopicDone(uid, topic.id, next)
-      toast.show(next ? t('theory.v2.markedDone') : t('theory.v2.markedUndone'), 'success')
+      if (guard.isMounted()) toast.show(next ? t('theory.v2.markedDone') : t('theory.v2.markedUndone'), 'success')
     } catch {
-      setIsDone(!next)
-      toast.show(t('theory.v2.saveError'), 'error')
+      if (guard.isMounted()) {
+        setIsDone(!next)
+        toast.show(t('theory.v2.saveError'), 'error')
+      }
     } finally {
-      setSaving(false)
+      savingRef.current = false
+      if (guard.isMounted()) setSaving(false)
     }
   }
 
@@ -103,6 +120,7 @@ export default function TheoryDetailScreen() {
       <Screen glow={-30} header={<TopBar />}>
         <ErrorState
           onRetry={() => {
+            setError(false)
             setLoading(true)
             load()
           }}
@@ -121,7 +139,8 @@ export default function TheoryDetailScreen() {
 
   const isCurrent = topic.id === profile?.current_theory_topic_id
   const { description, learnPoints } = topicDetail(topic, locale)
-  const classStart = nextClass ? new Date(nextClass.starts_at) : null
+  const parsedStart = nextClass ? new Date(nextClass.starts_at) : null
+  const classStart = parsedStart && !isNaN(parsedStart.getTime()) ? parsedStart : null
 
   return (
     <Screen

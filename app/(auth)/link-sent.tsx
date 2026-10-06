@@ -3,7 +3,7 @@
  * Resend has a 60 s cooldown (Supabase also rate-limits recovery mails).
  */
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { router, useLocalSearchParams } from 'expo-router'
 import { EnvelopeSimple } from 'phosphor-react-native/src/icons/EnvelopeSimple'
 
@@ -14,14 +14,18 @@ import { classifyPasswordError, passwordErrorKey } from '@/lib/auth/errors'
 import { useT } from '@/lib/i18n'
 
 const COOLDOWN = 60
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function LinkSent() {
   const t = useT()
   const toast = useToast()
   const { email: rawEmail } = useLocalSearchParams<{ email?: string }>()
-  const email = typeof rawEmail === 'string' ? rawEmail : ''
+  // The route can be opened by a deep link: only trust a well-formed address.
+  const candidate = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : ''
+  const email = candidate.length <= 254 && EMAIL_RE.test(candidate) ? candidate : ''
   const [left, setLeft] = useState(COOLDOWN) // a mail was just sent
   const [busy, setBusy] = useState(false)
+  const busyRef = useRef(false)
 
   useEffect(() => {
     if (left <= 0) return
@@ -32,7 +36,8 @@ export default function LinkSent() {
   const toLogin = () => router.replace('/(auth)/login' as any)
 
   async function resend() {
-    if (!email || left > 0 || busy) return
+    if (!email || left > 0 || busyRef.current) return
+    busyRef.current = true
     setBusy(true)
     try {
       await sendRecoveryMail(email)
@@ -43,6 +48,7 @@ export default function LinkSent() {
       toast.show(t(passwordErrorKey(kind)), 'error')
       if (kind === 'rate_limited') setLeft(COOLDOWN)
     } finally {
+      busyRef.current = false
       setBusy(false)
     }
   }

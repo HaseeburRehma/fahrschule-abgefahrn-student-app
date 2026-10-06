@@ -17,12 +17,15 @@ import { FooterPrompt, FormError, Spacer } from '@/components/auth/ui'
 import { getSupabase } from '@/lib/supabase/client'
 import { classifyPasswordError, passwordErrorKey, readFunctionError } from '@/lib/auth/errors'
 import { setPostAuthRoute } from '@/lib/auth/flow'
+import { PASSWORD_MAX, passwordIssue, passwordIssueKey } from '@/lib/auth/password'
 import { useT, useTranslation } from '@/lib/i18n'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 /** The school site has no dedicated AGB page (checked: /agb/ → 404) — fall back to the homepage. */
 const TERMS_URL = 'https://fahrschule-abgefahrn.de/'
 const PRIVACY_URL = 'https://fahrschule-abgefahrn.de/datenschutz/'
+const NAME_MAX = 60
+const CODE_MAX = 32
 
 type Field = 'name' | 'email' | 'password' | 'code' | 'terms'
 
@@ -43,6 +46,8 @@ export default function SignUp() {
   const emailRef = useRef<TextInput>(null)
   const pwRef = useRef<TextInput>(null)
   const codeRef = useRef<TextInput>(null)
+  // Sync guard against double submits (button + keyboard "done" before `busy` re-renders).
+  const busyRef = useRef(false)
 
   const clearField = (f: Field) => {
     if (errs[f]) setErrs((e) => ({ ...e, [f]: undefined }))
@@ -51,18 +56,19 @@ export default function SignUp() {
   }
 
   async function submit() {
+    if (busyRef.current) return
     setFormErr(null)
     setEmailExists(false)
-    const cleanName = name.trim().replace(/\s+/g, ' ')
+    const cleanName = name.trim().replace(/\s+/g, ' ').slice(0, NAME_MAX)
     const cleanEmail = email.trim().toLowerCase()
-    const cleanCode = code.trim().toUpperCase()
+    const cleanCode = code.replace(/\s+/g, '').toUpperCase()
 
     const e: Partial<Record<Field, string>> = {}
     if (!cleanName) e.name = t('auth.val.nameRequired')
     if (!cleanEmail) e.email = t('auth.val.emailRequired')
     else if (!EMAIL_RE.test(cleanEmail)) e.email = t('auth.val.emailInvalid')
-    if (!password) e.password = t('auth.val.passwordRequired')
-    else if (password.length < 8) e.password = t('auth.val.passwordShort')
+    const pwIssue = passwordIssue(password)
+    if (pwIssue) e.password = t(passwordIssueKey(pwIssue))
     if (!cleanCode) e.code = t('auth.val.codeRequired')
     if (!accepted) e.terms = t('auth.val.termsRequired')
     setErrs(e)
@@ -73,6 +79,7 @@ export default function SignUp() {
     const first_name = sp === -1 ? cleanName : cleanName.slice(0, sp)
     const last_name = sp === -1 ? '' : cleanName.slice(sp + 1)
 
+    busyRef.current = true
     setBusy(true)
     try {
       const supabase = getSupabase()
@@ -82,6 +89,7 @@ export default function SignUp() {
       if (error) {
         const fe = await readFunctionError(error)
         if (fe.network) setFormErr(t('auth.err.network'))
+        else if (fe.code === 'weak_password') setErrs({ password: t('auth.val.passwordRule') })
         else if (fe.status === 403 || fe.code === 'invalid_code') setErrs({ code: t('auth.signup.errCode') })
         else if (fe.status === 409 || fe.code === 'email_exists') {
           setErrs({ email: t('auth.signup.errExists') })
@@ -105,6 +113,7 @@ export default function SignUp() {
       setPostAuthRoute(null)
       setFormErr(t(passwordErrorKey(classifyPasswordError(err))))
     } finally {
+      busyRef.current = false
       setBusy(false)
     }
   }
@@ -143,6 +152,7 @@ export default function SignUp() {
           }}
           error={errs.name}
           autoCapitalize="words"
+          maxLength={NAME_MAX}
           autoComplete="name"
           textContentType="name"
           returnKeyType="next"
@@ -164,6 +174,7 @@ export default function SignUp() {
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="email"
+            maxLength={254}
             textContentType="emailAddress"
             keyboardType="email-address"
             inputMode="email"
@@ -186,6 +197,8 @@ export default function SignUp() {
             clearField('password')
           }}
           error={errs.password}
+          hint={t('auth.field.passwordHint')}
+          maxLength={PASSWORD_MAX}
           secureTextEntry
           autoCapitalize="none"
           autoCorrect={false}
@@ -207,6 +220,7 @@ export default function SignUp() {
           }}
           error={errs.code}
           autoCapitalize="characters"
+          maxLength={CODE_MAX}
           autoCorrect={false}
           returnKeyType="done"
           onSubmitEditing={submit}

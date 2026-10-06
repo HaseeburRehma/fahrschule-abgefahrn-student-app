@@ -39,6 +39,7 @@ export function Sheet({
   dismissable?: boolean
 }) {
   const insets = useSafeAreaInsets()
+  const t = useT()
   const [mounted, setMounted] = useState(visible)
   const anim = useRef(new Animated.Value(0)).current
 
@@ -64,7 +65,7 @@ export function Sheet({
         style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}
       >
         <Animated.View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: C.overlay, opacity: anim }}>
-          <Pressable style={{ flex: 1 }} onPress={() => dismissable && onClose()} accessibilityLabel="Schließen" />
+          <Pressable style={{ flex: 1 }} onPress={() => dismissable && onClose()} accessibilityLabel={t('ds.close')} />
         </Animated.View>
         <Animated.View
           style={{
@@ -157,6 +158,7 @@ export function useToast() {
 }
 
 export function ToastView({ tone, title, onClose }: { tone: ToastTone; title: string; onClose?: () => void }) {
+  const t = useT()
   const s =
     tone === 'success'
       ? { bg: C.successToast, border: C.lineGreen, tile: C.brand, fg: C.onBrand, icon: CheckCircle, weight: 'fill' as const }
@@ -184,9 +186,9 @@ export function ToastView({ tone, title, onClose }: { tone: ToastTone; title: st
       <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: s.tile, alignItems: 'center', justifyContent: 'center' }}>
         <Icon size={20} color={s.fg} weight={s.weight} />
       </View>
-      <T variant="titleM" style={{ flex: 1 }}>{title}</T>
+      <T variant="titleM" style={{ flex: 1 }} accessibilityLiveRegion="polite">{title}</T>
       {onClose ? (
-        <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Schließen">
+        <Pressable onPress={onClose} hitSlop={13} accessibilityRole="button" accessibilityLabel={t('ds.close')}>
           <X size={18} color={C.dim} />
         </Pressable>
       ) : null}

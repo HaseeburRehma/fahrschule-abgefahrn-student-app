@@ -33,6 +33,9 @@ export const de: Record<string, string> = {
   'auth.val.emailInvalid': 'Bitte gib eine gültige E-Mail-Adresse ein.',
   'auth.val.passwordRequired': 'Bitte gib dein Passwort ein.',
   'auth.val.passwordShort': 'Das Passwort muss mindestens 8 Zeichen haben.',
+  'auth.val.passwordRule': 'Mind. 8 Zeichen, mit Buchstaben und Zahl.',
+  'auth.val.passwordLong': 'Das Passwort darf höchstens 72 Zeichen haben.',
+  'auth.field.passwordHint': 'Mind. 8 Zeichen, mit Buchstaben und Zahl',
   'auth.val.passwordMismatch': 'Die Passwörter stimmen nicht überein.',
   'auth.val.codeRequired': 'Bitte gib den Code deiner Fahrschule ein.',
   'auth.val.termsRequired': 'Bitte akzeptiere die AGB und die Datenschutzerklärung.',
@@ -53,7 +56,7 @@ export const de: Record<string, string> = {
   'auth.err.network': 'Keine Verbindung. Prüfe deine Internetverbindung.',
   'auth.err.rateLimited': 'Zu viele Versuche. Bitte warte einen Moment.',
   'auth.err.generic': 'Das hat nicht geklappt. Bitte versuche es erneut.',
-  'auth.err.weakPassword': 'Dieses Passwort ist zu schwach. Wähle ein anderes.',
+  'auth.err.weakPassword': 'Passwort zu schwach: mind. 8 Zeichen, mit Buchstaben und Zahl.',
   'auth.err.samePassword': 'Das neue Passwort muss sich vom alten unterscheiden.',
 
   // Sign-up (Figma DE/SignUp)
@@ -153,6 +156,9 @@ export const en: Record<string, string> = {
   'auth.val.emailInvalid': 'Please enter a valid email address.',
   'auth.val.passwordRequired': 'Please enter your password.',
   'auth.val.passwordShort': 'The password must be at least 8 characters.',
+  'auth.val.passwordRule': 'At least 8 characters, with a letter and a number.',
+  'auth.val.passwordLong': 'The password can have at most 72 characters.',
+  'auth.field.passwordHint': 'At least 8 characters, with a letter and a number',
   'auth.val.passwordMismatch': "The passwords don't match.",
   'auth.val.codeRequired': "Please enter your driving school's code.",
   'auth.val.termsRequired': 'Please accept the terms and the privacy policy.',
@@ -171,7 +177,7 @@ export const en: Record<string, string> = {
   'auth.err.network': 'No connection. Check your internet connection.',
   'auth.err.rateLimited': 'Too many attempts. Please wait a moment.',
   'auth.err.generic': "That didn't work. Please try again.",
-  'auth.err.weakPassword': 'This password is too weak. Please choose another one.',
+  'auth.err.weakPassword': 'Password too weak: at least 8 characters, with a letter and a number.',
   'auth.err.samePassword': 'The new password must differ from the old one.',
 
   'auth.signup.line1': 'Start your',

@@ -1,6 +1,6 @@
 /** Figma "07/Sonderfahrten" (1309:2848): bottom sheet with the three mandatory special drives. */
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Pressable, View } from 'react-native'
 import { router } from 'expo-router'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
@@ -34,23 +34,40 @@ export function SpecialDrivesSheet({ visible, onClose }: { visible: boolean; onC
     drive_overland: !!profile?.drive_overland,
   })
   const [flags, setFlags] = useState<Record<DriveKey, boolean>>(fromProfile)
+  /** rows with a write in flight — tapping them again is ignored until it settles */
+  const [pending, setPending] = useState<Partial<Record<DriveKey, boolean>>>({})
+  const pendingRef = useRef<Set<DriveKey>>(new Set())
 
   useEffect(() => {
-    setFlags(fromProfile())
+    // Don't let a profile refresh overwrite a row whose write is still in flight.
+    const p = fromProfile()
+    setFlags((f) => {
+      const out = { ...p }
+      pendingRef.current.forEach((k) => {
+        out[k] = f[k]
+      })
+      return out
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.drive_autobahn, profile?.drive_night, profile?.drive_overland, visible])
 
   /** Students self-report completed special drives (same as the previous progress screen). */
   async function toggle(key: DriveKey) {
-    if (!uid) return
+    if (!uid || pendingRef.current.has(key)) return
     const next = !flags[key]
+    pendingRef.current.add(key)
+    setPending((p) => ({ ...p, [key]: true }))
     setFlags((f) => ({ ...f, [key]: next }))
     try {
       await updateMyProfile(uid, { [key]: next } as Partial<Record<DriveKey, boolean>>)
+      pendingRef.current.delete(key)
       await refreshProfile()
     } catch {
       setFlags((f) => ({ ...f, [key]: !next }))
       toast.show(t('ds.error.save'), 'error')
+    } finally {
+      pendingRef.current.delete(key)
+      setPending((p) => ({ ...p, [key]: false }))
     }
   }
 
@@ -64,8 +81,10 @@ export function SpecialDrivesSheet({ visible, onClose }: { visible: boolean; onC
           <Pressable
             key={r.key}
             onPress={() => toggle(r.key)}
+            disabled={!!pending[r.key]}
             accessibilityRole="checkbox"
-            accessibilityState={{ checked: done }}
+            accessibilityLabel={t(r.title)}
+            accessibilityState={{ checked: done, busy: !!pending[r.key] }}
             style={({ pressed }) => ({
               backgroundColor: C.surface,
               borderRadius: 16,

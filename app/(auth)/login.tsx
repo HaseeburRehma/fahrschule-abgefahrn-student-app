@@ -15,6 +15,7 @@ import { FooterPrompt, Spacer } from '@/components/auth/ui'
 import { getSupabase } from '@/lib/supabase/client'
 import { classifyPasswordError, passwordErrorKey } from '@/lib/auth/errors'
 import { useT } from '@/lib/i18n'
+import { TimeoutError, withTimeout } from '@/lib/async'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -28,6 +29,8 @@ export default function Login() {
   /** wrong credentials → both inputs red, message under the password (Figma "Login Fehler") */
   const [badCreds, setBadCreds] = useState(false)
   const pwRef = useRef<TextInput>(null)
+  // Sync guard: the keyboard "go" key and the button can both fire before `busy` re-renders.
+  const busyRef = useRef(false)
 
   const clear = () => {
     setEmailErr(null)
@@ -41,6 +44,7 @@ export default function Login() {
   }
 
   async function submit() {
+    if (busyRef.current) return
     clear()
     const cleanEmail = email.trim().toLowerCase()
     let ok = true
@@ -57,16 +61,21 @@ export default function Login() {
     }
     if (!ok) return
 
+    busyRef.current = true
     setBusy(true)
     try {
-      const { error } = await getSupabase().auth.signInWithPassword({ email: cleanEmail, password })
+      const { error } = await withTimeout(
+        getSupabase().auth.signInWithPassword({ email: cleanEmail, password }),
+        20_000,
+      )
       if (error) throw error
       // AuthGuard sees the new session and routes to Home.
     } catch (e) {
-      const kind = classifyPasswordError(e)
+      const kind = e instanceof TimeoutError ? 'network' : classifyPasswordError(e)
       if (kind === 'invalid_credentials') setBadCreds(true)
       setPwErr(t(passwordErrorKey(kind)))
     } finally {
+      busyRef.current = false
       setBusy(false)
     }
   }
@@ -107,6 +116,7 @@ export default function Login() {
           autoCapitalize="none"
           autoCorrect={false}
           autoComplete="email"
+          maxLength={254}
           textContentType="username"
           keyboardType="email-address"
           inputMode="email"
@@ -129,6 +139,7 @@ export default function Login() {
           }}
           error={pwErr ?? badCreds}
           secureTextEntry
+          maxLength={128}
           autoCapitalize="none"
           autoCorrect={false}
           autoComplete="current-password"

@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback, useRef, useState } from 'react'
-import { Animated, FlatList, Pressable, View, useWindowDimensions, type ViewStyle } from 'react-native'
+import { Animated, FlatList, Pressable, ScrollView, View, useWindowDimensions, type ViewStyle } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import type { Icon as PhosphorIcon, IconWeight } from 'phosphor-react-native'
@@ -147,7 +147,11 @@ function Dots({ x, width }: { x: Animated.Value; width: number }) {
 export default function Welcome() {
   const t = useT()
   const insets = useSafeAreaInsets()
-  const { width } = useWindowDimensions()
+  const { width: winW } = useWindowDimensions()
+  // Page width = the pager's real width (the web build caps the app column at 672px,
+  // so the window width would make pages wider than the visible area).
+  const [pagerW, setPagerW] = useState(0)
+  const width = pagerW || Math.min(winW, 672)
   const listRef = useRef<FlatList<Page>>(null)
   const x = useRef(new Animated.Value(0)).current
   const [index, setIndex] = useState(0)
@@ -157,8 +161,11 @@ export default function Welcome() {
   const finish = useCallback(async () => {
     if (leaving.current) return
     leaving.current = true
-    await markOnboardingSeen()
-    router.replace('/(auth)/login' as any)
+    try {
+      await markOnboardingSeen()
+    } finally {
+      router.replace('/(auth)/login' as any)
+    }
   }, [])
 
   const next = () => {
@@ -175,7 +182,13 @@ export default function Welcome() {
   return (
     <View style={{ flex: 1, backgroundColor: C.bg, overflow: 'hidden' }}>
       <View style={{ flex: 1, paddingTop: insets.top }}>
-        <View style={{ flex: 1 }} onLayout={(e) => setPagerH(e.nativeEvent.layout.height)}>
+        <View
+          style={{ flex: 1 }}
+          onLayout={(e) => {
+            setPagerH(e.nativeEvent.layout.height)
+            setPagerW(e.nativeEvent.layout.width)
+          }}
+        >
           {/* static hero glow behind the illustration (Figma FX/Hero Glow inside the 240 frame) */}
           <View pointerEvents="none" style={{ position: 'absolute', top: topPad, left: (width - ART) / 2, width: ART, height: ART }}>
             <ScaledGlow width={ART} height={ART} />
@@ -199,8 +212,17 @@ export default function Welcome() {
               },
             })}
             getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
+            extraData={`${width}:${topPad}`}
             renderItem={({ item }) => (
-              <View style={{ width, paddingTop: topPad }}>
+              // Short screens (e.g. 320×568): the illustration + text are taller than the pager —
+              // let the page scroll vertically instead of cutting the text off.
+              <ScrollView
+                style={{ width }}
+                contentContainerStyle={{ paddingTop: topPad, paddingBottom: 8 }}
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+                nestedScrollEnabled
+              >
                 <Illustration page={item} />
                 <View style={{ marginTop: 50, paddingHorizontal: 32, gap: 14, alignItems: 'center' }}>
                   <View style={{ alignSelf: 'stretch' }}>
@@ -213,7 +235,7 @@ export default function Welcome() {
                     {t(`auth.onb.${item.key}.body`)}
                   </T>
                 </View>
-              </View>
+              </ScrollView>
             )}
           />
 
@@ -222,6 +244,7 @@ export default function Welcome() {
             onPress={finish}
             hitSlop={12}
             accessibilityRole="button"
+            accessibilityLabel={t('auth.onb.skip')}
             style={({ pressed }) => ({ position: 'absolute', top: 10, right: 20, opacity: pressed ? 0.6 : 1 })}
           >
             <T variant="labelL" color={C.dim}>{t('auth.onb.skip')}</T>

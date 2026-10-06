@@ -32,13 +32,20 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const booted = useRef(false)
 
   useEffect(() => {
-    hasSeenOnboarding().then(setOnboarded)
+    let alive = true
+    hasSeenOnboarding()
+      .then((v) => alive && setOnboarded(v))
+      .catch(() => alive && setOnboarded(true))
+    return () => {
+      alive = false
+    }
   }, [session])
 
   // Password-recovery links sign the user in; send them to set a new password.
   useEffect(() => {
     const { data } = getSupabase().auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') router.replace('/reset-password' as any)
+      // deferred: never navigate from inside supabase's auth callback (it holds the auth lock)
+      if (event === 'PASSWORD_RECOVERY') setTimeout(() => router.replace('/reset-password' as any), 0)
     })
     return () => data.subscription.unsubscribe()
   }, [router])

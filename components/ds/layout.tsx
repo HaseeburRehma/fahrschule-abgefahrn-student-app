@@ -13,6 +13,7 @@ import { DotsThree } from 'phosphor-react-native/src/icons/DotsThree'
 import { C } from './tokens'
 import { T } from './primitives'
 import { IconButton } from './controls'
+import { useT } from '@/lib/i18n'
 
 const GLOW_IMG = require('@/assets/brand/hero-glow.png')
 
@@ -126,6 +127,7 @@ export function TopBar({
   right,
   rightIcon,
   onRight,
+  rightLabel,
 }: {
   title?: string
   onBack?: () => void
@@ -133,19 +135,22 @@ export function TopBar({
   right?: React.ReactNode
   rightIcon?: PhosphorIcon
   onRight?: () => void
+  /** screen-reader label for the icon-only right action (default "Weitere Optionen") */
+  rightLabel?: string
 }) {
+  const t = useT()
   const goBack = onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/home')))
   return (
     <View style={{ height: 52, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-      {back ? <IconButton icon={ArrowLeft} onPress={goBack} accessibilityLabel="Zurück" /> : null}
+      {back ? <IconButton icon={ArrowLeft} onPress={goBack} accessibilityLabel={t('ds.back')} /> : null}
       {title ? (
-        <T variant="headingL" style={{ flex: 1 }} numberOfLines={1}>
+        <T variant="headingL" style={{ flex: 1 }} numberOfLines={1} accessibilityRole="header">
           {title}
         </T>
       ) : (
         <View style={{ flex: 1 }} />
       )}
-      {right ?? (onRight ? <IconButton tone="plain" icon={rightIcon ?? DotsThree} onPress={onRight} /> : null)}
+      {right ?? (onRight ? <IconButton tone="plain" icon={rightIcon ?? DotsThree} onPress={onRight} accessibilityLabel={rightLabel ?? t('ds.more')} /> : null)}
     </View>
   )
 }

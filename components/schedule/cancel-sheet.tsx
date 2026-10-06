@@ -5,13 +5,13 @@
  * always allowed; the school sees the cancellation in /admin.
  */
 
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { WarningCircle } from 'phosphor-react-native/src/icons/WarningCircle'
 
 import { Button, Sheet, SheetHero, useToast } from '@/components/ds'
 import { useTranslation } from '@/lib/i18n'
-import { cancelAppointment, type Appointment } from '@/lib/appointments'
-import { lessonTitle, shortDate } from './helpers'
+import { cancelMyAppointment, type Appointment } from '@/lib/appointments'
+import { appointmentErrorKey, lessonTitle, shortDate } from './helpers'
 
 export function CancelSheet({
   visible,
@@ -27,24 +27,28 @@ export function CancelSheet({
   const { t, locale } = useTranslation()
   const toast = useToast()
   const [busy, setBusy] = useState(false)
+  const busyRef = useRef(false)
 
   async function confirm() {
-    if (!appointment) return
+    if (!appointment || busyRef.current) return
+    busyRef.current = true
     setBusy(true)
     try {
-      await cancelAppointment(appointment.id)
+      // Never delete: students may only set status → 'cancelled' (school keeps the record).
+      await cancelMyAppointment(appointment.id)
       toast.show(t('appointment.v2.cancelled'), 'success')
       onClose()
       onCancelled?.()
-    } catch {
-      toast.show(t('schedule.v2.error'), 'error')
+    } catch (e) {
+      toast.show(t(appointmentErrorKey(e)), 'error')
     } finally {
+      busyRef.current = false
       setBusy(false)
     }
   }
 
   return (
-    <Sheet visible={visible} onClose={() => !busy && onClose()}>
+    <Sheet visible={visible} onClose={() => !busyRef.current && onClose()} dismissable={!busy}>
       <SheetHero
         icon={WarningCircle}
         tone="danger"
@@ -59,7 +63,7 @@ export function CancelSheet({
         }
       />
       <Button variant="danger" label={t('appointment.v2.cancelSheet.confirm')} onPress={confirm} loading={busy} />
-      <Button variant="ghost" label={t('appointment.v2.cancelSheet.back')} onPress={onClose} disabled={busy} />
+      <Button variant="ghost" label={t('appointment.v2.cancelSheet.back')} onPress={() => !busyRef.current && onClose()} disabled={busy} />
     </Sheet>
   )
 }

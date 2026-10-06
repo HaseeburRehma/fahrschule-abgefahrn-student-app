@@ -560,9 +560,15 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('de') // German default
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((s) => {
-      if (s === 'de' || s === 'en') setLocaleState(s)
-    })
+    let alive = true
+    AsyncStorage.getItem(STORAGE_KEY)
+      .then((s) => {
+        if (alive && (s === 'de' || s === 'en')) setLocaleState(s)
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
   }, [])
 
   const setLocale = useCallback((l: Locale) => {

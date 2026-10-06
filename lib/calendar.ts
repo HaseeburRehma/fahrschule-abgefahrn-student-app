@@ -19,12 +19,16 @@ interface CalEvent {
  */
 export function addToCalendar(ev: CalEvent, title: string): void {
   const start = new Date(ev.starts_at)
-  const end = ev.ends_at
-    ? new Date(ev.ends_at)
-    : new Date(start.getTime() + 60 * 60_000)
+  // toISOString() throws a RangeError on an invalid date — never crash the screen.
+  if (isNaN(start.getTime())) return
+  const parsedEnd = ev.ends_at ? new Date(ev.ends_at) : null
+  const end =
+    parsedEnd && !isNaN(parsedEnd.getTime()) && parsedEnd.getTime() > start.getTime()
+      ? parsedEnd
+      : new Date(start.getTime() + 60 * 60_000)
   const url =
     'https://calendar.google.com/calendar/render?action=TEMPLATE' +
-    `&text=${encodeURIComponent(title)}` +
+    `&text=${encodeURIComponent(title || '')}` +
     `&dates=${stamp(start)}/${stamp(end)}` +
     (ev.location ? `&location=${encodeURIComponent(ev.location)}` : '') +
     (ev.notes ? `&details=${encodeURIComponent(ev.notes)}` : '')

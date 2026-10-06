@@ -41,6 +41,7 @@ import { useTranslation } from '@/lib/i18n'
 import { fetchAppointment, type Appointment } from '@/lib/appointments'
 import { addToCalendar } from '@/lib/calendar'
 import { SCHOOL, mapsUrl } from '@/lib/school'
+import { useRequestGuard } from '@/lib/use-request-guard'
 
 export default function AppointmentDetail() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -50,21 +51,26 @@ export default function AppointmentDetail() {
   const [error, setError] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
+  const guard = useRequestGuard()
+  const apptId = Array.isArray(id) ? id[0] : id
 
   const load = useCallback(async () => {
-    if (!id) {
+    const req = guard.begin()
+    if (!apptId) {
       setLoading(false)
       return
     }
     try {
-      setAppt(await fetchAppointment(String(id)))
+      const row = await fetchAppointment(String(apptId))
+      if (!guard.isCurrent(req)) return
+      setAppt(row)
       setError(false)
     } catch {
-      setError(true)
+      if (guard.isCurrent(req)) setError(true)
     } finally {
-      setLoading(false)
+      if (guard.isCurrent(req)) setLoading(false)
     }
-  }, [id])
+  }, [apptId, guard])
 
   useFocusEffect(
     useCallback(() => {
@@ -88,6 +94,7 @@ export default function AppointmentDetail() {
       <Screen glow={-30} header={header}>
         <ErrorState
           onRetry={() => {
+            setError(false)
             setLoading(true)
             load()
           }}
@@ -105,7 +112,8 @@ export default function AppointmentDetail() {
 
   const type = lessonTypeOf(appt)
   const typeLabel = type ? t(`schedule.v2.type.${type}`) : null
-  const isPast = endTime(appt) < Date.now()
+  const end = endTime(appt)
+  const isPast = Number.isFinite(end) && end < Date.now()
   const cancelled = appt.status === 'cancelled'
   const canCancel = !cancelled && !isPast
   const meeting = appt.meeting_point?.trim()
@@ -183,11 +191,11 @@ export default function AppointmentDetail() {
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <CalendarDots size={18} color={C.brand} />
-          <T variant="titleM">{longDate(appt.starts_at, locale)}</T>
+          <T variant="titleM" style={{ flex: 1 }}>{longDate(appt.starts_at, locale)}</T>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Clock size={18} color={C.brand} />
-          <T variant="titleM">{timeRange(appt.starts_at, appt.ends_at, t)}</T>
+          <T variant="titleM" style={{ flex: 1 }}>{timeRange(appt.starts_at, appt.ends_at, t)}</T>
         </View>
       </View>
 

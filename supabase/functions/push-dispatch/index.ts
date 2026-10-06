@@ -8,8 +8,8 @@
 // look up the recipient's Expo push token and forward to Expo's push service.
 //
 // Env (auto-provided by Supabase): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
-// Optional: WEBHOOK_SECRET — if set, the webhook must send a matching
-//           `x-webhook-secret` header (configure it in the webhook's headers).
+// Required: WEBHOOK_SECRET — the caller must send a matching `x-webhook-secret`
+//           header (the DB trigger reads it from Vault 'push_webhook_secret').
 //
 // Deploy:  supabase functions deploy push-dispatch --no-verify-jwt
 // ============================================================================
@@ -34,13 +34,11 @@ interface WebhookPayload {
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send'
 
 Deno.serve(async (req) => {
-  // Optional shared-secret gate.
+  // Shared-secret gate — REQUIRED (fail closed). The DB trigger
+  // dispatch_push_on_notification sends it from Supabase Vault ('push_webhook_secret').
   const requiredSecret = Deno.env.get('WEBHOOK_SECRET')
-  if (requiredSecret) {
-    const got = req.headers.get('x-webhook-secret')
-    if (got !== requiredSecret) {
-      return new Response('Unauthorized', { status: 401 })
-    }
+  if (!requiredSecret || req.headers.get('x-webhook-secret') !== requiredSecret) {
+    return new Response('Unauthorized', { status: 401 })
   }
 
   let payload: WebhookPayload
@@ -50,17 +48,29 @@ Deno.serve(async (req) => {
     return new Response('Bad request', { status: 400 })
   }
 
-  if (payload.type !== 'INSERT' || !payload.record) {
+  if (payload.type !== 'INSERT' || !payload.record?.id) {
     return new Response(JSON.stringify({ skipped: true }), {
       headers: { 'content-type': 'application/json' },
     })
   }
 
-  const record = payload.record
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   )
+
+  // Never trust the payload: load the real notification row and only push
+  // fresh ones (prevents replaying old notifications or forged content).
+  const { data: record } = await supabase
+    .from('notifications')
+    .select('id, user_id, title, body, type, data, created_at')
+    .eq('id', payload.record.id)
+    .maybeSingle()
+  if (!record || Date.now() - new Date(record.created_at).getTime() > 15 * 60_000) {
+    return new Response(JSON.stringify({ skipped: true, reason: 'not_found_or_stale' }), {
+      headers: { 'content-type': 'application/json' },
+    })
+  }
 
   const { data: profile, error } = await supabase
     .from('profiles')

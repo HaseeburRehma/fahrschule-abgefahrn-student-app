@@ -11,7 +11,7 @@ import { differenceInCalendarDays, format, isSameYear } from 'date-fns'
 import { de as deLocale, enUS } from 'date-fns/locale'
 import { PaperPlaneTilt } from 'phosphor-react-native/src/icons/PaperPlaneTilt'
 
-import { C, F, T, useToast } from '@/components/ds'
+import { C, ErrorState, F, T, useToast } from '@/components/ds'
 import { getSupabase } from '@/lib/supabase/client'
 import { uniqueChannelName } from '@/lib/supabase/channel'
 import { useTranslation } from '@/lib/i18n'
@@ -19,10 +19,14 @@ import { fetchThread, sendMessage, markThreadRead, type ChatMessage } from '@/li
 import { formatTime, stripAbbrDots } from '@/lib/format'
 import type { Locale } from '@/lib/types'
 
+/** Client cap (server allows 4000). */
+export const CHAT_MAX_LENGTH = 2000
+
 type Row = { kind: 'day'; key: string; label: string } | { kind: 'msg'; key: string; msg: ChatMessage }
 
 function dayLabel(iso: string, locale: Locale, t: (k: string) => string): string {
   const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
   const now = new Date()
   const diff = differenceInCalendarDays(now, d)
   if (diff === 0) return t('chat.v2.today')
@@ -79,24 +83,50 @@ export function ChatThread({
   const insets = useSafeAreaInsets()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
+  const sendingRef = useRef(false)
   const listRef = useRef<FlatList<Row>>(null)
+  // Latest thread request; responses for an older request / another thread are dropped.
+  const reqRef = useRef(0)
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const load = useCallback(async () => {
+    const req = ++reqRef.current
     try {
       const rows = await fetchThread(studentId)
-      setMessages(rows)
+      if (!mountedRef.current || req !== reqRef.current) return
+      // Merge: keep realtime/optimistic rows that arrived while the fetch was in flight.
+      setMessages((prev) => {
+        const ids = new Set(rows.map((m) => m.id))
+        const extra = prev.filter((m) => !ids.has(m.id) && m.student_id === studentId)
+        return extra.length
+          ? [...rows, ...extra].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+          : rows
+      })
+      setLoadError(false)
       markThreadRead(studentId, isAdmin).catch(() => {})
     } catch {
-      // keep whatever we have
+      // keep whatever we have; only an empty thread shows the error state
+      if (mountedRef.current && req === reqRef.current) setLoadError(true)
     } finally {
-      setLoading(false)
+      if (mountedRef.current && req === reqRef.current) setLoading(false)
     }
   }, [studentId, isAdmin])
 
   useEffect(() => {
+    setMessages([])
+    setLoading(true)
+    setLoadError(false)
     load()
+    let subscribedOnce = false
     const supabase = getSupabase()
     const channel = supabase
       .channel(uniqueChannelName(`chat:${studentId}`))
@@ -110,12 +140,19 @@ export function ChatThread({
         },
         (payload: any) => {
           const row = payload.new as ChatMessage
+          if (!row?.id || !mountedRef.current) return
           setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]))
           // If the incoming message is from the other side, mark read.
           if (row.from_admin !== isAdmin) markThreadRead(studentId, isAdmin).catch(() => {})
         },
       )
-      .subscribe()
+      .subscribe((status: string) => {
+        // Re-joined after a dropped connection → refetch so missed messages appear.
+        if (status === 'SUBSCRIBED') {
+          if (subscribedOnce) load()
+          subscribedOnce = true
+        }
+      })
     return () => {
       try {
         supabase.removeChannel(channel)
@@ -139,18 +176,22 @@ export function ChatThread({
   }, [messages, locale, t])
 
   async function onSend() {
-    const body = text.trim()
-    if (!body || sending) return
+    const body = text.trim().slice(0, CHAT_MAX_LENGTH)
+    if (!body || sendingRef.current) return
+    sendingRef.current = true
     setSending(true)
     setText('')
     try {
       const msg = await sendMessage({ studentId, senderId, fromAdmin: isAdmin, body })
-      setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]))
+      if (mountedRef.current) setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]))
     } catch {
-      setText(body) // restore on failure
-      toast.show(t('chat.v2.sendError'), 'error')
+      if (mountedRef.current) {
+        setText((cur) => (cur ? cur : body)) // restore on failure (unless the user typed again)
+        toast.show(t('chat.v2.sendError'), 'error')
+      }
     } finally {
-      setSending(false)
+      sendingRef.current = false
+      if (mountedRef.current) setSending(false)
     }
   }
 
@@ -165,6 +206,15 @@ export function ChatThread({
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={C.brand} />
+        </View>
+      ) : loadError && !messages.length ? (
+        <View style={{ flex: 1 }}>
+          <ErrorState
+            onRetry={() => {
+              setLoading(true)
+              load()
+            }}
+          />
         </View>
       ) : (
         <FlatList
@@ -220,6 +270,8 @@ export function ChatThread({
             selectionColor={C.brand}
             cursorColor={C.brand}
             multiline
+            maxLength={CHAT_MAX_LENGTH}
+            accessibilityLabel={t('chat.v2.placeholder')}
             // web renders a <textarea>; start at one row like the Figma pill (grows up to maxHeight)
             numberOfLines={1}
             style={
@@ -242,6 +294,8 @@ export function ChatThread({
             disabled={!canSend}
             accessibilityRole="button"
             accessibilityLabel={t('chat.v2.send')}
+            accessibilityState={{ disabled: !canSend, busy: sending }}
+            hitSlop={4}
             style={({ pressed }) => [
               {
                 width: 40,

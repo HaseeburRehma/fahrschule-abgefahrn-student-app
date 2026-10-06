@@ -66,6 +66,8 @@ export function Button({
       onPress={onPress}
       disabled={isDisabled}
       accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
       style={({ pressed }) => [
         {
           height: compact ? 48 : 54,
@@ -90,7 +92,7 @@ export function Button({
       ) : (
         <>
           {IconLeft ? <IconLeft size={20} color={v.fg} weight={iconWeight} /> : null}
-          <T variant="button" color={v.fg}>{label}</T>
+          <T variant="button" color={v.fg} numberOfLines={1} style={{ flexShrink: 1 }}>{label}</T>
           {IconRight ? <IconRight size={20} color={v.fg} weight={iconWeight} /> : null}
         </>
       )}
@@ -111,7 +113,7 @@ export function LinkButton({
   align?: 'left' | 'center' | 'right'
 }) {
   return (
-    <Pressable onPress={onPress} hitSlop={10} style={{ alignSelf: align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start' }}>
+    <Pressable onPress={onPress} hitSlop={12} accessibilityRole="button" style={{ alignSelf: align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start' }}>
       {({ pressed }) => (
         <T variant="labelL" color={color} style={{ opacity: pressed ? 0.7 : 1, textAlign: align }}>
           {label}
@@ -225,6 +227,8 @@ export function Input({
           placeholderTextColor={C.dim}
           selectionColor={C.brand}
           cursorColor={C.brand}
+          accessibilityLabel={label ?? props.placeholder}
+          {...props}
           multiline={multiline}
           onFocus={(e) => {
             setFocused(true)
@@ -247,7 +251,6 @@ export function Input({
             } as any,
             style,
           ]}
-          {...props}
         />
         {right}
       </View>
@@ -286,7 +289,7 @@ export function Segmented<K extends string>({
             accessibilityState={{ selected: active }}
             style={{ flex: 1, paddingVertical: 10, borderRadius: 999, alignItems: 'center', backgroundColor: active ? C.brand : 'transparent' }}
           >
-            <T variant="labelL" color={active ? C.onBrand : C.muted}>{o.label}</T>
+            <T variant="labelL" color={active ? C.onBrand : C.muted} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>{o.label}</T>
           </Pressable>
         )
       })}
@@ -297,13 +300,25 @@ export function Segmented<K extends string>({
 /* ------------------------------------------------------------------ Toggle / Checkbox / Radio */
 
 /** 46×28 switch: green track + dark knob when on. */
-export function Toggle({ value, onChange, disabled }: { value: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+export function Toggle({
+  value,
+  onChange,
+  disabled,
+  accessibilityLabel,
+}: {
+  value: boolean
+  onChange: (v: boolean) => void
+  disabled?: boolean
+  accessibilityLabel?: string
+}) {
   return (
     <Pressable
       onPress={() => !disabled && onChange(!value)}
+      disabled={disabled}
       accessibilityRole="switch"
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ checked: value, disabled }}
-      hitSlop={8}
+      hitSlop={10}
       style={{
         width: 46,
         height: 28,
@@ -336,7 +351,7 @@ export function Checkbox({ value, onChange, size = 22 }: { value: boolean; onCha
       onPress={() => onChange?.(!value)}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: value }}
-      hitSlop={8}
+      hitSlop={11}
       style={{
         width: size,
         height: size,
@@ -413,7 +428,7 @@ export function ListRow({
         <Icon size={19} color={danger ? C.danger : C.brand} />
       </View>
       <T variant="titleM" color={danger ? C.danger : C.white} style={{ flex: 1 }}>{title}</T>
-      {value ? <T variant="bodyS" color={C.muted}>{value}</T> : null}
+      {value ? <T variant="bodyS" color={C.muted} numberOfLines={1} style={{ flexShrink: 1, maxWidth: '45%' }}>{value}</T> : null}
       {right ?? (onPress && chevron && !danger ? <CaretRight size={20} color={C.dim} /> : null)}
     </View>
   )
@@ -449,6 +464,7 @@ export function ChoiceChip({
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
+      accessibilityLabel={sublabel ? `${sublabel} ${label}` : label}
       accessibilityState={{ selected, disabled }}
       style={({ pressed }) => [
         {
@@ -469,9 +485,9 @@ export function ChoiceChip({
       ]}
     >
       {Icon ? <Icon size={18} color={fg} weight={selected ? 'fill' : 'regular'} /> : null}
-      <View style={{ alignItems: 'center' }}>
-        {sublabel ? <T variant="caption" color={selected ? C.onBrand : C.dim}>{sublabel}</T> : null}
-        <T variant="labelL" color={fg}>{label}</T>
+      <View style={{ alignItems: 'center', flexShrink: 1 }}>
+        {sublabel ? <T variant="caption" color={selected ? C.onBrand : C.dim} numberOfLines={1}>{sublabel}</T> : null}
+        <T variant="labelL" color={fg} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{label}</T>
       </View>
     </Pressable>
   )

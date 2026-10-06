@@ -72,6 +72,7 @@ function routeForNotification(
   const type = data?.type
   if (type === 'schedule') router.push('/(tabs)/schedule')
   else if (type === 'theory') router.push('/(tabs)/theory')
+  else if (type === 'exam') router.push('/exams' as any)
   else router.push('/notifications' as any)
 }
 
@@ -93,9 +94,9 @@ export function usePushRegistration(): void {
       if (!(await getPushEnabled())) return // user switched push off (Profil)
       // Never trigger the OS prompt here — the "Push erlauben" screen owns it.
       // Only register when permission was already granted.
-      const perm = await Notifications.getPermissionsAsync()
-      if (!(perm.granted || perm.status === 'granted') || cancelled) return
-      await ensureAndroidChannel()
+      const perm = await Notifications.getPermissionsAsync().catch(() => null)
+      if (!perm || !(perm.granted || perm.status === 'granted') || cancelled) return
+      await ensureAndroidChannel().catch(() => {})
       const token = await getExpoPushToken()
       if (!token || cancelled || token === lastToken.current) return
       lastToken.current = token
@@ -118,23 +119,25 @@ export function usePushRegistration(): void {
     }
   }, [userId])
 
-  // Handle taps (foreground + cold start).
+  // Handle taps (foreground + cold start). Each response is routed once — the
+  // cold-start response would otherwise re-route every time this effect re-runs.
+  const handled = useRef<Set<string>>(new Set())
   useEffect(() => {
     if (Platform.OS === 'web') return
-    const sub = Notifications.addNotificationResponseReceivedListener((resp) => {
-      routeForNotification(
-        resp.notification.request.content.data as any,
-        router,
-      )
-    })
-    Notifications.getLastNotificationResponseAsync().then((resp) => {
-      if (resp)
-        routeForNotification(
-          resp.notification.request.content.data as any,
-          router,
-        )
-    })
-    return () => sub.remove()
+    let alive = true
+    const handle = (resp: Notifications.NotificationResponse | null) => {
+      if (!alive || !resp) return
+      const id = resp.notification.request.identifier
+      if (id && handled.current.has(id)) return
+      if (id) handled.current.add(id)
+      routeForNotification(resp.notification.request.content.data as any, router)
+    }
+    const sub = Notifications.addNotificationResponseReceivedListener(handle)
+    Notifications.getLastNotificationResponseAsync().then(handle).catch(() => {})
+    return () => {
+      alive = false
+      sub.remove()
+    }
   }, [router])
 }
 

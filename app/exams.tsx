@@ -4,7 +4,7 @@
  * Every value comes from the student's profile / topic progress.
  */
 
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import { RefreshControl, View } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
@@ -35,6 +35,7 @@ import { fetchMotivationMessages, buildMotivationItems } from '@/lib/motivation'
 import { scheduleReminders } from '@/lib/reminders'
 import { ExamDateSheet, type ExamKind } from '@/components/theory/exam-date-sheet'
 import { daysUntil, parseIsoDay, shortDate } from '@/components/theory/dates'
+import { useRequestGuard } from '@/lib/use-request-guard'
 
 /** Mandatory driving lessons before the practical exam (Figma "12 Pflicht-Fahrstunden"). */
 const REQUIRED_LESSONS = 12
@@ -52,18 +53,24 @@ export default function ExamsScreen() {
   const [sheet, setSheet] = useState<ExamKind | null>(null)
   const [lastKind, setLastKind] = useState<ExamKind>('theory')
   const [answering, setAnswering] = useState<ExamKind | null>(null)
+  const answeringRef = useRef(false)
+  const guard = useRequestGuard()
 
-  const loadTopics = useCallback(async () => {
+  /** Resolves to false when the request failed. */
+  const loadTopics = useCallback(async (): Promise<boolean> => {
+    const req = guard.begin()
     try {
       const [topics, done] = await Promise.all([
         fetchTheoryTopics(),
         uid ? fetchMyDoneTopics(uid) : Promise.resolve(new Set<string>()),
       ])
-      setTheoryLeft(topics.filter((x) => !done.has(x.id)).length)
+      if (guard.isCurrent(req)) setTheoryLeft(topics.filter((x) => !done.has(x.id)).length)
+      return true
     } catch {
-      setTheoryLeft(null)
+      // keep the last known value; the line is simply hidden until the first success
+      return false
     }
-  }, [uid])
+  }, [uid, guard])
 
   // (Re)schedule the daily motivation pushes for the nearest upcoming exam.
   const rescheduleMotivation = useCallback(async () => {
@@ -71,16 +78,18 @@ export default function ExamsScreen() {
       .filter((d): d is string => !!d && (daysUntil(d) ?? -1) > 0)
       .sort()
     if (!candidates.length) {
-      scheduleReminders([], 'motivation') // clear
+      scheduleReminders([], 'motivation').catch(() => {}) // clear
       return
     }
     try {
+      const examDay = parseIsoDay(candidates[0])
+      if (!examDay) return
       const msgs = await fetchMotivationMessages(true)
-      const bodies = msgs.map((m) => (locale === 'de' ? m.body_de : m.body_en))
-      const items = buildMotivationItems(parseIsoDay(candidates[0])!, bodies, (days) =>
-        t('exam.motivationTitle', { days }),
-      )
-      scheduleReminders(items, 'motivation')
+      const bodies = msgs
+        .map((m) => ((locale === 'de' ? m.body_de : m.body_en) || m.body_de || '').trim())
+        .filter(Boolean)
+      const items = buildMotivationItems(examDay, bodies, (days) => t('exam.motivationTitle', { days }))
+      await scheduleReminders(items, 'motivation')
     } catch {}
   }, [profile?.theory_exam_date, profile?.practical_exam_date, locale, t])
 
@@ -94,23 +103,26 @@ export default function ExamsScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
     try {
-      await Promise.all([refreshProfile(), loadTopics()])
+      const [, ok] = await Promise.all([refreshProfile().catch(() => {}), loadTopics()])
+      if (!ok) toast.show(t('ds.error.refresh'), 'error')
     } finally {
-      setRefreshing(false)
+      if (guard.isMounted()) setRefreshing(false)
     }
-  }, [refreshProfile, loadTopics])
+  }, [refreshProfile, loadTopics, toast, t, guard])
 
   async function setPassed(kind: ExamKind, passed: boolean) {
-    if (!uid || answering) return
+    if (!uid || answeringRef.current) return
+    answeringRef.current = true
     setAnswering(kind)
     try {
       await updateMyProfile(uid, kind === 'theory' ? { theory_passed: passed } : { practical_passed: passed })
       await refreshProfile()
-      if (passed) router.push('/success' as any)
+      if (passed && guard.isMounted()) router.push(`/success?exam=${kind}` as any)
     } catch {
       toast.show(t('common.error'), 'error')
     } finally {
-      setAnswering(null)
+      answeringRef.current = false
+      if (guard.isMounted()) setAnswering(null)
     }
   }
 

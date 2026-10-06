@@ -323,7 +323,7 @@ export const THEORY_CONTENT: Record<number, TopicContent> = {
 export function topicTitle(topic: Pick<TheoryTopic, 'number' | 'title_de' | 'title_en'>, locale: Locale): string {
   const c = THEORY_CONTENT[topic.number]
   if (c) return locale === 'de' ? c.short_de : c.short_en
-  return locale === 'de' ? topic.title_de : topic.title_en
+  return (locale === 'de' ? topic.title_de : topic.title_en) || topic.title_de || topic.title_en || ''
 }
 
 /** Description + learn points: DB values when present, bundled content otherwise. */
@@ -334,8 +334,8 @@ export function topicDetail(
   const c = THEORY_CONTENT[topic.number]
   const dbDesc = locale === 'de' ? topic.description_de : topic.description_en
   const dbPoints = locale === 'de' ? topic.learn_points_de : topic.learn_points_en
-  const description = dbDesc?.trim() || (c ? (locale === 'de' ? c.description_de : c.description_en) : null)
+  const description = (typeof dbDesc === 'string' ? dbDesc.trim() : '') || (c ? (locale === 'de' ? c.description_de : c.description_en) : null)
   const learnPoints =
-    dbPoints && dbPoints.length ? dbPoints : c ? (locale === 'de' ? c.learn_points_de : c.learn_points_en) : []
+    Array.isArray(dbPoints) && dbPoints.length ? dbPoints.filter((x) => typeof x === 'string' && x.trim()) : c ? (locale === 'de' ? c.learn_points_de : c.learn_points_en) : []
   return { description, learnPoints }
 }

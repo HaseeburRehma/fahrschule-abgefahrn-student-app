@@ -11,12 +11,13 @@ import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight'
 import { Check } from 'phosphor-react-native/src/icons/Check'
 import { LockSimple } from 'phosphor-react-native/src/icons/LockSimple'
 
-import { C, EmptyState, ErrorState, PageHeader, Screen, Skeleton, T } from '@/components/ds'
+import { C, EmptyState, ErrorState, PageHeader, Screen, Skeleton, T, useToast } from '@/components/ds'
 import { useTranslation } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
 import { fetchMyDoneTopics, fetchTheoryTopics } from '@/lib/data'
 import { topicTitle } from '@/lib/theory-content'
 import type { TheoryTopic } from '@/lib/types'
+import { useRequestGuard } from '@/lib/use-request-guard'
 
 type TopicState = 'done' | 'current' | 'locked' | 'open'
 
@@ -31,24 +32,30 @@ export default function TheoryScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(false)
   const loadedOnce = useRef(false)
+  const toast = useToast()
+  const guard = useRequestGuard()
 
-  const load = useCallback(async () => {
+  /** Resolves to false when the request failed. */
+  const load = useCallback(async (): Promise<boolean> => {
+    const req = guard.begin()
     try {
       const [rows, doneSet] = await Promise.all([
         fetchTheoryTopics(),
         uid ? fetchMyDoneTopics(uid) : Promise.resolve(new Set<string>()),
       ])
-      setTopics(rows)
+      if (!guard.isCurrent(req)) return true
+      setTopics(rows.filter((r) => r && r.id))
       setDone(doneSet)
       setError(false)
       loadedOnce.current = true
+      return true
     } catch {
-      if (!loadedOnce.current) setError(true)
+      if (guard.isCurrent(req) && !loadedOnce.current) setError(true)
+      return false
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      if (guard.isCurrent(req)) setLoading(false)
     }
-  }, [uid])
+  }, [uid, guard])
 
   useFocusEffect(
     useCallback(() => {
@@ -56,10 +63,15 @@ export default function TheoryScreen() {
     }, [load]),
   )
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true)
-    load()
-  }, [load])
+    try {
+      const ok = await load()
+      if (!ok) toast.show(t('ds.error.refresh'), 'error')
+    } finally {
+      if (guard.isMounted()) setRefreshing(false)
+    }
+  }, [load, toast, t, guard])
 
   const total = topics.length
   const doneCount = topics.filter((x) => done.has(x.id)).length
@@ -99,6 +111,7 @@ export default function TheoryScreen() {
       <Screen tabBar refreshControl={refresh}>
         <ErrorState
           onRetry={() => {
+            setError(false)
             setLoading(true)
             load()
           }}
@@ -156,16 +169,19 @@ export default function TheoryScreen() {
           <T variant="titleM">{t('theory.v2.allTopics')}</T>
 
           <View style={{ gap: 10 }}>
-            {topics.map((topic) => (
+            {topics.map((topic) => {
+              const st = stateOf(topic)
+              return (
               <TopicRow
                 key={topic.id}
                 number={topic.number}
                 title={topicTitle(topic, locale)}
-                state={stateOf(topic)}
-                label={t(`theory.v2.state.${stateOf(topic)}`)}
+                state={st}
+                label={t(`theory.v2.state.${st}`)}
                 onPress={() => router.push(`/theory/${topic.id}` as any)}
               />
-            ))}
+              )
+            })}
           </View>
         </>
       )}

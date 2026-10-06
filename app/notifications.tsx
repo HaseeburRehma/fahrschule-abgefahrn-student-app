@@ -4,7 +4,7 @@
  * screen; long-press = delete.
  */
 
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useRef, useState } from 'react'
 import { Alert, Platform, Pressable, RefreshControl, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { differenceInCalendarDays, differenceInMinutes, format, isSameYear } from 'date-fns'
@@ -21,7 +21,7 @@ import { FileText } from 'phosphor-react-native/src/icons/FileText'
 import { GraduationCap } from 'phosphor-react-native/src/icons/GraduationCap'
 import { Package } from 'phosphor-react-native/src/icons/Package'
 
-import { C, EmptyState, Screen, SectionLabel, Skeleton, T, TopBar, useToast } from '@/components/ds'
+import { C, EmptyState, ErrorState, Screen, SectionLabel, Skeleton, T, TopBar, useToast } from '@/components/ds'
 import { stripAbbrDots } from '@/lib/format'
 import { useTranslation } from '@/lib/i18n'
 import { useNotifications } from '@/lib/notifications-context'
@@ -83,12 +83,12 @@ function relativeTime(iso: string, locale: Locale, t: (k: string, v?: Record<str
 }
 
 function confirmDelete(msg: string, cancel: string): Promise<boolean> {
-  if (Platform.OS === 'web') return Promise.resolve(window.confirm(msg))
+  if (Platform.OS === 'web') return Promise.resolve(typeof window !== 'undefined' ? window.confirm(msg) : false)
   return new Promise((resolve) =>
     Alert.alert(msg, undefined, [
       { text: cancel, style: 'cancel', onPress: () => resolve(false) },
       { text: 'OK', style: 'destructive', onPress: () => resolve(true) },
-    ]),
+    ], { cancelable: true, onDismiss: () => resolve(false) }),
   )
 }
 
@@ -168,17 +168,19 @@ export default function NotificationsScreen() {
   const { t, locale } = useTranslation()
   const router = useRouter()
   const toast = useToast()
-  const { items, unreadCount, loading, refresh, markAsRead, markAllAsRead, deleteNotification } = useNotifications()
+  const { items, unreadCount, loading, error, refresh, markAsRead, markAllAsRead, deleteNotification } = useNotifications()
   const [refreshing, setRefreshing] = useState(false)
+  const deleting = useRef<Set<string>>(new Set())
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
     try {
-      await refresh()
+      const ok = await refresh()
+      if (!ok) toast.show(t('ds.error.refresh'), 'error')
     } finally {
       setRefreshing(false)
     }
-  }, [refresh])
+  }, [refresh, toast, t])
 
   const { fresh, earlier } = useMemo(
     () => ({ fresh: items.filter((n) => !n.is_read), earlier: items.filter((n) => n.is_read) }),
@@ -192,10 +194,18 @@ export default function NotificationsScreen() {
   }
 
   async function remove(n: NotificationRow) {
-    const ok = await confirmDelete(t('notifications.v2.deleteConfirm'), t('ds.cancel'))
-    if (!ok) return
-    await deleteNotification(n.id)
-    toast.show(t('notifications.v2.deleted'), 'success')
+    if (deleting.current.has(n.id)) return
+    deleting.current.add(n.id)
+    try {
+      const ok = await confirmDelete(t('notifications.v2.deleteConfirm'), t('ds.cancel'))
+      if (!ok) return
+      await deleteNotification(n.id)
+      toast.show(t('notifications.v2.deleted'), 'success')
+    } catch {
+      toast.show(t('common.error'), 'error')
+    } finally {
+      deleting.current.delete(n.id)
+    }
   }
 
   const card = (n: NotificationRow) => (
@@ -213,7 +223,7 @@ export default function NotificationsScreen() {
       title={t('notifications.v2.title')}
       right={
         unreadCount > 0 ? (
-          <Pressable onPress={markAllAsRead} hitSlop={10} accessibilityRole="button">
+          <Pressable onPress={markAllAsRead} hitSlop={12} accessibilityRole="button" accessibilityLabel={t('notifications.v2.markAll')}>
             {({ pressed }) => (
               <T variant="labelM" color={C.brand} style={{ opacity: pressed ? 0.7 : 1 }}>
                 {t('notifications.v2.markAll')}
@@ -248,6 +258,8 @@ export default function NotificationsScreen() {
             </View>
           </View>
         ))
+      ) : items.length === 0 && error ? (
+        <ErrorState onRetry={() => refresh()} />
       ) : items.length === 0 ? (
         <EmptyState icon={Bell} title={t('notifications.v2.empty.title')} body={t('notifications.v2.empty.body')} />
       ) : (

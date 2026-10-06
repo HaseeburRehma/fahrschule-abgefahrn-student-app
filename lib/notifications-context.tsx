@@ -25,7 +25,10 @@ interface NotificationsContextValue {
   items: NotificationRow[]
   unreadCount: number
   loading: boolean
-  refresh: () => Promise<void>
+  /** true when the last load failed and nothing could be shown */
+  error: boolean
+  /** resolves to false when the request failed (callers may toast) */
+  refresh: () => Promise<boolean>
   markAsRead: (id: string) => Promise<void>
   markAllAsRead: () => Promise<void>
   deleteNotification: (id: string) => Promise<void>
@@ -43,12 +46,14 @@ export function NotificationsProvider({
 
   const [items, setItems] = useState<NotificationRow[]>([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
   const activeUser = useRef<string | null>(null)
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<boolean> => {
     if (!userId) {
       setItems([])
-      return
+      setError(false)
+      return true
     }
     setLoading(true)
     try {
@@ -60,9 +65,15 @@ export function NotificationsProvider({
         .order('created_at', { ascending: false })
         .limit(50)
       if (error) throw error
-      if (activeUser.current === userId) setItems((data ?? []) as NotificationRow[])
+      if (activeUser.current === userId) {
+        setItems((data ?? []) as NotificationRow[])
+        setError(false)
+      }
+      return true
     } catch {
       // keep prior items
+      if (activeUser.current === userId) setError(true)
+      return false
     } finally {
       if (activeUser.current === userId) setLoading(false)
     }
@@ -72,9 +83,12 @@ export function NotificationsProvider({
     activeUser.current = userId
     if (!userId) {
       setItems([])
+      setError(false)
+      setLoading(false)
       return
     }
     refresh()
+    let subscribedOnce = false
 
     const supabase = getSupabase()
     const channel = supabase
@@ -106,7 +120,13 @@ export function NotificationsProvider({
           })
         },
       )
-      .subscribe()
+      .subscribe((status: string) => {
+        // After a dropped connection the channel re-joins: refetch to fill the gap.
+        if (status === 'SUBSCRIBED') {
+          if (subscribedOnce) refresh()
+          subscribedOnce = true
+        }
+      })
 
     return () => {
       try {
@@ -140,14 +160,27 @@ export function NotificationsProvider({
   }, [userId])
 
   const deleteNotification = useCallback(async (id: string) => {
-    const prevItems = items
-    setItems((prev) => prev.filter((n) => n.id !== id))
+    let removed: NotificationRow | undefined
+    setItems((prev) => {
+      removed = prev.find((n) => n.id === id)
+      return prev.filter((n) => n.id !== id)
+    })
     try {
-      await getSupabase().from('notifications').delete().eq('id', id)
-    } catch {
-      setItems(prevItems) // rollback
+      const { error: delError } = await getSupabase().from('notifications').delete().eq('id', id)
+      if (delError) throw delError
+    } catch (e) {
+      // rollback just this row (other realtime changes since then are kept)
+      const row = removed
+      if (row) {
+        setItems((prev) =>
+          prev.some((n) => n.id === id)
+            ? prev
+            : [...prev, row].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))),
+        )
+      }
+      throw e
     }
-  }, [items])
+  }, [])
 
   const unreadCount = useMemo(
     () => items.filter((n) => !n.is_read).length,
@@ -159,12 +192,13 @@ export function NotificationsProvider({
       items,
       unreadCount,
       loading,
+      error,
       refresh,
       markAsRead,
       markAllAsRead,
       deleteNotification,
     }),
-    [items, unreadCount, loading, refresh, markAsRead, markAllAsRead, deleteNotification],
+    [items, unreadCount, loading, error, refresh, markAsRead, markAllAsRead, deleteNotification],
   )
 
   return (

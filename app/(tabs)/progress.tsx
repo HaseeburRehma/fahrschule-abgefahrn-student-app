@@ -31,11 +31,14 @@ import {
 import { useTranslation } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
 import { updateMyProfile } from '@/lib/data'
+import { useRequestGuard } from '@/lib/use-request-guard'
 
 const AMBER = '#FFC83D'
 const AMBER_BG = '#2A2410'
 const AMBER_LINE = '#3A3410'
 const NODE = 42
+/** Sanity cap for the self-reported lesson counter. */
+const MAX_LESSONS = 999
 const ROW_GAP = 20
 const GREEN_GLOW = {
   shadowColor: C.brand,
@@ -67,23 +70,32 @@ export default function ProgressScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [sheet, setSheet] = useState(false)
   const [lessons, setLessons] = useState<number | null>(null)
+  const [savingLessons, setSavingLessons] = useState(false)
+  const savingLessonsRef = useRef(false)
   const loadedOnce = useRef(false)
+  const guard = useRequestGuard()
 
-  const load = useCallback(async () => {
+  /** Resolves to false when the request failed (pull-to-refresh shows a toast). */
+  const load = useCallback(async (): Promise<boolean> => {
+    const req = guard.begin()
     if (!uid) {
       setLoading(false)
-      return
+      return true
     }
     try {
-      setTheory(await loadTheoryCounts(uid))
+      const counts = await loadTheoryCounts(uid)
+      if (!guard.isCurrent(req)) return true
+      setTheory(counts)
       setError(false)
       loadedOnce.current = true
+      return true
     } catch {
-      if (!loadedOnce.current) setError(true)
+      if (guard.isCurrent(req) && !loadedOnce.current) setError(true)
+      return false
     } finally {
-      setLoading(false)
+      if (guard.isCurrent(req)) setLoading(false)
     }
-  }, [uid])
+  }, [uid, guard])
 
   useFocusEffect(
     useCallback(() => {
@@ -94,11 +106,12 @@ export default function ProgressScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
     try {
-      await Promise.all([load(), refreshProfile().catch(() => {})])
+      const [ok] = await Promise.all([load(), refreshProfile().catch(() => {})])
+      if (!ok) toast.show(t('ds.error.refresh'), 'error')
     } finally {
-      setRefreshing(false)
+      if (guard.isMounted()) setRefreshing(false)
     }
-  }, [load, refreshProfile])
+  }, [load, refreshProfile, toast, t, guard])
 
   const journey = useMemo(() => {
     const p = profile && lessons !== null ? { ...profile, driving_lessons_count: lessons } : profile
@@ -108,19 +121,26 @@ export default function ProgressScreen() {
   /** Students log their own driving lessons (kept from the previous progress screen). */
   const saveLessons = useCallback(
     async (next: number) => {
-      if (!uid) return
-      const v = Math.max(0, next)
+      // One write at a time: overlapping absolute writes could land out of order.
+      if (!uid || savingLessonsRef.current) return
+      const v = Math.min(MAX_LESSONS, Math.max(0, Math.floor(next)))
+      savingLessonsRef.current = true
+      setSavingLessons(true)
       setLessons(v)
       try {
         await updateMyProfile(uid, { driving_lessons_count: v })
         await refreshProfile()
-        setLessons(null)
       } catch {
-        setLessons(null)
         toast.show(t('ds.error.save'), 'error')
+      } finally {
+        savingLessonsRef.current = false
+        if (guard.isMounted()) {
+          setLessons(null)
+          setSavingLessons(false)
+        }
       }
     },
-    [uid, refreshProfile, toast, t],
+    [uid, refreshProfile, toast, t, guard],
   )
 
   if (loading || error) {
@@ -158,8 +178,8 @@ export default function ProgressScreen() {
         <View style={{ flex: 1 }}>
           <HeroTitle line1={t('progress.v2.title1')} line2={t('progress.v2.title2')} variant1="headingXL" />
         </View>
-        <View style={{ backgroundColor: C.surface, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}>
-          <T variant="labelM" color={C.brand}>{t('progress.v2.class', { cls })}</T>
+        <View style={{ backgroundColor: C.surface, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, flexShrink: 0 }}>
+          <T variant="labelM" color={C.brand} numberOfLines={1}>{t('progress.v2.class', { cls: cls.slice(0, 6) })}</T>
         </View>
       </View>
 
@@ -239,13 +259,14 @@ export default function ProgressScreen() {
                       <MiniButton
                         icon={Minus}
                         label={t('progress.v2.lessonsMinus')}
-                        disabled={journey.lessons <= 0}
+                        disabled={journey.lessons <= 0 || savingLessons}
                         onPress={() => saveLessons(journey.lessons - 1)}
                       />
                       <MiniButton
                         icon={Plus}
                         label={t('progress.v2.lessonsPlus')}
                         green
+                        disabled={journey.lessons >= MAX_LESSONS || savingLessons}
                         onPress={() => saveLessons(journey.lessons + 1)}
                       />
                     </View>
@@ -383,9 +404,10 @@ function MiniButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      hitSlop={6}
+      hitSlop={8}
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
       style={({ pressed }) => ({
         width: 28,
         height: 28,

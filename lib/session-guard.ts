@@ -7,32 +7,33 @@
 import { useEffect, useRef } from 'react'
 import { useRouter, useSegments } from 'expo-router'
 import { getSupabase } from '@/lib/supabase/client'
+import { PUBLIC_ROUTES } from '@/lib/auth/flow'
 
 const AUTH_ROOT_SEGMENT = '(auth)'
 
 export function useSessionGuard() {
   const router = useRouter()
-  const segments = useSegments()
-  const initialised = useRef(false)
+  const segments = useSegments() as string[]
+  // Read the current route through a ref so the auth listener is registered once,
+  // not re-subscribed on every navigation.
+  const segRef = useRef(segments)
+  segRef.current = segments
 
   useEffect(() => {
     const supabase = getSupabase()
-    const { data: sub } = supabase.auth.onAuthStateChange((event, _session) => {
-      const inAuthArea = segments[0] === AUTH_ROOT_SEGMENT
-      if (!initialised.current) {
-        initialised.current = true
-        return
-      }
-      if (event === 'SIGNED_OUT' && !inAuthArea) {
-        router.replace('/(auth)/login' as any)
-      }
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== 'SIGNED_OUT') return
+      const first = segRef.current[0] ?? ''
+      if (first === AUTH_ROOT_SEGMENT || PUBLIC_ROUTES.includes(first)) return
+      // Defer: never navigate from inside supabase's auth callback (it holds the auth lock).
+      setTimeout(() => router.replace('/(auth)/login' as any), 0)
     })
     return () => {
       try {
         sub.subscription.unsubscribe()
       } catch {}
     }
-  }, [router, segments])
+  }, [router])
 }
 
 export function isSessionExpiredError(err: any): boolean {

@@ -96,7 +96,7 @@ const DE_DAY = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
 /** "Di, 6. Okt" / "Tue, Oct 6" */
 export function shortDate(iso: string, locale: Locale): string {
   const d = new Date(iso)
-  if (isNaN(d.getTime())) return iso
+  if (!iso || isNaN(d.getTime())) return ''
   if (locale === 'de') return `${DE_DAY[d.getDay()]}, ${d.getDate()}. ${DE_MON[d.getMonth()]}`
   return format(d, 'EEE, MMM d', { locale: enUS })
 }
@@ -104,7 +104,7 @@ export function shortDate(iso: string, locale: Locale): string {
 /** "Di, 6. Oktober 2026" / "Tue, 6 October 2026" */
 export function longDate(iso: string, locale: Locale): string {
   const d = new Date(iso)
-  if (isNaN(d.getTime())) return iso
+  if (!iso || isNaN(d.getTime())) return ''
   if (locale === 'de') return `${DE_DAY[d.getDay()]}, ${format(d, 'd. MMMM yyyy', { locale: deLocale })}`
   return format(d, 'EEE, d MMMM yyyy', { locale: enUS })
 }
@@ -112,7 +112,7 @@ export function longDate(iso: string, locale: Locale): string {
 /** "14:00" */
 export function hm(iso: string): string {
   const d = new Date(iso)
-  if (isNaN(d.getTime())) return iso
+  if (!iso || isNaN(d.getTime())) return ''
   return format(d, 'HH:mm')
 }
 
@@ -130,6 +130,7 @@ export function monthYear(d: Date, locale: Locale): string {
 /** Local YYYY-MM-DD key for grouping slots per day. */
 export function dayKey(iso: string | Date): string {
   const d = typeof iso === 'string' ? new Date(iso) : iso
+  if (isNaN(d.getTime())) return 'invalid'
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${d.getFullYear()}-${m}-${day}`
@@ -143,13 +144,42 @@ export function timeRange(
 ): string {
   const uhr = t('appointment.v2.uhr')
   const suffix = uhr ? ` ${uhr}` : ''
-  if (!endIso) return `${hm(startIso)}${suffix}`
-  const mins = Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60000)
-  const base = `${hm(startIso)} – ${hm(endIso)}${suffix}`
+  const start = hm(startIso)
+  if (!start) return ''
+  const end = endIso ? hm(endIso) : ''
+  if (!end) return `${start}${suffix}`
+  const mins = Math.round((new Date(endIso as string).getTime() - new Date(startIso).getTime()) / 60000)
+  const base = `${start} – ${end}${suffix}`
   return mins > 0 ? `${base}  ·  ${mins} ${t('appointment.v2.min')}` : base
 }
 
 /** End (or start) of an event — what decides upcoming vs. past. */
 export function endTime(e: { starts_at: string; ends_at?: string | null }): number {
   return new Date(e.ends_at ?? e.starts_at).getTime()
+}
+
+/* ------------------------------------------------------------------ errors */
+
+/**
+ * Friendly i18n key for a failed appointment write (book / cancel). Server rules:
+ *  - `slot_full`       availability slot already booked (trigger)
+ *  - `starts_in_past`  requested start time is in the past (trigger)
+ *  - RLS / permission  students may only cancel, never edit or delete confirmed lessons
+ */
+export function appointmentErrorKey(e: any): string {
+  const text = `${e?.message ?? ''} ${e?.details ?? ''} ${e?.hint ?? ''}`.toLowerCase()
+  const code = String(e?.code ?? '')
+  if (text.includes('slot_full')) return 'booking.v2.slotFull'
+  if (text.includes('starts_in_past')) return 'booking.v2.inPast'
+  if (
+    code === '42501' ||
+    code === 'PGRST116' || // update matched no row the student may change
+    text.includes('row-level security') ||
+    text.includes('permission denied') ||
+    text.includes('not allowed')
+  )
+    return 'appointment.v2.notAllowed'
+  if (/network|failed to fetch|fetch failed|timeout|timed out|offline|load failed/.test(`${e?.name ?? ''} ${text}`.toLowerCase()))
+    return 'schedule.v2.offline'
+  return 'schedule.v2.error'
 }

@@ -59,7 +59,11 @@ Deno.serve(async (req) => {
   const first = String(body.first_name ?? '').trim().slice(0, 60)
   const last = String(body.last_name ?? '').trim().slice(0, 60)
   const locale = body.locale === 'en' ? 'en' : 'de'
-  if (!email.includes('@') || password.length < 8 || !first) return json({ error: 'invalid_input' }, 400)
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || !first) return json({ error: 'invalid_input' }, 400)
+  // same policy as Auth (password_required_characters): ≥ 8, at least one letter and one digit
+  if (password.length < 8 || password.length > 72 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    return json({ error: 'weak_password' }, 400)
+  }
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 

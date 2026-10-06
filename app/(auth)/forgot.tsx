@@ -3,7 +3,7 @@
  * Sends a Supabase recovery mail whose link opens /reset-password (web) or abgefahrn://reset-password.
  */
 
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { router, useLocalSearchParams } from 'expo-router'
 import { EnvelopeSimple } from 'phosphor-react-native/src/icons/EnvelopeSimple'
 import { PaperPlaneTilt } from 'phosphor-react-native/src/icons/PaperPlaneTilt'
@@ -20,15 +20,18 @@ const PlaneFill = withWeight(PaperPlaneTilt, 'fill')
 export default function Forgot() {
   const t = useT()
   const params = useLocalSearchParams<{ email?: string }>()
-  const [email, setEmail] = useState(typeof params.email === 'string' ? params.email : '')
+  const [email, setEmail] = useState(typeof params.email === 'string' ? params.email.slice(0, 254) : '')
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const busyRef = useRef(false)
 
   async function submit() {
+    if (busyRef.current) return
     setErr(null)
     const clean = email.trim().toLowerCase()
     if (!clean) return setErr(t('auth.val.emailRequired'))
     if (!EMAIL_RE.test(clean)) return setErr(t('auth.val.emailInvalid'))
+    busyRef.current = true
     setBusy(true)
     try {
       await sendRecoveryMail(clean)
@@ -36,6 +39,7 @@ export default function Forgot() {
     } catch (e) {
       setErr(t(passwordErrorKey(classifyPasswordError(e))))
     } finally {
+      busyRef.current = false
       setBusy(false)
     }
   }
@@ -71,6 +75,7 @@ export default function Forgot() {
         autoCapitalize="none"
         autoCorrect={false}
         autoComplete="email"
+        maxLength={254}
         textContentType="emailAddress"
         keyboardType="email-address"
         inputMode="email"

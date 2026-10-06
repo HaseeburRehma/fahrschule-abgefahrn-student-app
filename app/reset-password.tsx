@@ -19,9 +19,18 @@ import { AuthTitle, Spacer } from '@/components/auth/ui'
 import { getSupabase } from '@/lib/supabase/client'
 import { classifyPasswordError, passwordErrorKey } from '@/lib/auth/errors'
 import { parseAuthParams } from '@/lib/auth/recovery'
+import { PASSWORD_MAX, passwordIssue, passwordIssueKey } from '@/lib/auth/password'
+import { TimeoutError, withTimeout } from '@/lib/async'
+import { useUser } from '@/lib/user-context'
 import { useT } from '@/lib/i18n'
 
 type Phase = 'checking' | 'ready' | 'invalid'
+
+/** True when the URL carries recovery credentials (the session comes from the mail link). */
+function isRecoveryLink(url: string | null): boolean {
+  const p = parseAuthParams(url)
+  return !!(p.access_token || p.code || p.type === 'recovery')
+}
 
 async function establishSession(url: string | null): Promise<boolean> {
   const auth = getSupabase().auth
@@ -55,6 +64,11 @@ export default function ResetPassword() {
   const [busy, setBusy] = useState(false)
   const handled = useRef<string | null>(null)
   const confirmRef = useRef<TextInput>(null)
+  const busyRef = useRef(false)
+  const { signOut } = useUser()
+  /** The recovery link signed the user in: leaving without a new password must sign out again. */
+  const fromLink = useRef(false)
+  const saved = useRef(false)
 
   useEffect(() => {
     let alive = true
@@ -67,6 +81,7 @@ export default function ResetPassword() {
       const key = url ?? '(none)'
       if (!alive || handled.current === key) return
       handled.current = key
+      if (isRecoveryLink(url)) fromLink.current = true
       setPhase('checking')
       // Never spin forever (bad link, offline, …).
       timer = setTimeout(() => alive && setPhase((ph) => (ph === 'checking' ? 'invalid' : ph)), 10000)
@@ -86,24 +101,47 @@ export default function ResetPassword() {
   }, [linkUrl])
 
   async function save() {
+    if (busyRef.current) return
     setPwErr(null)
     setConfirmErr(null)
-    if (password.length < 8) return setPwErr(t(password ? 'auth.val.passwordShort' : 'auth.val.passwordRequired'))
+    const issue = passwordIssue(password)
+    if (issue) return setPwErr(t(passwordIssueKey(issue)))
     if (confirm !== password) return setConfirmErr(t('auth.val.passwordMismatch'))
+    busyRef.current = true
     setBusy(true)
     try {
-      const { error } = await getSupabase().auth.updateUser({ password })
+      const { error } = await withTimeout(getSupabase().auth.updateUser({ password }), 20_000)
       if (error) throw error
+      saved.current = true
       toast.show(t('auth.reset.saved'), 'success')
       router.replace('/home' as any)
     } catch (e) {
-      setPwErr(t(passwordErrorKey(classifyPasswordError(e))))
+      setPwErr(t(passwordErrorKey(e instanceof TimeoutError ? 'network' : classifyPasswordError(e))))
     } finally {
+      busyRef.current = false
       setBusy(false)
     }
   }
 
-  const back = () => (router.canGoBack() ? router.back() : router.replace('/(auth)/login' as any))
+  // Leaving the screen (back / tab close) after a recovery link without saving would
+  // leave a half-signed-in recovery session behind — end it so the next start is clean.
+  useEffect(
+    () => () => {
+      if (fromLink.current && !saved.current) signOut().catch(() => {})
+    },
+    [signOut],
+  )
+
+  const back = async () => {
+    if (fromLink.current && !saved.current) {
+      fromLink.current = false // the unmount cleanup must not sign out twice
+      await signOut().catch(() => {})
+      router.replace('/(auth)/login' as any)
+      return
+    }
+    if (router.canGoBack()) router.back()
+    else router.replace('/(auth)/login' as any)
+  }
 
   if (phase !== 'ready') {
     return (
@@ -150,6 +188,8 @@ export default function ResetPassword() {
             if (pwErr) setPwErr(null)
           }}
           error={pwErr ?? undefined}
+          hint={t('auth.field.passwordHint')}
+          maxLength={PASSWORD_MAX}
           secureTextEntry
           autoCapitalize="none"
           autoCorrect={false}
@@ -170,6 +210,7 @@ export default function ResetPassword() {
             if (confirmErr) setConfirmErr(null)
           }}
           error={confirmErr ?? undefined}
+          maxLength={PASSWORD_MAX}
           secureTextEntry
           autoCapitalize="none"
           autoCorrect={false}

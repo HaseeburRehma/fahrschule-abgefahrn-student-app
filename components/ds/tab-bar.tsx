@@ -48,13 +48,16 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
                 const e = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true })
                 if (!active && !e.defaultPrevented) navigation.navigate(route.name as never)
               }}
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 5 }}
+              style={{ flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center', gap: 5 }}
             >
               <View style={{ width: 22, height: 3, borderRadius: 2, backgroundColor: active ? C.brand : 'transparent' }} />
               <View style={active ? { ...GLOW.tile, shadowOpacity: 0.55, shadowRadius: 9, elevation: 0 } : null}>
                 <Icon size={26} color={color} weight={active ? 'fill' : 'regular'} />
               </View>
-              <T variant="nav" color={color} numberOfLines={1}>{t(item.label)}</T>
+              {/* "Fortschritt" is wider than a 320pt-wide tab slot — shrink instead of "Fortsch…" */}
+              <T variant="nav" color={color} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={{ maxWidth: '100%' }}>
+                {t(item.label)}
+              </T>
             </Pressable>
           )
         })}

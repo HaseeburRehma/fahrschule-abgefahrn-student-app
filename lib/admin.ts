@@ -119,7 +119,20 @@ export async function updateStudent(
   patch: Partial<
     Pick<
       Profile,
-      'first_name' | 'last_name' | 'phone' | 'is_active' | 'current_theory_topic_id'
+      | 'first_name'
+      | 'last_name'
+      | 'phone'
+      | 'is_active'
+      | 'current_theory_topic_id'
+      | 'driving_lessons_count'
+      | 'drive_autobahn'
+      | 'drive_night'
+      | 'drive_overland'
+      | 'theory_exam_date'
+      | 'practical_exam_date'
+      | 'theory_passed'
+      | 'practical_passed'
+      | 'license_class'
     >
   >,
 ): Promise<void> {
@@ -382,4 +395,35 @@ export async function setIntakeStatus(
     .update({ status })
     .eq('id', id)
   if (error) throw error
+}
+
+// ── app settings (admin-only via RLS) ───────────────────────────────────────
+export const LICENSE_CLASSES = ['B', 'BE', 'A', 'A1', 'A2', 'AM', 'B196', 'B197'] as const
+
+/** 4–20 chars, A–Z / 0–9 / '-'. Input is trimmed + uppercased first. */
+export function normalizeSignupCode(input: string): string | null {
+  const code = input.trim().toUpperCase()
+  return /^[A-Z0-9-]{4,20}$/.test(code) ? code : null
+}
+
+/** Current school sign-up code students must enter to register (null if unset). */
+export async function fetchSignupCode(): Promise<string | null> {
+  const { data, error } = await getSupabase()
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'signup_code')
+    .maybeSingle()
+  if (error) throw error
+  return (data as { value: string } | null)?.value ?? null
+}
+
+/** Stores a new sign-up code (validated + uppercased). Returns the stored value. */
+export async function setSignupCode(input: string): Promise<string> {
+  const code = normalizeSignupCode(input)
+  if (!code) throw new Error('invalid_code')
+  const { error } = await getSupabase()
+    .from('app_settings')
+    .upsert({ key: 'signup_code', value: code, updated_at: new Date().toISOString() })
+  if (error) throw error
+  return code
 }

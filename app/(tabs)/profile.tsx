@@ -4,7 +4,7 @@
  * lock, admin entry, delete account, sign out, app version.
  */
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Platform, Pressable, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import Constants from 'expo-constants'
@@ -55,6 +55,30 @@ export default function ProfileScreen() {
   const [reminders, setReminders] = useState(true)
   const [bioAvailable, setBioAvailable] = useState(false)
   const [bioEnabled, setBioEnabled] = useState(false)
+  /** which setting is being written (toggles are disabled meanwhile — no overlapping writes) */
+  const [busyToggle, setBusyToggle] = useState<'push' | 'reminders' | 'bio' | null>(null)
+  const busyRef = useRef(false)
+  const alive = useRef(true)
+  useEffect(() => {
+    alive.current = true
+    return () => {
+      alive.current = false
+    }
+  }, [])
+
+  async function runToggle(key: 'push' | 'reminders' | 'bio', fn: () => Promise<void>) {
+    if (busyRef.current) return
+    busyRef.current = true
+    setBusyToggle(key)
+    try {
+      await fn()
+    } catch {
+      toast.show(t('ds.error.save'), 'error')
+    } finally {
+      busyRef.current = false
+      if (alive.current) setBusyToggle(null)
+    }
+  }
 
   useEffect(() => {
     let alive = true
@@ -83,47 +107,63 @@ export default function ProfileScreen() {
     }
   }, [])
 
-  async function togglePush(next: boolean) {
-    setPush(next)
-    const effective = await setPushEnabled(uid, next)
-    setPush(effective)
-    if (next && !effective) toast.show(t('profile.v2.pushDenied'), 'error')
+  function togglePush(next: boolean) {
+    return runToggle('push', async () => {
+      setPush(next)
+      try {
+        const effective = await setPushEnabled(uid, next)
+        if (alive.current) setPush(effective)
+        if (next && !effective) toast.show(t('profile.v2.pushDenied'), 'error')
+      } catch (e) {
+        if (alive.current) setPush(!next)
+        throw e
+      }
+    })
   }
 
-  async function toggleReminders(next: boolean) {
-    setReminders(next)
-    await setRemindersEnabled(next)
+  function toggleReminders(next: boolean) {
+    return runToggle('reminders', async () => {
+      setReminders(next)
+      await setRemindersEnabled(next)
+    })
   }
 
-  async function toggleBiometric(next: boolean) {
-    if (next) {
-      const ok = await authenticate('Fahrschule Abgefahrn')
-      if (!ok) return
-    }
-    await setBiometricEnabled(next)
-    setBioEnabled(next)
+  function toggleBiometric(next: boolean) {
+    return runToggle('bio', async () => {
+      if (next) {
+        const ok = await authenticate('Fahrschule Abgefahrn')
+        if (!ok) return
+      }
+      await setBiometricEnabled(next)
+      if (alive.current) setBioEnabled(next)
+    })
   }
 
   async function confirmLogout() {
+    if (loggingOut) return
     setLoggingOut(true)
     try {
       await signOut()
     } finally {
-      setLoggingOut(false)
-      setLogoutOpen(false)
+      if (alive.current) {
+        setLoggingOut(false)
+        setLogoutOpen(false)
+      }
     }
   }
 
   async function confirmDelete() {
+    if (deleting) return
     setDeleting(true)
     try {
       await deleteMyAccount()
       setDeleteOpen(false)
       await signOut()
-    } catch (e: any) {
-      toast.show(e?.message || t('profile.v2.delete.error'), 'error')
+    } catch {
+      // raw server/edge-function messages are not user-facing — show the localized one
+      toast.show(t('profile.v2.delete.error'), 'error')
     } finally {
-      setDeleting(false)
+      if (alive.current) setDeleting(false)
     }
   }
 
@@ -171,13 +211,13 @@ export default function ProfileScreen() {
         >
           <T variant="headingL" color={C.onBrand}>{initialOf(profile?.first_name || name)}</T>
         </View>
-        <View style={{ flex: 1, gap: 4, alignItems: 'flex-start' }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 4, alignItems: 'flex-start' }}>
           <T variant="headingM" numberOfLines={1}>{name}</T>
           {profile?.email ? (
             <T variant="bodyS" color={C.muted} numberOfLines={1}>{profile.email}</T>
           ) : null}
           <View style={{ backgroundColor: C.tile, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
-            <T variant="labelM" color={C.brand}>{roleLabel}</T>
+            <T variant="labelM" color={C.brand} numberOfLines={1}>{roleLabel}</T>
           </View>
         </View>
         <CaretRight size={22} color={C.dim} />
@@ -198,17 +238,17 @@ export default function ProfileScreen() {
           value={locale === 'de' ? t('profile.v2.lang.valueDe') : t('profile.v2.lang.valueEn')}
           onPress={() => setLangOpen(true)}
         />
-        <ListRow icon={Bell} title={t('profile.v2.push')} right={<Toggle value={push} onChange={togglePush} />} />
+        <ListRow icon={Bell} title={t('profile.v2.push')} right={<Toggle value={push} onChange={togglePush} disabled={busyToggle !== null} accessibilityLabel={t('profile.v2.push')} />} />
         <ListRow
           icon={ClockCountdown}
           title={t('profile.v2.reminders')}
-          right={<Toggle value={reminders} onChange={toggleReminders} />}
+          right={<Toggle value={reminders} onChange={toggleReminders} disabled={busyToggle !== null} accessibilityLabel={t('profile.v2.reminders')} />}
         />
         {bioAvailable ? (
           <ListRow
             icon={Fingerprint}
             title={t('profile.v2.biometric')}
-            right={<Toggle value={bioEnabled} onChange={toggleBiometric} />}
+            right={<Toggle value={bioEnabled} onChange={toggleBiometric} disabled={busyToggle !== null} accessibilityLabel={t('profile.v2.biometric')} />}
           />
         ) : null}
       </ListGroup>

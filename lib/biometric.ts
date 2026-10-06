@@ -24,10 +24,25 @@ export async function getBiometricEnabled(): Promise<boolean> {
   }
 }
 
+const listeners = new Set<(v: boolean) => void>()
+
+/** Notified whenever the preference changes (BiometricGate reacts without an app restart). */
+export function subscribeBiometricEnabled(fn: (v: boolean) => void): () => void {
+  listeners.add(fn)
+  return () => {
+    listeners.delete(fn)
+  }
+}
+
 export async function setBiometricEnabled(v: boolean): Promise<void> {
   try {
     await AsyncStorage.setItem(KEY, v ? '1' : '0')
   } catch {}
+  listeners.forEach((fn) => {
+    try {
+      fn(v)
+    } catch {}
+  })
 }
 
 export async function authenticate(reason: string): Promise<boolean> {

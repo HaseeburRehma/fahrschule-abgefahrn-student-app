@@ -8,7 +8,7 @@
  * Query params: `type=special` preselects Sonderfahrt, `kind=autobahn|night|overland` the kind.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, ScrollView, View, useWindowDimensions } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
@@ -33,6 +33,7 @@ import {
 import { RequestSentSheet } from '@/components/schedule/request-sent-sheet'
 import {
   SPECIAL_KINDS,
+  appointmentErrorKey,
   dayKey,
   hm,
   lessonIcon,
@@ -45,6 +46,9 @@ import { useTranslation } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
 import { fetchAvailableSlots, type SlotWithCount } from '@/lib/availability'
 import { createAppointment } from '@/lib/appointments'
+import { useRequestGuard } from '@/lib/use-request-guard'
+
+const NOTE_MAX = 500
 
 type Mode = 'lesson' | 'special'
 const KIND_ICON: Record<SpecialKind, PhosphorIcon> = { autobahn: RoadHorizon, night: Moon, overland: RoadHorizon }
@@ -67,24 +71,29 @@ export default function Booking() {
   const [pick, setPick] = useState<string | null>(null)
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
+  const busyRef = useRef(false)
+  const guard = useRequestGuard()
   // content width: window (capped by the 672px web column) minus the 20px gutters
   const { width: winW } = useWindowDimensions()
   const width = Math.min(winW, 672) - 40
   const [sent, setSent] = useState<{ title: string; when: string; confirmed: boolean; icon: PhosphorIcon } | null>(null)
 
   const load = useCallback(async () => {
+    const req = guard.begin()
     try {
       const s = await fetchAvailableSlots()
-      setSlots(s)
+      if (!guard.isCurrent(req)) return
+      setSlots(s.filter((x) => x?.id && !isNaN(new Date(x.starts_at).getTime())))
       setNetError(false)
     } catch (e: any) {
+      if (!guard.isCurrent(req)) return
       // Only a real network failure blocks the screen; anything else → free request mode.
       setSlots([])
       setNetError(isNetworkError(e))
     } finally {
-      setLoading(false)
+      if (guard.isCurrent(req)) setLoading(false)
     }
-  }, [])
+  }, [guard])
 
   useEffect(() => {
     load()
@@ -149,7 +158,8 @@ export default function Booking() {
   const timeChipW = width ? (width - 2 * 10) / 3 : 0
 
   async function send() {
-    if (!uid || !picked || !selectedDay) return
+    if (!uid || !picked || !selectedDay || busyRef.current) return
+    busyRef.current = true
     setBusy(true)
     const title = mode === 'special' ? t(`schedule.v2.type.${kind}`) : t('booking.v2.type.lesson')
     const lesson_type = mode === 'special' ? kind : 'regular'
@@ -158,24 +168,27 @@ export default function Booking() {
       if (slotMode) {
         const slot = slots.find((s) => s.id === picked.key)
         if (!slot) return
+        if (new Date(slot.starts_at).getTime() <= Date.now()) throw new Error('starts_in_past')
         created = await createAppointment({
           studentId: uid,
           title,
           starts_at: slot.starts_at,
           ends_at: slot.ends_at,
-          note: note.trim() || null,
+          note: note.trim().slice(0, NOTE_MAX) || null,
           slot_id: slot.id,
           lesson_type,
         })
       } else {
         // Free request: no slot_id → DB trigger keeps it 'requested' for the school to confirm.
         const start = atTime(selectedDay, picked.key)
+        // the chip may have been picked minutes ago — the DB rejects past starts ('starts_in_past')
+        if (start.getTime() <= Date.now()) throw new Error('starts_in_past')
         created = await createAppointment({
           studentId: uid,
           title,
           starts_at: start.toISOString(),
           ends_at: new Date(start.getTime() + REQUEST_DURATION_MIN * 60_000).toISOString(),
-          note: note.trim() || null,
+          note: note.trim().slice(0, NOTE_MAX) || null,
           lesson_type,
         })
       }
@@ -186,14 +199,17 @@ export default function Booking() {
         icon: mode === 'special' ? lessonIcon(kind) : SteeringWheel,
       })
     } catch (e: any) {
-      const full = /slot_full/i.test(String(e?.message ?? ''))
-      toast.show(full ? t('booking.v2.slotFull') : t('schedule.v2.error'), 'error')
-      if (full) {
-        setPick(null)
-        load()
+      const key = appointmentErrorKey(e)
+      if (guard.isMounted()) {
+        toast.show(t(key), 'error')
+        if (key === 'booking.v2.slotFull' || key === 'booking.v2.inPast') {
+          setPick(null)
+          load()
+        }
       }
     } finally {
-      setBusy(false)
+      busyRef.current = false
+      if (guard.isMounted()) setBusy(false)
     }
   }
 
@@ -326,7 +342,8 @@ export default function Booking() {
               onChangeText={setNote}
               placeholder={t('booking.v2.notePlaceholder')}
               multiline
-              maxLength={500}
+              maxLength={NOTE_MAX}
+              accessibilityLabel={t('booking.v2.note')}
             />
           </View>
         </View>
@@ -401,7 +418,7 @@ function TypeChip({ icon: Icon, label, selected, onPress }: { icon: PhosphorIcon
       ]}
     >
       <Icon size={20} color={fg} />
-      <T variant="labelL" color={fg} numberOfLines={1}>{label}</T>
+      <T variant="labelL" color={fg} numberOfLines={1} style={{ flexShrink: 1 }}>{label}</T>
     </Pressable>
   )
 }
@@ -427,6 +444,7 @@ function DateChip({
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
+      accessibilityLabel={`${weekday} ${day}`}
       accessibilityState={{ selected, disabled }}
       style={({ pressed }) => [
         {

@@ -1,10 +1,11 @@
-import React from 'react'
-import { Pressable, Text, View } from 'react-native'
+import React, { useMemo, useState } from 'react'
+import { Pressable, Text, TextInput, View } from 'react-native'
 import { Check } from 'lucide-react-native'
 
 import { useTranslation } from '@/lib/i18n'
 import { formatPrice } from '@/lib/format'
-import type { Package, TheoryTopic } from '@/lib/types'
+import { displayName } from '@/lib/data'
+import type { Package, Profile, TheoryTopic } from '@/lib/types'
 
 export function PackagePicker({
   packages,
@@ -96,6 +97,124 @@ export function TopicPicker({
           </Pressable>
         )
       })}
+    </View>
+  )
+}
+
+/** Single-select chip row (same look as TopicPicker). */
+export function ChipSelect<V extends string>({
+  options,
+  selected,
+  onSelect,
+  disabled,
+}: {
+  options: { value: V; label: string }[]
+  selected: V | null
+  onSelect: (v: V) => void
+  disabled?: boolean
+}) {
+  return (
+    <View className="flex-row flex-wrap gap-2">
+      {options.map((o) => {
+        const on = o.value === selected
+        return (
+          <Pressable
+            key={o.value}
+            onPress={() => onSelect(o.value)}
+            disabled={disabled}
+            className={`rounded-full border px-3 py-2 ${
+              on ? 'border-brand bg-brand' : 'border-neutral-800 bg-neutral-900'
+            } ${disabled ? 'opacity-50' : ''}`}
+          >
+            <Text
+              className={`text-xs font-semibold ${
+                on ? 'text-ink' : 'text-neutral-300'
+              }`}
+            >
+              {o.label}
+            </Text>
+          </Pressable>
+        )
+      })}
+    </View>
+  )
+}
+
+/**
+ * Student search picker. With `allLabel`, a leading chip selects `null`
+ * (e.g. "Für alle Fahrschüler"); otherwise tapping the selected chip clears it.
+ */
+export function StudentPicker({
+  students,
+  selected,
+  onSelect,
+  placeholder,
+  allLabel,
+  disabled,
+}: {
+  students: Profile[]
+  selected: string | null
+  onSelect: (id: string | null) => void
+  placeholder: string
+  allLabel?: string
+  disabled?: boolean
+}) {
+  const [query, setQuery] = useState('')
+  const current = students.find((s) => s.id === selected) ?? null
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    const list = students.filter((s) => s.id !== selected)
+    return (q
+      ? list.filter((s) => `${displayName(s)} ${s.email ?? ''}`.toLowerCase().includes(q))
+      : list
+    ).slice(0, 6)
+  }, [query, students, selected])
+
+  const chip = (key: string, label: string, on: boolean, onPress: () => void) => (
+    <Pressable
+      key={key}
+      onPress={onPress}
+      disabled={disabled}
+      className={`rounded-full border px-3 py-2 ${
+        on ? 'border-brand bg-brand' : 'border-neutral-800 bg-neutral-900'
+      } ${disabled ? 'opacity-50' : ''}`}
+    >
+      <Text className={`text-xs font-semibold ${on ? 'text-ink' : 'text-neutral-300'}`}>
+        {label}
+      </Text>
+    </Pressable>
+  )
+
+  return (
+    <View className="gap-2">
+      <View className="flex-row flex-wrap gap-2">
+        {allLabel ? chip('__all', allLabel, selected === null, () => onSelect(null)) : null}
+        {current
+          ? chip(current.id, allLabel ? displayName(current) : `${displayName(current)} ✕`, true, () =>
+              allLabel ? undefined : onSelect(null),
+            )
+          : null}
+      </View>
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        placeholder={placeholder}
+        placeholderTextColor="#A3A3A3"
+        autoCapitalize="none"
+        autoCorrect={false}
+        editable={!disabled}
+        className="w-full rounded-2xl border border-neutral-700 bg-neutral-900 px-4 py-3 text-base text-neutral-100"
+      />
+      {matches.length ? (
+        <View className="flex-row flex-wrap gap-2">
+          {matches.map((s) =>
+            chip(s.id, displayName(s), false, () => {
+              onSelect(s.id)
+              setQuery('')
+            }),
+          )}
+        </View>
+      ) : null}
     </View>
   )
 }

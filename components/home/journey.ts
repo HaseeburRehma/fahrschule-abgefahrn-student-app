@@ -39,11 +39,12 @@ export const DEFAULT_THEORY_TOTAL = 14
 
 export function computeJourney(profile: Profile | null, theoryDone: number, theoryTotal: number): Journey {
   const total = theoryTotal > 0 ? theoryTotal : DEFAULT_THEORY_TOTAL
-  const done = Math.min(theoryDone, total)
+  const done = Math.max(0, Math.min(Number.isFinite(theoryDone) ? theoryDone : 0, total))
   const theoryPassed = profile?.theory_passed === true
   const practicalPassed = profile?.practical_passed === true
   const theoryComplete = done >= total || theoryPassed
-  const lessons = Math.max(0, profile?.driving_lessons_count ?? 0)
+  const rawLessons = Number(profile?.driving_lessons_count ?? 0)
+  const lessons = Number.isFinite(rawLessons) ? Math.max(0, Math.floor(rawLessons)) : 0
   const specialDone = [profile?.drive_autobahn, profile?.drive_night, profile?.drive_overland].filter(Boolean).length
   const theoryExamDate = profile?.theory_exam_date ?? null
   const practicalExamDate = profile?.practical_exam_date ?? null
@@ -94,7 +95,8 @@ export async function loadTheoryCounts(uid: string): Promise<{ done: number; tot
 
 const LOCALES = { de: deLocale, en: enUS }
 
-function parse(iso: string): Date | null {
+function parse(iso: string | null | undefined): Date | null {
+  if (!iso) return null
   // date-only strings ("2026-10-22") are parsed as local dates
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
   const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso)
@@ -104,7 +106,7 @@ function parse(iso: string): Date | null {
 /** Figma short date: "Di, 6. Okt" / "Tue, Oct 6". */
 export function shortDate(iso: string, locale: Locale): string {
   const d = parse(iso)
-  if (!d) return iso
+  if (!d) return ''
   const loc = LOCALES[locale]
   const wd = format(d, 'EEE', { locale: loc }).replace(/\.$/, '')
   const mon = format(d, 'MMM', { locale: loc }).replace(/\.$/, '')
@@ -114,7 +116,7 @@ export function shortDate(iso: string, locale: Locale): string {
 /** Figma long date: "Mi, 22. Okt 2026" / "Wed, Oct 22, 2026". */
 export function longDate(iso: string, locale: Locale): string {
   const d = parse(iso)
-  if (!d) return iso
+  if (!d) return ''
   return locale === 'de' ? `${shortDate(iso, locale)} ${d.getFullYear()}` : `${shortDate(iso, locale)}, ${d.getFullYear()}`
 }
 

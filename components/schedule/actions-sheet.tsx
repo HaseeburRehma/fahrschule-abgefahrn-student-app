@@ -3,7 +3,7 @@
  * Built from DS Sheet + ListGroup/ListRow.
  */
 
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 
 import { ListGroup, ListRow, Sheet, SheetTitle } from '@/components/ds'
@@ -29,6 +29,13 @@ export function ActionsSheet({
   subtitle?: string
   actions: SheetAction[]
 }) {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current)
+    },
+    [],
+  )
   return (
     <Sheet visible={visible} onClose={onClose}>
       <SheetTitle title={title} subtitle={subtitle} />
@@ -41,9 +48,13 @@ export function ActionsSheet({
             danger={a.danger}
             chevron={false}
             onPress={() => {
+              if (timer.current) return // one action per opening (double taps)
               onClose()
               // let the sheet close before navigating / opening another sheet
-              setTimeout(a.onPress, 220)
+              timer.current = setTimeout(() => {
+                timer.current = null
+                a.onPress()
+              }, 220)
             }}
           />
         ))}

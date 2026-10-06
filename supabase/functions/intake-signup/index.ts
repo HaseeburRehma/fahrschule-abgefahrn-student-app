@@ -73,7 +73,9 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
 
   const secret = Deno.env.get('INTAKE_SECRET')
-  if (secret) {
+  // fail closed: without a configured secret the endpoint is disabled
+  if (!secret) return json({ error: 'not_configured' }, 503)
+  {
     const url = new URL(req.url)
     const got =
       req.headers.get('x-intake-secret') ?? url.searchParams.get('secret')

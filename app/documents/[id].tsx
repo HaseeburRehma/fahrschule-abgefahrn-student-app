@@ -4,7 +4,7 @@
  * opens the file in the in-app browser (react-native-web has no <iframe>).
  */
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, Image, Linking, Platform, Pressable, Share, View } from 'react-native'
 import { useLocalSearchParams } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
@@ -51,15 +51,32 @@ export default function DocumentPreview() {
   const [url, setUrl] = useState<string | null>(null)
   const [size, setSize] = useState<number | undefined>(undefined)
   const [state, setState] = useState<'loading' | 'ready' | 'missing' | 'error'>('loading')
+  const [imageFailed, setImageFailed] = useState(false)
+  /** when the signed URL was created — it expires after an hour */
+  const urlAt = useRef(0)
+  const busy = useRef(false)
+  const reqRef = useRef(0)
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const load = useCallback(async () => {
-    if (!id) {
+    const req = ++reqRef.current
+    const current = () => mountedRef.current && req === reqRef.current
+    const docId = Array.isArray(id) ? id[0] : id
+    if (!docId) {
       setState('missing')
       return
     }
     setState('loading')
+    setImageFailed(false)
     try {
-      const d = await fetchDocument(String(id))
+      const d = await fetchDocument(String(docId))
+      if (!current()) return
       if (!d) {
         setState('missing')
         return
@@ -67,13 +84,15 @@ export default function DocumentPreview() {
       setDoc(d)
       const [signed, sizes] = await Promise.all([
         getDocumentUrl(d.path).catch(() => null),
-        fetchDocumentSizes(),
+        fetchDocumentSizes([d.path]),
       ])
+      if (!current()) return
       setUrl(signed)
+      urlAt.current = signed ? Date.now() : 0
       setSize(sizes[d.path])
       setState('ready')
     } catch {
-      setState('error')
+      if (current()) setState('error')
     }
   }, [id])
 
@@ -82,18 +101,33 @@ export default function DocumentPreview() {
   }, [load])
 
   async function freshUrl(): Promise<string | null> {
-    if (url) return url
+    // signed URLs live 3600 s — re-sign after 50 min instead of handing out a dead link
+    if (url && Date.now() - urlAt.current < 50 * 60_000) return url
     if (!doc) return null
     try {
       const u = await getDocumentUrl(doc.path)
-      setUrl(u)
+      if (mountedRef.current) setUrl(u)
+      urlAt.current = Date.now()
       return u
     } catch {
       return null
     }
   }
 
-  async function download() {
+  /** One open/share at a time (a second in-app browser call rejects and would fall back to the system browser). */
+  async function exclusive(fn: () => Promise<void>) {
+    if (busy.current) return
+    busy.current = true
+    try {
+      await fn()
+    } finally {
+      busy.current = false
+    }
+  }
+
+  const download = () => exclusive(openDoc)
+
+  async function openDoc() {
     const u = await freshUrl()
     if (!u) {
       toast.show(t('documents.v2.openError'), 'error')
@@ -102,11 +136,13 @@ export default function DocumentPreview() {
     try {
       await WebBrowser.openBrowserAsync(u)
     } catch {
-      Linking.openURL(u).catch(() => toast.show(t('documents.v2.openError'), 'error'))
+      await Linking.openURL(u).catch(() => toast.show(t('documents.v2.openError'), 'error'))
     }
   }
 
-  async function share() {
+  const share = () => exclusive(shareDoc)
+
+  async function shareDoc() {
     const u = await freshUrl()
     if (!u || !doc) {
       toast.show(t('documents.v2.openError'), 'error')
@@ -116,7 +152,7 @@ export default function DocumentPreview() {
       if (Platform.OS === 'web') {
         const nav: any = typeof navigator !== 'undefined' ? navigator : null
         if (nav?.share) await nav.share({ title: doc.title, url: u })
-        else await download()
+        else await openDoc()
         return
       }
       await Share.share(Platform.OS === 'ios' ? { url: u, title: doc.title } : { message: `${doc.title}\n${u}`, title: doc.title })
@@ -196,7 +232,7 @@ export default function DocumentPreview() {
       ) : state === 'missing' ? (
         <EmptyState icon={FileX} title={t('documents.v2.notFound')} />
       ) : state === 'error' || !doc ? (
-        <ErrorState onRetry={load} />
+        <ErrorState onRetry={() => load()} />
       ) : (
         <>
           <Pressable
@@ -220,8 +256,14 @@ export default function DocumentPreview() {
               opacity: pressed ? 0.92 : 1,
             })}
           >
-            {kind === 'image' && url ? (
-              <Image source={{ uri: url }} resizeMode="contain" style={{ width: '100%', height: '100%' }} />
+            {kind === 'image' && url && !imageFailed ? (
+              <Image
+                source={{ uri: url }}
+                resizeMode="contain"
+                style={{ width: '100%', height: '100%' }}
+                onError={() => setImageFailed(true)}
+                accessibilityIgnoresInvertColors
+              />
             ) : (
               <PaperPreview title={doc.title} />
             )}

@@ -9,7 +9,8 @@ import { C, T } from '@/components/ds'
 export function ProgressRing({ percent, size = 84, stroke = 8 }: { percent: number; size?: number; stroke?: number }) {
   const r = (size - stroke) / 2
   const circ = 2 * Math.PI * r
-  const p = Math.max(0, Math.min(100, percent)) / 100
+  const pct = Number.isFinite(percent) ? Math.max(0, Math.min(100, percent)) : 0
+  const p = pct / 100
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
@@ -40,14 +41,14 @@ export function ProgressRing({ percent, size = 84, stroke = 8 }: { percent: numb
           </Svg>
         </View>
       ) : null}
-      <T variant="headingL">{`${Math.round(percent)}%`}</T>
+      <T variant={size < 80 ? 'headingM' : 'headingL'}>{`${Math.round(pct)}%`}</T>
     </View>
   )
 }
 
 /** Thin green progress bar (h6 r3, #1C1E1C track, glowing fill) used on Fortschritt. */
 export function ProgressBar({ value, height = 6 }: { value: number; height?: number }) {
-  const v = Math.max(0, Math.min(1, value))
+  const v = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0
   return (
     <View style={{ height, borderRadius: height / 2, backgroundColor: C.surface, alignSelf: 'stretch' }}>
       {v > 0 ? (

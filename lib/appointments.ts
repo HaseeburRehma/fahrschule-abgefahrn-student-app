@@ -84,6 +84,23 @@ export async function cancelAppointment(id: string): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * Student cancel: the only change a student may make to a booked lesson
+ * (RLS forbids edits and deletes of confirmed appointments). Reads the row back
+ * so an RLS-filtered no-op surfaces as an error instead of a silent "success".
+ */
+export async function cancelMyAppointment(id: string): Promise<void> {
+  const { data, error } = await getSupabase()
+    .from('appointments')
+    .update({ status: 'cancelled' })
+    .eq('id', id)
+    .select('id, status')
+  if (error) throw error
+  if (!data || !(data as any[]).length) {
+    throw Object.assign(new Error('not allowed'), { code: '42501' })
+  }
+}
+
 export async function deleteAppointment(id: string): Promise<void> {
   const { error } = await getSupabase().from('appointments').delete().eq('id', id)
   if (error) throw error
@@ -123,4 +140,52 @@ export async function setAppointmentStatus(
     .update({ status })
     .eq('id', id)
   if (error) throw error
+}
+
+// ── admin: lesson details (v2) ───────────────────────────────────────────────
+export const LESSON_TYPES = ['regular', 'autobahn', 'night', 'overland', 'exam_prep'] as const
+export type AppointmentLessonType = (typeof LESSON_TYPES)[number]
+
+/** Fields an admin may set when creating, confirming or editing an appointment. */
+export interface AppointmentDetailsPatch {
+  title?: string
+  starts_at?: string
+  ends_at?: string | null
+  note?: string | null
+  status?: AppointmentStatus
+  instructor_name?: string | null
+  meeting_point?: string | null
+  lesson_type?: AppointmentLessonType | null
+}
+
+/** Admin edit (date/time, lesson details, optionally status) in a single update. */
+export async function updateAppointment(
+  id: string,
+  patch: AppointmentDetailsPatch,
+): Promise<Appointment> {
+  const { data, error } = await getSupabase()
+    .from('appointments')
+    .update(patch)
+    .eq('id', id)
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as Appointment
+}
+
+/** Admin creates an appointment for a student — confirmed right away. */
+export async function adminCreateAppointment(
+  input: { studentId: string; title: string; starts_at: string } & Omit<
+    AppointmentDetailsPatch,
+    'title' | 'starts_at'
+  >,
+): Promise<Appointment> {
+  const { studentId, ...rest } = input
+  const { data, error } = await getSupabase()
+    .from('appointments')
+    .insert({ status: 'confirmed', ...rest, student_id: studentId })
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as Appointment
 }

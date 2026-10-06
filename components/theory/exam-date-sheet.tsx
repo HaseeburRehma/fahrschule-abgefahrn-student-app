@@ -6,7 +6,7 @@
  * (auto-inserted dots, number pad) with calendar-validity checks.
  */
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Keyboard, Platform, TextInput, View } from 'react-native'
 import { CalendarDots } from 'phosphor-react-native/src/icons/CalendarDots'
 import { Info } from 'phosphor-react-native/src/icons/Info'
@@ -42,6 +42,7 @@ export function ExamDateSheet({
   const [error, setError] = useState<string | null>(null)
   const [focused, setFocused] = useState(false)
   const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
 
   useEffect(() => {
     if (visible) {
@@ -51,11 +52,12 @@ export function ExamDateSheet({
   }, [visible, current])
 
   async function persist(iso: string | null) {
-    if (!uid) return
+    if (!uid || savingRef.current) return
     const patch =
       kind === 'theory'
         ? { theory_exam_date: iso, theory_passed: null }
         : { practical_exam_date: iso, practical_passed: null }
+    savingRef.current = true
     setSaving(true)
     try {
       await updateMyProfile(uid, patch)
@@ -66,11 +68,13 @@ export function ExamDateSheet({
     } catch {
       toast.show(t('common.error'), 'error')
     } finally {
+      savingRef.current = false
       setSaving(false)
     }
   }
 
   function save() {
+    if (savingRef.current) return
     // Figma has no separate "remove" control: saving an empty field clears the date.
     if (!value.trim()) {
       if (current) persist(null)
@@ -92,7 +96,7 @@ export function ExamDateSheet({
   const borderColor = error ? C.danger : focused ? C.brand : C.line
 
   return (
-    <Sheet visible={visible} onClose={onClose}>
+    <Sheet visible={visible} onClose={() => !savingRef.current && onClose()} dismissable={!saving}>
       <SheetTitle title={kind === 'theory' ? t('exams.v2.sheet.theory') : t('exams.v2.sheet.practical')} />
 
       <T variant="labelL" color={C.muted}>{t('exams.v2.sheet.date')}</T>

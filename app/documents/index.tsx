@@ -2,7 +2,7 @@
  * Figma "DE/Dokumente" (1288:1563) + "Dokumente Leer" (1305:2516).
  */
 
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Pressable, RefreshControl, View } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
@@ -63,12 +63,14 @@ function DocCard({
         <Icon size={22} color={C.brand} />
       </View>
       <View style={{ flex: 1, gap: 3 }}>
-        <T variant="titleM">{doc.title}</T>
+        <T variant="titleM" numberOfLines={3}>{doc.title || t('documents.v2.file')}</T>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <View style={{ backgroundColor: C.surface, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 }}>
             <T variant="caption" color={C.muted}>{ext}</T>
           </View>
-          <T variant="caption" color={C.dim}>{formatDate(doc.created_at, locale)}</T>
+          {formatDate(doc.created_at, locale) ? (
+            <T variant="caption" color={C.dim}>{formatDate(doc.created_at, locale)}</T>
+          ) : null}
           {typeof size === 'number' ? (
             <T variant="caption" color={C.dim}>{formatFileSize(size, locale)}</T>
           ) : null}
@@ -78,7 +80,7 @@ function DocCard({
         onPress={onDownload}
         hitSlop={6}
         accessibilityRole="button"
-        accessibilityLabel={t('documents.v2.download')}
+        accessibilityLabel={`${t('documents.v2.download')}: ${doc.title}`}
         style={({ pressed }) => ({
           width: 40,
           height: 40,
@@ -149,16 +151,33 @@ export default function DocumentsScreen() {
   const [sizes, setSizes] = useState<Record<string, number>>({})
   const [error, setError] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const reqRef = useRef(0)
+  const mountedRef = useRef(true)
+  const opening = useRef(false)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
-  const load = useCallback(async () => {
+  /** Returns false when the request failed. Stale responses (refocus while loading) are dropped. */
+  const load = useCallback(async (): Promise<boolean> => {
+    const req = ++reqRef.current
     try {
-      const [docs, sz] = await Promise.all([fetchDocuments(), fetchDocumentSizes()])
+      const docs = await fetchDocuments()
+      const sz = await fetchDocumentSizes(docs.map((d) => d.path).filter(Boolean))
+      if (!mountedRef.current || req !== reqRef.current) return true
       setRows(docs)
       setSizes(sz)
       setError(false)
+      return true
     } catch {
-      setError(true)
-      setRows((prev) => prev ?? [])
+      if (mountedRef.current && req === reqRef.current) {
+        setError(true)
+        setRows((prev) => prev ?? [])
+      }
+      return false
     }
   }, [])
 
@@ -171,15 +190,23 @@ export default function DocumentsScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
     try {
-      await load()
+      const ok = await load()
+      if (!ok) toast.show(t('ds.error.refresh'), 'error')
     } finally {
-      setRefreshing(false)
+      if (mountedRef.current) setRefreshing(false)
     }
-  }, [load])
+  }, [load, toast, t])
 
   async function download(doc: DocRow) {
-    const ok = await openDocumentExternally(doc.path)
-    if (!ok) toast.show(t('documents.v2.openError'), 'error')
+    // a second tap while the in-app browser opens would fall back to an external browser
+    if (opening.current) return
+    opening.current = true
+    try {
+      const ok = await openDocumentExternally(doc.path)
+      if (!ok) toast.show(t('documents.v2.openError'), 'error')
+    } finally {
+      opening.current = false
+    }
   }
 
   const empty = rows !== null && rows.length === 0 && !error
@@ -208,7 +235,12 @@ export default function DocumentsScreen() {
           ))}
         </>
       ) : error && rows.length === 0 ? (
-        <ErrorState onRetry={load} />
+        <ErrorState
+          onRetry={() => {
+            setRows(null)
+            load()
+          }}
+        />
       ) : empty ? (
         <DocumentsEmpty onAsk={() => router.push('/chat' as any)} />
       ) : (

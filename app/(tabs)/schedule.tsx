@@ -4,7 +4,7 @@
  * Keeps: RSVP for theory classes, calendar export, local reminders, pull-to-refresh.
  */
 
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useRef, useState } from 'react'
 import { Pressable, RefreshControl, View } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { ArrowSquareOut } from 'phosphor-react-native/src/icons/ArrowSquareOut'
@@ -52,6 +52,7 @@ import { fetchMyAppointments, type Appointment } from '@/lib/appointments'
 import { addToCalendar } from '@/lib/calendar'
 import { scheduleReminders, REMINDER_LEAD_HOURS } from '@/lib/reminders'
 import type { TheoryClass } from '@/lib/types'
+import { useRequestGuard } from '@/lib/use-request-guard'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 
 type Tab = 'upcoming' | 'past'
@@ -62,7 +63,7 @@ type Item =
 export default function Schedule() {
   const { t, locale } = useTranslation()
   const toast = useToast()
-  const { profile, session } = useUser()
+  const { session } = useUser()
   const uid: string | null = session?.user?.id ?? null
 
   const [tab, setTab] = useState<Tab>('upcoming')
@@ -73,18 +74,28 @@ export default function Schedule() {
   const [error, setError] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [menu, setMenu] = useState<Item | null>(null)
+  const guard = useRequestGuard()
+  /** class ids with an RSVP request in flight (double taps / sheet + card) */
+  const rsvpBusy = useRef<Set<string>>(new Set())
+  const hasData = useRef(false)
 
-  const load = useCallback(async () => {
-    if (!profile) {
+  /** Resolves to false when the request failed (pull-to-refresh shows a toast). */
+  const load = useCallback(async (): Promise<boolean> => {
+    const req = guard.begin()
+    // Keyed on the session uid (not the profile object): a missing/slow profile row
+    // must not leave the list empty, and profile refreshes must not refetch everything.
+    if (!uid) {
       setLoading(false)
-      return
+      return true
     }
     try {
       const [cls, myRsvp, appts] = await Promise.all([
-        fetchMyClasses(profile.id),
-        uid ? fetchMyRsvp(uid).catch(() => new Map<string, boolean>()) : Promise.resolve(new Map<string, boolean>()),
-        uid ? fetchMyAppointments(uid) : Promise.resolve([] as Appointment[]),
+        fetchMyClasses(uid),
+        fetchMyRsvp(uid).catch(() => new Map<string, boolean>()),
+        fetchMyAppointments(uid),
       ])
+      if (!guard.isCurrent(req)) return true
+      hasData.current = true
       setClasses(cls)
       setRsvpMap(myRsvp)
       setAppointments(appts)
@@ -97,7 +108,7 @@ export default function Schedule() {
         fireAt: new Date(new Date(c.starts_at).getTime() - REMINDER_LEAD_HOURS * 3600_000),
         title: t('reminder.title'),
         body: t('reminder.body', {
-          title: locale === 'de' ? c.title_de : c.title_en,
+          title: (locale === 'de' ? c.title_de : c.title_en) || c.title_de || t('schedule.v2.theory'),
           time: hm(c.starts_at),
         }),
       }))
@@ -107,15 +118,17 @@ export default function Schedule() {
           id: a.id,
           fireAt: new Date(new Date(a.starts_at).getTime() - REMINDER_LEAD_HOURS * 3600_000),
           title: t('reminder.title'),
-          body: t('reminder.body', { title: a.title, time: hm(a.starts_at) }),
+          body: t('reminder.body', { title: lessonTitle(a, t, locale), time: hm(a.starts_at) }),
         }))
-      scheduleReminders([...classReminders, ...apptReminders])
+      scheduleReminders([...classReminders, ...apptReminders]).catch(() => {})
+      return true
     } catch {
-      setError(true)
+      if (guard.isCurrent(req) && !hasData.current) setError(true)
+      return false
     } finally {
-      setLoading(false)
+      if (guard.isCurrent(req)) setLoading(false)
     }
-  }, [profile, uid, t, locale])
+  }, [uid, t, locale, guard])
 
   useFocusEffect(
     useCallback(() => {
@@ -125,20 +138,26 @@ export default function Schedule() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
-    await load()
-    setRefreshing(false)
-  }, [load])
+    try {
+      const ok = await load()
+      if (!ok) toast.show(t('ds.error.refresh'), 'error')
+    } finally {
+      if (guard.isMounted()) setRefreshing(false)
+    }
+  }, [load, toast, t, guard])
 
   const { upcoming, past } = useMemo(() => {
     const now = Date.now()
     const up: Item[] = []
     const pa: Item[] = []
     for (const a of appointments) {
-      const it: Item = { kind: 'appt', id: a.id, at: new Date(a.starts_at).getTime(), appt: a }
+      if (!a?.id) continue
+      const it: Item = { kind: 'appt', id: a.id, at: new Date(a.starts_at).getTime() || 0, appt: a }
       ;(endTime(a) >= now ? up : pa).push(it)
     }
     for (const c of classes) {
-      const it: Item = { kind: 'class', id: c.id, at: new Date(c.starts_at).getTime(), cls: c }
+      if (!c?.id) continue
+      const it: Item = { kind: 'class', id: c.id, at: new Date(c.starts_at).getTime() || 0, cls: c }
       ;(endTime(c) >= now ? up : pa).push(it)
     }
     up.sort((a, b) => a.at - b.at)
@@ -147,14 +166,24 @@ export default function Schedule() {
   }, [appointments, classes])
 
   async function handleRsvp(classId: string, attending: boolean) {
-    if (!uid) return
+    if (!uid || rsvpBusy.current.has(classId)) return
+    rsvpBusy.current.add(classId)
+    const before = rsvp.get(classId)
     setRsvpMap((prev) => new Map(prev).set(classId, attending))
     try {
       await setRsvp(uid, classId, attending)
       toast.show(t('schedule.v2.rsvp.saved'), 'success')
     } catch {
+      // roll back just this answer (the RSVP row may simply not exist yet)
+      setRsvpMap((prev) => {
+        const m = new Map(prev)
+        if (before === undefined) m.delete(classId)
+        else m.set(classId, before)
+        return m
+      })
       toast.show(t('schedule.v2.error'), 'error')
-      load()
+    } finally {
+      rsvpBusy.current.delete(classId)
     }
   }
 
@@ -274,7 +303,7 @@ export default function Schedule() {
       </>
     )
   } else if (error && !appointments.length && !classes.length) {
-    body = <ErrorState onRetry={() => { setLoading(true); load() }} />
+    body = <ErrorState onRetry={() => { setError(false); setLoading(true); load() }} />
   } else if (!list.length) {
     body =
       tab === 'upcoming' ? (
@@ -382,18 +411,19 @@ function RsvpRow({ onAnswer }: { onAnswer: (v: boolean) => void }) {
       <T variant="labelM" color={C.muted} style={{ flex: 1 }}>
         {t('schedule.v2.rsvp')}
       </T>
-      <RsvpChip label={t('schedule.v2.rsvp.yes')} icon={ThumbsUp} onPress={() => onAnswer(true)} />
-      <RsvpChip label={t('schedule.v2.rsvp.no')} icon={ThumbsDown} onPress={() => onAnswer(false)} />
+      <RsvpChip label={t('schedule.v2.rsvp.yes')} a11y={`${t('schedule.v2.rsvp')} ${t('schedule.v2.rsvp.yes')}`} icon={ThumbsUp} onPress={() => onAnswer(true)} />
+      <RsvpChip label={t('schedule.v2.rsvp.no')} a11y={`${t('schedule.v2.rsvp')} ${t('schedule.v2.rsvp.no')}`} icon={ThumbsDown} onPress={() => onAnswer(false)} />
     </View>
   )
 }
 
-function RsvpChip({ label, icon: Icon, onPress }: { label: string; icon: PhosphorIcon; onPress: () => void }) {
+function RsvpChip({ label, a11y, icon: Icon, onPress }: { label: string; a11y: string; icon: PhosphorIcon; onPress: () => void }) {
   return (
     <Pressable
       onPress={onPress}
-      hitSlop={6}
+      hitSlop={8}
       accessibilityRole="button"
+      accessibilityLabel={a11y}
       style={({ pressed }) => ({
         flexDirection: 'row',
         alignItems: 'center',
