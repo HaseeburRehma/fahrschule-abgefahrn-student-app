@@ -3,6 +3,7 @@ import { Redirect, Stack } from 'expo-router'
 
 import { useUser } from '@/lib/user-context'
 import { Loader } from '@/components/ui'
+import { F } from '@/components/ds/tokens'
 
 /** Admin area — gated to admins. Non-admins are bounced to the tabs. */
 export default function AdminLayout() {
@@ -14,7 +15,8 @@ export default function AdminLayout() {
       screenOptions={{
         headerStyle: { backgroundColor: '#0A0A0A' },
         headerTintColor: '#FFFFFF',
-        headerTitleStyle: { fontWeight: '800' },
+        headerTitleStyle: { fontFamily: F.xbold },
+        headerBackTitleStyle: { fontFamily: F.medium },
       }}
     />
   )

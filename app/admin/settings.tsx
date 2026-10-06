@@ -70,11 +70,11 @@ export default function AdminSettings() {
       <Stack.Screen options={{ title: t('admin.v2.signupCode') }} />
       <ScrollView contentContainerClassName="p-5 gap-4" keyboardShouldPersistTaps="handled">
         <Card className="gap-3">
-          <Text className="text-sm text-neutral-400">{t('admin.v2.signupCodeHelp')}</Text>
-          <Text className="text-sm font-semibold text-neutral-300">
+          <Text className="font-m-regular text-sm text-neutral-400">{t('admin.v2.signupCodeHelp')}</Text>
+          <Text className="text-sm font-m-semibold text-neutral-300">
             {t('admin.v2.currentCode')}
           </Text>
-          <Text className="text-2xl font-extrabold tracking-widest text-brand">
+          <Text className="text-2xl font-m-xbold tracking-widest text-brand">
             {current ?? t('admin.v2.noCode')}
           </Text>
         </Card>

@@ -124,7 +124,7 @@ export default function AdminAppointments() {
             className="mb-1 flex-row items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-4"
           >
             <Plus size={18} color="#0A0A0A" />
-            <Text className="font-bold text-ink">{t('admin.v2.newAppt')}</Text>
+            <Text className="font-m-bold text-ink">{t('admin.v2.newAppt')}</Text>
           </Pressable>
         )}
 
@@ -135,7 +135,7 @@ export default function AdminAppointments() {
         <ErrorText>{actionError}</ErrorText>
 
         {rows.length === 0 && !loadError ? (
-          <Text className="mt-16 text-center text-neutral-400">
+          <Text className="font-m-regular mt-16 text-center text-neutral-400">
             {t('admin.apptEmpty')}
           </Text>
         ) : (
@@ -163,19 +163,19 @@ export default function AdminAppointments() {
             return (
               <Card key={r.id} className={`gap-2 ${cancelled ? 'opacity-60' : ''}`}>
                 <View className="flex-row items-center justify-between">
-                  <Text className="flex-1 text-base font-bold text-neutral-100">
+                  <Text className="flex-1 text-base font-m-bold text-neutral-100">
                     {r.title}
                   </Text>
-                  <Text className={`text-xs font-bold ${statusColor}`}>
+                  <Text className={`text-xs font-m-bold ${statusColor}`}>
                     {t(`appt.status.${r.status}` as any)}
                   </Text>
                 </View>
-                <Text className="text-sm text-neutral-300">
+                <Text className="font-m-regular text-sm text-neutral-300">
                   {displayName(r.student) || r.student?.email || '—'}
                 </Text>
                 <View className="flex-row items-center gap-1.5">
                   <CalendarDays size={14} color="#6B7280" />
-                  <Text className="text-sm text-neutral-400">
+                  <Text className="font-m-regular text-sm text-neutral-400">
                     {formatDateTime(r.starts_at, locale)}
                     {r.ends_at ? ` – ${formatTime(r.ends_at, locale)}` : ''}
                   </Text>
@@ -183,13 +183,13 @@ export default function AdminAppointments() {
                 {type ? (
                   <View className="flex-row items-center gap-1.5">
                     <Car size={14} color="#6B7280" />
-                    <Text className="text-sm text-neutral-400">{type}</Text>
+                    <Text className="font-m-regular text-sm text-neutral-400">{type}</Text>
                   </View>
                 ) : null}
                 {r.instructor_name ? (
                   <View className="flex-row items-center gap-1.5">
                     <User size={14} color="#6B7280" />
-                    <Text className="text-sm text-neutral-400">
+                    <Text className="font-m-regular text-sm text-neutral-400">
                       {t('admin.v2.instructor')}: {r.instructor_name}
                     </Text>
                   </View>
@@ -197,13 +197,13 @@ export default function AdminAppointments() {
                 {r.meeting_point ? (
                   <View className="flex-row items-center gap-1.5">
                     <MapPin size={14} color="#6B7280" />
-                    <Text className="text-sm text-neutral-400">
+                    <Text className="font-m-regular text-sm text-neutral-400">
                       {t('admin.v2.meetingPoint')}: {r.meeting_point}
                     </Text>
                   </View>
                 ) : null}
                 {r.note ? (
-                  <Text className="text-sm text-neutral-400">{r.note}</Text>
+                  <Text className="font-m-regular text-sm text-neutral-400">{r.note}</Text>
                 ) : null}
                 <View className="mt-1 flex-row gap-2">
                   {!cancelled && r.status !== 'confirmed' ? (
@@ -213,7 +213,7 @@ export default function AdminAppointments() {
                       className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 ${busy ? 'opacity-50' : ''}`}
                     >
                       <Check size={15} color="#0A0A0A" />
-                      <Text className="font-bold text-ink">{t('admin.confirm')}</Text>
+                      <Text className="font-m-bold text-ink">{t('admin.confirm')}</Text>
                     </Pressable>
                   ) : null}
                   <Pressable
@@ -222,7 +222,7 @@ export default function AdminAppointments() {
                     className={`flex-row items-center justify-center gap-1.5 rounded-xl border border-neutral-700 px-4 py-2.5 ${busy ? 'opacity-50' : ''}`}
                   >
                     <Pencil size={15} color="#6B7280" />
-                    <Text className="font-semibold text-neutral-400">
+                    <Text className="font-m-semibold text-neutral-400">
                       {t('admin.v2.edit')}
                     </Text>
                   </Pressable>
@@ -233,7 +233,7 @@ export default function AdminAppointments() {
                       className={`flex-row items-center justify-center gap-1.5 rounded-xl border border-neutral-700 px-4 py-2.5 ${busy ? 'opacity-50' : ''}`}
                     >
                       <X size={15} color="#6B7280" />
-                      <Text className="font-semibold text-neutral-400">
+                      <Text className="font-m-semibold text-neutral-400">
                         {t('appt.cancel')}
                       </Text>
                     </Pressable>

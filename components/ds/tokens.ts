@@ -40,6 +40,8 @@ export const F = {
 
 /** Typography styles (Figma text styles). */
 export const TYPE = {
+  displayXL: { fontFamily: F.black, fontSize: 44, lineHeight: 46, letterSpacing: -0.88 },
+  emphasisXL: { fontFamily: F.blackItalic, fontSize: 44, lineHeight: 46, letterSpacing: -0.88 },
   displayL: { fontFamily: F.black, fontSize: 34, lineHeight: 38, letterSpacing: -0.68 },
   emphasisL: { fontFamily: F.blackItalic, fontSize: 26, lineHeight: 30, letterSpacing: -0.26 },
   headingXL: { fontFamily: F.xbold, fontSize: 26, lineHeight: 30, letterSpacing: -0.39 },

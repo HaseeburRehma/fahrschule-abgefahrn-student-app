@@ -112,14 +112,14 @@ export default function NewStudent() {
         </Card>
 
         <Card className="gap-3">
-          <Text className="text-sm font-bold text-neutral-300">
+          <Text className="text-sm font-m-bold text-neutral-300">
             {t('admin.assignTopic')}
           </Text>
           <TopicPicker topics={topics} selected={topicId} onSelect={setTopicId} />
         </Card>
 
         <Card className="gap-3">
-          <Text className="text-sm font-bold text-neutral-300">
+          <Text className="text-sm font-m-bold text-neutral-300">
             {t('admin.assignPackages')}
           </Text>
           <PackagePicker

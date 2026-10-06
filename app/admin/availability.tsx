@@ -91,7 +91,7 @@ export default function AdminAvailability() {
           className="flex-row items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3.5"
         >
           <Plus size={18} color="#0A0A0A" />
-          <Text className="font-bold text-ink">{t('admin.newSlot')}</Text>
+          <Text className="font-m-bold text-ink">{t('admin.newSlot')}</Text>
         </Pressable>
 
         {showForm ? (
@@ -119,7 +119,7 @@ export default function AdminAvailability() {
         ) : null}
 
         {rows.length === 0 ? (
-          <Text className="mt-8 text-center text-neutral-400">
+          <Text className="font-m-regular mt-8 text-center text-neutral-400">
             {t('admin.slotsEmpty')}
           </Text>
         ) : (
@@ -130,11 +130,11 @@ export default function AdminAvailability() {
             >
               <CalendarClock size={18} color="#00FF24" />
               <View className="flex-1">
-                <Text className="font-semibold text-neutral-100">
+                <Text className="font-m-semibold text-neutral-100">
                   {formatDateTime(s.starts_at, locale)}
                   {s.ends_at ? ` – ${formatTime(s.ends_at, locale)}` : ''}
                 </Text>
-                <Text className="text-xs text-neutral-400">
+                <Text className="font-m-regular text-xs text-neutral-400">
                   {t('admin.slotCount', { booked: s.booked, capacity: s.capacity })}
                   {s.note ? ` • ${s.note}` : ''}
                 </Text>

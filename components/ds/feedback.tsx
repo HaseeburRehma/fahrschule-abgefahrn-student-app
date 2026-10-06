@@ -128,7 +128,7 @@ export function SheetHero({
       </View>
       <T variant="headingL" style={{ textAlign: 'center' }}>{title}</T>
       {body ? (
-        <T variant="bodyM" color={C.muted} style={{ textAlign: 'center' }}>
+        <T variant="bodyL" color={C.muted} style={{ textAlign: 'center' }}>
           {body}
         </T>
       ) : null}
@@ -362,7 +362,7 @@ export function EmptyState({
       </View>
       <T variant="headingL" style={{ textAlign: 'center' }}>{title}</T>
       {body ? (
-        <T variant="bodyM" color={C.muted} style={{ textAlign: 'center', maxWidth: 300 }}>
+        <T variant="bodyL" color={C.muted} style={{ textAlign: 'center', maxWidth: 300 }}>
           {body}
         </T>
       ) : null}
@@ -404,7 +404,7 @@ export function ErrorState({
         <Icon size={54} color={C.danger} />
       </View>
       <T variant="headingL" style={{ textAlign: 'center' }}>{title ?? t('ds.offline.title')}</T>
-      <T variant="bodyM" color={C.muted} style={{ textAlign: 'center', maxWidth: 300 }}>
+      <T variant="bodyL" color={C.muted} style={{ textAlign: 'center', maxWidth: 300 }}>
         {body ?? t('ds.offline.body')}
       </T>
       {onRetry ? (

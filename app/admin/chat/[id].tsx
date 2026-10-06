@@ -6,6 +6,7 @@ import { fetchProfile } from '@/lib/admin'
 import { displayName } from '@/lib/data'
 import { ChatThread } from '@/components/chat-thread'
 import { Loader } from '@/components/ui'
+import { F } from '@/components/ds/tokens'
 
 export default function AdminChatThread() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -27,7 +28,8 @@ export default function AdminChatThread() {
           title,
           headerStyle: { backgroundColor: '#0A0A0A' },
           headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontWeight: '800' },
+          headerTitleStyle: { fontFamily: F.xbold },
+          headerBackTitleStyle: { fontFamily: F.medium },
         }}
       />
       {id && adminId ? (

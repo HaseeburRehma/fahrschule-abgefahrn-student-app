@@ -98,7 +98,7 @@ export default function AdminNotify() {
         mode === m ? 'border-brand bg-brand/10' : 'border-neutral-800 bg-neutral-900'
       }`}
     >
-      <Text className={`text-xs font-bold ${mode === m ? 'text-brand' : 'text-neutral-400'}`}>
+      <Text className={`text-xs font-m-bold ${mode === m ? 'text-brand' : 'text-neutral-400'}`}>
         {label}
       </Text>
     </Pressable>
@@ -111,7 +111,7 @@ export default function AdminNotify() {
       <Stack.Screen options={{ title: t('admin.notify') }} />
       <ScrollView contentContainerClassName="p-5 gap-4">
         <Card className="gap-3">
-          <Text className="text-sm font-bold text-neutral-300">
+          <Text className="text-sm font-m-bold text-neutral-300">
             {t('admin.notifyTo')} ({count})
           </Text>
           <View className="flex-row gap-2">
@@ -139,7 +139,7 @@ export default function AdminNotify() {
                     >
                       {on ? <Check size={14} color="#0A0A0A" /> : null}
                     </View>
-                    <Text className="flex-1 text-neutral-100">
+                    <Text className="font-m-regular flex-1 text-neutral-100">
                       {displayName(s) || s.email}
                     </Text>
                   </Pressable>
@@ -151,7 +151,7 @@ export default function AdminNotify() {
           {mode === 'class' ? (
             <View className="gap-2 pt-1">
               {classes.length === 0 ? (
-                <Text className="text-sm text-neutral-500">{t('admin.noClasses')}</Text>
+                <Text className="font-m-regular text-sm text-neutral-500">{t('admin.noClasses')}</Text>
               ) : (
                 classes.map((c) => {
                   const on = c.id === classId
@@ -163,10 +163,10 @@ export default function AdminNotify() {
                         on ? 'border-brand bg-brand/10' : 'border-neutral-800 bg-neutral-900'
                       }`}
                     >
-                      <Text className="font-semibold text-neutral-100">
+                      <Text className="font-m-semibold text-neutral-100">
                         {locale === 'de' ? c.title_de : c.title_en}
                       </Text>
-                      <Text className="text-xs text-neutral-400">
+                      <Text className="font-m-regular text-xs text-neutral-400">
                         {formatDateTime(c.starts_at, locale)}
                       </Text>
                     </Pressable>

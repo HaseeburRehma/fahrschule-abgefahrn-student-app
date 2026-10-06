@@ -91,7 +91,7 @@ export default function ClassesAdmin() {
           className="flex-row items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3.5"
         >
           <Plus size={18} color="#0A0A0A" />
-          <Text className="font-bold text-ink">{t('admin.newClass')}</Text>
+          <Text className="font-m-bold text-ink">{t('admin.newClass')}</Text>
         </Pressable>
 
         {showForm ? (
@@ -120,7 +120,7 @@ export default function ClassesAdmin() {
               onChangeText={setLocation}
             />
             <View className="gap-2">
-              <Text className="text-sm font-bold text-neutral-300">
+              <Text className="text-sm font-m-bold text-neutral-300">
                 {t('admin.topic')}
               </Text>
               <TopicPicker topics={topics} selected={topicId} onSelect={setTopicId} />
@@ -131,7 +131,7 @@ export default function ClassesAdmin() {
         ) : null}
 
         {classes.length === 0 ? (
-          <Text className="mt-8 text-center text-neutral-400">
+          <Text className="font-m-regular mt-8 text-center text-neutral-400">
             {t('admin.noClasses')}
           </Text>
         ) : (
@@ -142,10 +142,10 @@ export default function ClassesAdmin() {
               className="flex-row items-center gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 p-4"
             >
               <View className="flex-1">
-                <Text className="font-semibold text-neutral-100">
+                <Text className="font-m-semibold text-neutral-100">
                   {locale === 'de' ? c.title_de : c.title_en}
                 </Text>
-                <Text className="text-sm text-neutral-400">
+                <Text className="font-m-regular text-sm text-neutral-400">
                   {formatDateTime(c.starts_at, locale)}
                   {c.location ? ` • ${c.location}` : ''}
                 </Text>

@@ -22,8 +22,8 @@ import { Card } from '@/components/ui'
 function Stat({ value, label }: { value: number; label: string }) {
   return (
     <View className="flex-1 rounded-2xl border border-neutral-800 bg-neutral-900 p-3">
-      <Text className="text-2xl font-extrabold text-brand">{value}</Text>
-      <Text className="text-[11px] font-medium text-neutral-400">{label}</Text>
+      <Text className="text-2xl font-m-xbold text-brand">{value}</Text>
+      <Text className="text-[11px] font-m-medium text-neutral-400">{label}</Text>
     </View>
   )
 }
@@ -71,7 +71,7 @@ export default function AdminHome() {
               <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
                 {l.icon}
               </View>
-              <Text className="flex-1 font-semibold text-neutral-100">
+              <Text className="flex-1 font-m-semibold text-neutral-100">
                 {l.label}
               </Text>
               <ChevronRight size={20} color="#6B7280" />

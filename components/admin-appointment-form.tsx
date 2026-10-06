@@ -133,11 +133,11 @@ export function AppointmentForm({
 
   return (
     <Card className="gap-3">
-      <Text className="text-base font-bold text-neutral-100">{heading}</Text>
+      <Text className="text-base font-m-bold text-neutral-100">{heading}</Text>
 
       {mode === 'create' ? (
         <View className="gap-2">
-          <Text className="text-sm font-semibold text-neutral-300">
+          <Text className="text-sm font-m-semibold text-neutral-300">
             {t('admin.v2.student')}
           </Text>
           <StudentPicker
@@ -158,7 +158,7 @@ export function AppointmentForm({
       />
 
       <View className="gap-2">
-        <Text className="text-sm font-semibold text-neutral-300">
+        <Text className="text-sm font-m-semibold text-neutral-300">
           {t('admin.v2.lessonType')}
         </Text>
         <ChipSelect

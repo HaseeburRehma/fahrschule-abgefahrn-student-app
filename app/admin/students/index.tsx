@@ -59,7 +59,7 @@ export default function StudentsList() {
               className="flex-row items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-4"
             >
               <UserPlus size={18} color="#0A0A0A" />
-              <Text className="font-bold text-ink">{t('admin.addStudent')}</Text>
+              <Text className="font-m-bold text-ink">{t('admin.addStudent')}</Text>
             </Pressable>
             {rows.length > 0 ? (
               <TextInput
@@ -68,7 +68,7 @@ export default function StudentsList() {
                 placeholder={t('admin.searchStudents')}
                 placeholderTextColor="#6B7280"
                 autoCapitalize="none"
-                className="rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3 text-base text-neutral-100"
+                className="font-m-medium rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3 text-base text-neutral-100"
               />
             ) : null}
           </View>
@@ -81,13 +81,13 @@ export default function StudentsList() {
               className="flex-row items-center gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 p-4"
             >
               <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
-                <Text className="font-black text-brand">
+                <Text className="font-m-black text-brand">
                   {(displayName(p) || '?').charAt(0).toUpperCase()}
                 </Text>
               </View>
               <View className="flex-1 gap-1">
                 <View className="flex-row items-center gap-2">
-                  <Text className="font-semibold text-neutral-100">
+                  <Text className="font-m-semibold text-neutral-100">
                     {displayName(p) || p.email}
                   </Text>
                   {!p.is_active ? (
@@ -95,7 +95,7 @@ export default function StudentsList() {
                   ) : null}
                 </View>
                 {p.email ? (
-                  <Text className="text-xs text-neutral-400">{p.email}</Text>
+                  <Text className="font-m-regular text-xs text-neutral-400">{p.email}</Text>
                 ) : null}
 
                 {/* Plan (packages) */}
@@ -106,13 +106,13 @@ export default function StudentsList() {
                         key={pkg.id}
                         className="rounded-full bg-brand/10 px-2 py-0.5"
                       >
-                        <Text className="text-[11px] font-semibold text-brand">
+                        <Text className="text-[11px] font-m-semibold text-brand">
                           {locale === 'de' ? pkg.name_de : pkg.name_en}
                         </Text>
                       </View>
                     ))
                   ) : (
-                    <Text className="text-[11px] text-neutral-500">
+                    <Text className="font-m-regular text-[11px] text-neutral-500">
                       {t('admin.noPlan')}
                     </Text>
                   )}
@@ -121,7 +121,7 @@ export default function StudentsList() {
                 {/* Current theory class */}
                 <View className="mt-0.5 flex-row items-center gap-1">
                   <BookOpen size={12} color="#6B7280" />
-                  <Text className="text-[11px] text-neutral-400">
+                  <Text className="font-m-regular text-[11px] text-neutral-400">
                     {item.topic
                       ? `${item.topic.number}. ${
                           locale === 'de'
@@ -137,7 +137,7 @@ export default function StudentsList() {
           )
         }}
         ListEmptyComponent={
-          <Text className="mt-16 text-center text-neutral-400">
+          <Text className="font-m-regular mt-16 text-center text-neutral-400">
             {query ? t('common.empty') : t('admin.noStudents')}
           </Text>
         }

@@ -171,7 +171,7 @@ export default function AdminDocuments() {
               editable={!busy}
             />
             <View className="gap-2">
-              <Text className="text-sm font-semibold text-neutral-300">
+              <Text className="text-sm font-m-semibold text-neutral-300">
                 {t('admin.v2.docFor')}
               </Text>
               <StudentPicker
@@ -182,7 +182,7 @@ export default function AdminDocuments() {
                 allLabel={t('admin.v2.docAll')}
                 disabled={busy}
               />
-              <Text className="text-xs text-neutral-400">
+              <Text className="font-m-regular text-xs text-neutral-400">
                 {studentId ? t('admin.v2.docPersonalHint') : t('admin.v2.docAllHint')}
               </Text>
             </View>
@@ -192,11 +192,11 @@ export default function AdminDocuments() {
               className={`flex-row items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-3.5 ${busy ? 'opacity-50' : ''}`}
             >
               <Upload size={18} color="#0A0A0A" />
-              <Text className="font-bold text-ink">
+              <Text className="font-m-bold text-ink">
                 {busy ? t('common.loading') : t('documents.pickFile')}
               </Text>
             </Pressable>
-            <Text className="text-xs text-neutral-400">{t('admin.v2.docLimits')}</Text>
+            <Text className="font-m-regular text-xs text-neutral-400">{t('admin.v2.docLimits')}</Text>
             <ErrorText>{error}</ErrorText>
           </Card>
           <ErrorText>{loadError}</ErrorText>
@@ -211,12 +211,12 @@ export default function AdminDocuments() {
               <FileText size={20} color="#00FF24" />
             </View>
             <View className="flex-1">
-              <Text className="font-semibold text-neutral-100">{item.title}</Text>
-              <Text className="text-xs text-neutral-400">
+              <Text className="font-m-semibold text-neutral-100">{item.title}</Text>
+              <Text className="font-m-regular text-xs text-neutral-400">
                 {formatDate(item.created_at, locale)}
               </Text>
               <Text
-                className={`text-xs font-semibold ${item.student_id ? 'text-brand' : 'text-neutral-500'}`}
+                className={`text-xs font-m-semibold ${item.student_id ? 'text-brand' : 'text-neutral-500'}`}
               >
                 {audience(item)}
               </Text>
@@ -232,7 +232,7 @@ export default function AdminDocuments() {
           </View>
         )}
         ListEmptyComponent={
-          loadError ? null : <Text className="mt-8 text-center text-neutral-400">
+          loadError ? null : <Text className="font-m-regular mt-8 text-center text-neutral-400">
             {t('documents.empty')}
           </Text>
         }

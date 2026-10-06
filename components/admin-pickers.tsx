@@ -36,10 +36,10 @@ export function PackagePicker({
             >
               {on ? <Check size={14} color="#0A0A0A" /> : null}
             </View>
-            <Text className="flex-1 font-medium text-neutral-100">
+            <Text className="flex-1 font-m-medium text-neutral-100">
               {locale === 'de' ? p.name_de : p.name_en}
             </Text>
-            <Text className="text-sm font-bold text-brand">
+            <Text className="text-sm font-m-bold text-brand">
               {formatPrice(Number(p.price_eur), locale)}
             </Text>
           </Pressable>
@@ -70,7 +70,7 @@ export function TopicPicker({
         }`}
       >
         <Text
-          className={`text-xs font-semibold ${
+          className={`text-xs font-m-semibold ${
             selected === null ? 'text-white' : 'text-neutral-400'
           }`}
         >
@@ -88,7 +88,7 @@ export function TopicPicker({
             }`}
           >
             <Text
-              className={`text-xs font-semibold ${
+              className={`text-xs font-m-semibold ${
                 on ? 'text-ink' : 'text-neutral-300'
               }`}
             >
@@ -127,7 +127,7 @@ export function ChipSelect<V extends string>({
             } ${disabled ? 'opacity-50' : ''}`}
           >
             <Text
-              className={`text-xs font-semibold ${
+              className={`text-xs font-m-semibold ${
                 on ? 'text-ink' : 'text-neutral-300'
               }`}
             >
@@ -179,7 +179,7 @@ export function StudentPicker({
         on ? 'border-brand bg-brand' : 'border-neutral-800 bg-neutral-900'
       } ${disabled ? 'opacity-50' : ''}`}
     >
-      <Text className={`text-xs font-semibold ${on ? 'text-ink' : 'text-neutral-300'}`}>
+      <Text className={`text-xs font-m-semibold ${on ? 'text-ink' : 'text-neutral-300'}`}>
         {label}
       </Text>
     </Pressable>
@@ -203,7 +203,7 @@ export function StudentPicker({
         autoCapitalize="none"
         autoCorrect={false}
         editable={!disabled}
-        className="w-full rounded-2xl border border-neutral-700 bg-neutral-900 px-4 py-3 text-base text-neutral-100"
+        className="font-m-medium w-full rounded-2xl border border-neutral-700 bg-neutral-900 px-4 py-3 text-base text-neutral-100"
       />
       {matches.length ? (
         <View className="flex-row flex-wrap gap-2">

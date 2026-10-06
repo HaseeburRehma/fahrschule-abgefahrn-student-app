@@ -36,19 +36,19 @@ export default function NotificationHistory() {
         contentContainerClassName="p-5 gap-2"
         renderItem={({ item }) => (
           <Card className="gap-1">
-            <Text className="text-base font-bold text-neutral-100">
+            <Text className="text-base font-m-bold text-neutral-100">
               {item.title}
             </Text>
             {item.body ? (
-              <Text className="text-sm text-neutral-300">{item.body}</Text>
+              <Text className="font-m-regular text-sm text-neutral-300">{item.body}</Text>
             ) : null}
             <View className="mt-1 flex-row items-center justify-between">
-              <Text className="text-xs text-neutral-400">
+              <Text className="font-m-regular text-xs text-neutral-400">
                 {formatDateTime(item.created_at, locale)}
               </Text>
               <View className="flex-row items-center gap-1 rounded-full bg-neutral-800 px-2 py-0.5">
                 <Users size={12} color="#9CA3AF" />
-                <Text className="text-[11px] font-semibold text-neutral-300">
+                <Text className="text-[11px] font-m-semibold text-neutral-300">
                   {t('admin.recipients', { count: item.count })}
                 </Text>
               </View>
@@ -56,7 +56,7 @@ export default function NotificationHistory() {
           </Card>
         )}
         ListEmptyComponent={
-          <Text className="mt-16 text-center text-neutral-400">
+          <Text className="font-m-regular mt-16 text-center text-neutral-400">
             {t('admin.historyEmpty')}
           </Text>
         }

@@ -17,10 +17,13 @@ import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 import { ArrowLeft } from 'phosphor-react-native/src/icons/ArrowLeft'
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight'
 import { Check } from 'phosphor-react-native/src/icons/Check'
+import { Eye } from 'phosphor-react-native/src/icons/Eye'
+import { EyeSlash } from 'phosphor-react-native/src/icons/EyeSlash'
 import { WarningCircle } from 'phosphor-react-native/src/icons/WarningCircle'
 
 import { C, F, GLOW } from './tokens'
 import { T } from './primitives'
+import { useT } from '@/lib/i18n'
 
 /* ------------------------------------------------------------------ Button */
 
@@ -191,6 +194,7 @@ export function Input({
   hint,
   right,
   multiline,
+  secureTextEntry,
   style,
   ...props
 }: TextInputProps & {
@@ -201,7 +205,22 @@ export function Input({
   hint?: string
   right?: React.ReactNode
 }) {
+  const t = useT()
   const [focused, setFocused] = useState(false)
+  // Password fields get a show/hide toggle (same 20px dim icon as the leading icon).
+  const [revealed, setRevealed] = useState(false)
+  const toggle = secureTextEntry ? (
+    <Pressable
+      onPress={() => setRevealed((v) => !v)}
+      hitSlop={12}
+      accessibilityRole="button"
+      accessibilityLabel={t(revealed ? 'ds.hidePassword' : 'ds.showPassword')}
+      accessibilityState={{ checked: revealed }}
+      style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+    >
+      {revealed ? <EyeSlash size={20} color={C.muted} /> : <Eye size={20} color={C.dim} />}
+    </Pressable>
+  ) : null
   // Figma: 1px #2A2D2A idle · brand when focused · 1.5px danger on error
   const borderColor = error ? C.danger : focused ? C.brand : C.line
   const borderWidth = error ? 1.5 : 1
@@ -229,6 +248,7 @@ export function Input({
           cursorColor={C.brand}
           accessibilityLabel={label ?? props.placeholder}
           {...props}
+          secureTextEntry={!!secureTextEntry && !revealed}
           multiline={multiline}
           onFocus={(e) => {
             setFocused(true)
@@ -252,7 +272,7 @@ export function Input({
             style,
           ]}
         />
-        {right}
+        {right ?? toggle}
       </View>
       {typeof error === 'string' && error ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>

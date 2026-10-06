@@ -14,7 +14,7 @@ import { SteeringWheel } from 'phosphor-react-native/src/icons/SteeringWheel'
 import { Trophy } from 'phosphor-react-native/src/icons/Trophy'
 import { X } from 'phosphor-react-native/src/icons/X'
 
-import { Button, C, F, IconButton, Screen, T } from '@/components/ds'
+import { Button, C, IconButton, Screen, T } from '@/components/ds'
 import { useT } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
 
@@ -99,10 +99,7 @@ export default function Success() {
         {/* Title + body */}
         <View style={{ marginTop: 40, paddingHorizontal: 12, gap: 12, alignItems: 'center' }}>
           <View style={{ alignItems: 'center' }}>
-            <T
-              color={C.brand}
-              style={{ fontFamily: F.black, fontSize: 44, lineHeight: 46, letterSpacing: -0.88, textAlign: 'center' }}
-            >
+            <T variant="displayXL" color={C.brand} style={{ textAlign: 'center' }}>
               {t('success.v2.title')}
             </T>
             <T variant="headingL" style={{ textAlign: 'center' }}>

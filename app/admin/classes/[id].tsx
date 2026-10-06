@@ -186,7 +186,7 @@ export default function ClassDetail() {
             />
             <TextField label={t('admin.location')} value={location} onChangeText={setLocation} />
             <View className="gap-2">
-              <Text className="text-sm font-bold text-neutral-300">{t('admin.topic')}</Text>
+              <Text className="text-sm font-m-bold text-neutral-300">{t('admin.topic')}</Text>
               <TopicPicker topics={topics} selected={topicId} onSelect={setTopicId} />
             </View>
             <ErrorText>{error}</ErrorText>
@@ -195,10 +195,10 @@ export default function ClassDetail() {
           </Card>
         ) : (
           <Card>
-            <Text className="text-lg font-bold text-neutral-100">
+            <Text className="text-lg font-m-bold text-neutral-100">
               {locale === 'de' ? cls.title_de : cls.title_en}
             </Text>
-            <Text className="mt-1 text-sm text-neutral-400">
+            <Text className="font-m-regular mt-1 text-sm text-neutral-400">
               {formatDateTime(cls.starts_at, locale)}
               {cls.location ? ` • ${cls.location}` : ''}
             </Text>
@@ -206,10 +206,10 @@ export default function ClassDetail() {
         )}
 
         <View className="flex-row items-center justify-between">
-          <Text className="text-sm font-bold text-neutral-300">
+          <Text className="text-sm font-m-bold text-neutral-300">
             {t('admin.enrolled')} ({enrolled.length})
           </Text>
-          <Text className="text-xs font-semibold text-neutral-400">
+          <Text className="text-xs font-m-semibold text-neutral-400">
             {t('admin.attendance', { yes: attendance.yes, no: attendance.no })}
           </Text>
         </View>
@@ -233,7 +233,7 @@ export default function ClassDetail() {
                 >
                   {on ? <Check size={14} color="#0A0A0A" /> : null}
                 </View>
-                <Text className="flex-1 text-neutral-100">
+                <Text className="font-m-regular flex-1 text-neutral-100">
                   {displayName(s) || s.email}
                 </Text>
               </Pressable>

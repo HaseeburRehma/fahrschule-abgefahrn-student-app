@@ -70,7 +70,7 @@ export default function AdminMotivation() {
         </Card>
 
         {rows.length === 0 ? (
-          <Text className="mt-4 text-center text-neutral-400">
+          <Text className="font-m-regular mt-4 text-center text-neutral-400">
             {t('admin.motivationEmpty')}
           </Text>
         ) : (
@@ -80,8 +80,8 @@ export default function AdminMotivation() {
               className="flex-row items-start gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 p-4"
             >
               <View className="flex-1 gap-0.5">
-                <Text className="text-sm font-semibold text-neutral-100">{m.body_de}</Text>
-                <Text className="text-xs text-neutral-400">{m.body_en}</Text>
+                <Text className="text-sm font-m-semibold text-neutral-100">{m.body_de}</Text>
+                <Text className="font-m-regular text-xs text-neutral-400">{m.body_en}</Text>
               </View>
               <Pressable onPress={() => remove(m.id)} hitSlop={8} className="p-1">
                 <Trash2 size={18} color="#EF4444" />

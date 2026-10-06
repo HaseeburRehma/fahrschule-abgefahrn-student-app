@@ -109,16 +109,16 @@ export default function AdminAdmins() {
       <Stack.Screen options={{ title: t('admin.v2.admins.title') }} />
       <ScrollView contentContainerClassName="p-5 gap-4" keyboardShouldPersistTaps="handled">
         <Card className="gap-3">
-          <Text className="text-sm text-neutral-400">{t('admin.v2.admins.help')}</Text>
+          <Text className="font-m-regular text-sm text-neutral-400">{t('admin.v2.admins.help')}</Text>
           {admins.map((a) => (
             <View key={a.id} className="flex-row items-center gap-3 border-t border-neutral-800 pt-3">
               <View className="flex-1">
-                <Text className="text-base font-semibold text-neutral-100" numberOfLines={1}>
+                <Text className="text-base font-m-semibold text-neutral-100" numberOfLines={1}>
                   {displayName(a)}
                   {a.id === me ? `  (${t('admin.v2.admins.you')})` : ''}
                   {a.is_active ? '' : `  · ${t('admin.v2.admins.inactive')}`}
                 </Text>
-                <Text className="text-xs text-neutral-500" numberOfLines={1}>{a.email}</Text>
+                <Text className="font-m-regular text-xs text-neutral-500" numberOfLines={1}>{a.email}</Text>
               </View>
               {a.id !== me ? (
                 <Pressable
@@ -132,7 +132,7 @@ export default function AdminAdmins() {
                   {busy === a.id ? (
                     <ActivityIndicator size="small" color="#FF5A5A" />
                   ) : (
-                    <Text className="text-sm font-semibold text-red-400">{t('admin.v2.admins.demote')}</Text>
+                    <Text className="text-sm font-m-semibold text-red-400">{t('admin.v2.admins.demote')}</Text>
                   )}
                 </Pressable>
               ) : null}
@@ -141,7 +141,7 @@ export default function AdminAdmins() {
         </Card>
 
         <Card className="gap-3">
-          <Text className="text-sm font-semibold text-neutral-300">{t('admin.v2.admins.add')}</Text>
+          <Text className="text-sm font-m-semibold text-neutral-300">{t('admin.v2.admins.add')}</Text>
           <StudentPicker
             students={students}
             selected={pick}

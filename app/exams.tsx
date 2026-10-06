@@ -283,11 +283,7 @@ function ExamCard({
           <T variant="headingL" color={C.brand}>{t('exams.v2.today')}</T>
         ) : (
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
-            <T
-              variant="displayL"
-              color={C.brand}
-              style={{ fontSize: 44, lineHeight: 46, letterSpacing: -0.88 }}
-            >
+            <T variant="displayXL" color={C.brand}>
               {String(left)}
             </T>
             <T variant="headingL" color={C.muted}>

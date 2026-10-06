@@ -45,7 +45,7 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={variant === 'ghost' ? '#404040' : '#0A0A0A'} />
       ) : (
-        <Text className={`text-base font-bold ${textColor}`}>{label}</Text>
+        <Text className={`text-base font-m-bold ${textColor}`}>{label}</Text>
       )}
     </Pressable>
   )
@@ -59,17 +59,17 @@ export function TextField({
   return (
     <View className="w-full">
       {label ? (
-        <Text className="mb-1.5 text-sm font-semibold text-neutral-300">
+        <Text className="mb-1.5 text-sm font-m-semibold text-neutral-300">
           {label}
         </Text>
       ) : null}
       <TextInput
         placeholderTextColor="#A3A3A3"
-        className="w-full rounded-2xl border border-neutral-700 bg-neutral-900 px-4 py-4 text-base text-neutral-100"
+        className="font-m-medium w-full rounded-2xl border border-neutral-700 bg-neutral-900 px-4 py-4 text-base text-neutral-100"
         {...props}
       />
       {hint ? (
-        <Text className="mt-1.5 text-xs text-neutral-400">{hint}</Text>
+        <Text className="font-m-regular mt-1.5 text-xs text-neutral-400">{hint}</Text>
       ) : null}
     </View>
   )
@@ -91,7 +91,7 @@ export function Card({
 
 export function ErrorText({ children }: { children: React.ReactNode }) {
   if (!children) return null
-  return <Text className="text-sm font-medium text-red-500">{children}</Text>
+  return <Text className="text-sm font-m-medium text-red-500">{children}</Text>
 }
 
 export function Loader({ label }: { label?: string }) {
@@ -99,7 +99,7 @@ export function Loader({ label }: { label?: string }) {
     <View className="flex-1 items-center justify-center bg-neutral-900">
       <ActivityIndicator color="#00FF24" size="large" />
       {label ? (
-        <Text className="mt-3 text-sm text-neutral-400">{label}</Text>
+        <Text className="font-m-regular mt-3 text-sm text-neutral-400">{label}</Text>
       ) : null}
     </View>
   )

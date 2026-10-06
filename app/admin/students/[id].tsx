@@ -226,9 +226,9 @@ export default function EditStudent() {
       <Stack.Screen options={{ title: t('admin.editStudent') }} />
       <ScrollView contentContainerClassName="p-5 gap-4">
         <Card className="gap-3">
-          <Text className="text-sm text-neutral-400">{profile.email}</Text>
+          <Text className="font-m-regular text-sm text-neutral-400">{profile.email}</Text>
           {profile.birth_date ? (
-            <Text className="text-sm text-neutral-400">
+            <Text className="font-m-regular text-sm text-neutral-400">
               {t('admin.v2.birthDate')}: {isoToDeDate(profile.birth_date)}
             </Text>
           ) : null}
@@ -255,7 +255,7 @@ export default function EditStudent() {
             keyboardType="phone-pad"
           />
           <View className="flex-row items-center justify-between pt-1">
-            <Text className="font-semibold text-neutral-200">
+            <Text className="font-m-semibold text-neutral-200">
               {t('admin.active')}
             </Text>
             <Switch
@@ -270,13 +270,13 @@ export default function EditStudent() {
         <Card className="gap-4">
           <View className="flex-row items-center gap-2">
             <GraduationCap size={16} color="#00FF24" />
-            <Text className="text-sm font-bold text-neutral-300">
+            <Text className="text-sm font-m-bold text-neutral-300">
               {t('admin.v2.progress')}
             </Text>
           </View>
 
           <View className="flex-row items-center justify-between">
-            <Text className="font-semibold text-neutral-200">{t('admin.v2.lessons')}</Text>
+            <Text className="font-m-semibold text-neutral-200">{t('admin.v2.lessons')}</Text>
             <View className="flex-row items-center gap-3">
               <Pressable
                 onPress={() => setLessons((n) => Math.max(0, n - 1))}
@@ -285,7 +285,7 @@ export default function EditStudent() {
               >
                 <Minus size={16} color="#FFFFFF" />
               </Pressable>
-              <Text className="min-w-[32px] text-center text-lg font-extrabold text-brand">
+              <Text className="min-w-[32px] text-center text-lg font-m-xbold text-brand">
                 {lessons}
               </Text>
               <Pressable
@@ -299,12 +299,12 @@ export default function EditStudent() {
           </View>
 
           <View className="gap-2">
-            <Text className="text-sm font-semibold text-neutral-300">
+            <Text className="text-sm font-m-semibold text-neutral-300">
               {t('admin.v2.specialDrives')}
             </Text>
             {drives.map((d) => (
               <View key={d.label} className="flex-row items-center justify-between">
-                <Text className="text-neutral-200">{d.label}</Text>
+                <Text className="font-m-regular text-neutral-200">{d.label}</Text>
                 <Switch
                   value={d.value}
                   onValueChange={d.set}
@@ -316,7 +316,7 @@ export default function EditStudent() {
           </View>
 
           <View className="gap-2">
-            <Text className="text-sm font-semibold text-neutral-300">
+            <Text className="text-sm font-m-semibold text-neutral-300">
               {t('admin.v2.licenseClass')}
             </Text>
             <ChipSelect
@@ -329,9 +329,9 @@ export default function EditStudent() {
         </Card>
 
         <Card className="gap-4">
-          <Text className="text-sm font-bold text-neutral-300">{t('admin.v2.exams')}</Text>
+          <Text className="text-sm font-m-bold text-neutral-300">{t('admin.v2.exams')}</Text>
           <View className="gap-2">
-            <Text className="font-semibold text-neutral-200">{t('admin.v2.theoryExam')}</Text>
+            <Text className="font-m-semibold text-neutral-200">{t('admin.v2.theoryExam')}</Text>
             <TextField
               label={t('admin.v2.examDate')}
               value={theoryDate}
@@ -349,7 +349,7 @@ export default function EditStudent() {
             />
           </View>
           <View className="gap-2">
-            <Text className="font-semibold text-neutral-200">{t('admin.v2.practicalExam')}</Text>
+            <Text className="font-m-semibold text-neutral-200">{t('admin.v2.practicalExam')}</Text>
             <TextField
               label={t('admin.v2.examDate')}
               value={practicalDate}
@@ -369,14 +369,14 @@ export default function EditStudent() {
         </Card>
 
         <Card className="gap-3">
-          <Text className="text-sm font-bold text-neutral-300">
+          <Text className="text-sm font-m-bold text-neutral-300">
             {t('admin.assignTopic')}
           </Text>
           <TopicPicker topics={topics} selected={topicId} onSelect={setTopicId} />
         </Card>
 
         <Card className="gap-3">
-          <Text className="text-sm font-bold text-neutral-300">
+          <Text className="text-sm font-m-bold text-neutral-300">
             {t('admin.assignPackages')}
           </Text>
           <PackagePicker
@@ -390,7 +390,7 @@ export default function EditStudent() {
         <Card className="gap-2">
           <View className="flex-row items-center gap-2">
             <CalendarDays size={16} color="#00FF24" />
-            <Text className="text-sm font-bold text-neutral-300">
+            <Text className="text-sm font-m-bold text-neutral-300">
               {t('admin.enrolledClasses')}
             </Text>
           </View>
@@ -400,17 +400,17 @@ export default function EditStudent() {
                 key={c.id}
                 className="rounded-xl bg-neutral-800 px-3 py-2"
               >
-                <Text className="text-sm font-semibold text-neutral-100">
+                <Text className="text-sm font-m-semibold text-neutral-100">
                   {locale === 'de' ? c.title_de : c.title_en}
                 </Text>
-                <Text className="text-xs text-neutral-400">
+                <Text className="font-m-regular text-xs text-neutral-400">
                   {formatDateTime(c.starts_at, locale)}
                   {c.location ? ` • ${c.location}` : ''}
                 </Text>
               </View>
             ))
           ) : (
-            <Text className="text-sm text-neutral-500">
+            <Text className="font-m-regular text-sm text-neutral-500">
               {t('admin.noClassesEnrolled')}
             </Text>
           )}
@@ -420,7 +420,7 @@ export default function EditStudent() {
         <Card className="gap-2">
           <View className="flex-row items-center gap-2">
             <FileText size={16} color="#00FF24" />
-            <Text className="text-sm font-bold text-neutral-300">
+            <Text className="text-sm font-m-bold text-neutral-300">
               {t('admin.v2.personalDocs')}
             </Text>
           </View>
@@ -433,14 +433,14 @@ export default function EditStudent() {
                 }}
                 className="rounded-xl bg-neutral-800 px-3 py-2"
               >
-                <Text className="text-sm font-semibold text-neutral-100">{d.title}</Text>
-                <Text className="text-xs text-neutral-400">
+                <Text className="text-sm font-m-semibold text-neutral-100">{d.title}</Text>
+                <Text className="font-m-regular text-xs text-neutral-400">
                   {formatDate(d.created_at, locale)}
                 </Text>
               </Pressable>
             ))
           ) : (
-            <Text className="text-sm text-neutral-500">{t('admin.v2.noPersonalDocs')}</Text>
+            <Text className="font-m-regular text-sm text-neutral-500">{t('admin.v2.noPersonalDocs')}</Text>
           )}
         </Card>
 
