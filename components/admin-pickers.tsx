@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { Pressable, Text, TextInput, View } from 'react-native'
-import { Check } from 'lucide-react-native'
+import { Check } from 'phosphor-react-native/src/icons/Check'
 
 import { useTranslation } from '@/lib/i18n'
 import { formatPrice } from '@/lib/format'

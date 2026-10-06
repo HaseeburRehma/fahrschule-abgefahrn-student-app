@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Alert, Platform, Pressable, ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack } from 'expo-router'
-import { Check } from 'lucide-react-native'
+import { Check } from 'phosphor-react-native/src/icons/Check'
 
 import { useTranslation } from '@/lib/i18n'
 import {

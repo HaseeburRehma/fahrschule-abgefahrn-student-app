@@ -21,6 +21,7 @@ import { getSupabase } from '@/lib/supabase/client'
 import { withTimeout } from '@/lib/async'
 import { normalizeRole, isAdmin as roleIsAdmin } from '@/lib/rbac/permissions'
 import type { Profile, UserRole } from '@/lib/types'
+import { invalidateCache } from '@/lib/cache'
 
 interface UserContextValue {
   session: any | null
@@ -143,6 +144,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setSession(s)
       setLoading(false)
       if (uid !== prev) {
+        invalidateCache() // never serve one user's cached rows to another
         activeUserId.current = uid
         freshFor.current = null
         // Signed out (explicitly, expired refresh token, revoked …) → forget the cached profile.

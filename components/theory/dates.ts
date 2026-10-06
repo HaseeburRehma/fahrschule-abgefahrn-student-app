@@ -3,8 +3,9 @@
  * "Mi, 7. Okt" / "Wed, Oct 7", "Mi, 22. Okt 2026" / "Wed, Oct 22 2026").
  */
 
-import { format } from 'date-fns'
-import { de, enUS } from 'date-fns/locale'
+import { format } from 'date-fns/format'
+import { de } from 'date-fns/locale/de'
+import { enUS } from 'date-fns/locale/en-US'
 import type { Locale } from '@/lib/types'
 
 /** Short weekday + day + month without the trailing abbreviation dot. */

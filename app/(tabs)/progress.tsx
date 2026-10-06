@@ -32,6 +32,7 @@ import { useTranslation } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
 import { updateMyProfile } from '@/lib/data'
 import { useRequestGuard } from '@/lib/use-request-guard'
+import { invalidateCache } from '@/lib/cache'
 
 const AMBER = '#FFC83D'
 const AMBER_BG = '#2A2410'
@@ -104,6 +105,7 @@ export default function ProgressScreen() {
   )
 
   const onRefresh = useCallback(async () => {
+    invalidateCache()
     setRefreshing(true)
     try {
       const [ok] = await Promise.all([load(), refreshProfile().catch(() => {})])

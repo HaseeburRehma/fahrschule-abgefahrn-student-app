@@ -18,6 +18,7 @@ import { fetchMyDoneTopics, fetchTheoryTopics } from '@/lib/data'
 import { topicTitle } from '@/lib/theory-content'
 import type { TheoryTopic } from '@/lib/types'
 import { useRequestGuard } from '@/lib/use-request-guard'
+import { invalidateCache } from '@/lib/cache'
 
 type TopicState = 'done' | 'current' | 'locked' | 'open'
 
@@ -64,6 +65,7 @@ export default function TheoryScreen() {
   )
 
   const onRefresh = useCallback(async () => {
+    invalidateCache()
     setRefreshing(true)
     try {
       const ok = await load()

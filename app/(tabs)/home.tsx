@@ -41,6 +41,7 @@ import { shouldOfferPushPrompt } from '@/lib/auth/push'
 import { instructorFirstName, lessonTitle } from '@/components/schedule/helpers'
 import { getSupabase } from '@/lib/supabase/client'
 import { useRequestGuard } from '@/lib/use-request-guard'
+import { invalidateCache } from '@/lib/cache'
 
 const AMBER = '#FFC83D'
 
@@ -133,6 +134,7 @@ export default function Home() {
   }, [uid])
 
   const onRefresh = useCallback(async () => {
+    invalidateCache()
     setRefreshing(true)
     try {
       const [ok] = await Promise.all([load(), refreshProfile().catch(() => {})])

@@ -20,6 +20,7 @@ import { getSupabase } from '@/lib/supabase/client'
 import { uniqueChannelName } from '@/lib/supabase/channel'
 import { useUser } from '@/lib/user-context'
 import type { NotificationRow } from '@/lib/types'
+import { invalidateCache } from '@/lib/cache'
 
 interface NotificationsContextValue {
   items: NotificationRow[]
@@ -105,6 +106,8 @@ export function NotificationsProvider({
           setItems((prev) => {
             if (payload.eventType === 'INSERT') {
               const row = payload.new as NotificationRow
+              // the school changed something → don't serve cached lessons/classes
+              if (row?.type === 'schedule' || row?.type === 'theory') invalidateCache('appts:', 'classes:', 'rsvp:')
               if (prev.some((n) => n.id === row.id)) return prev
               return [row, ...prev]
             }

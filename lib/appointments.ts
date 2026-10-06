@@ -1,4 +1,5 @@
 import { getSupabase } from '@/lib/supabase/client'
+import { cached, invalidateCache } from '@/lib/cache'
 import type { Profile } from '@/lib/types'
 
 export type AppointmentStatus = 'requested' | 'confirmed' | 'cancelled'
@@ -19,7 +20,13 @@ export interface Appointment {
   slot_id?: string | null
 }
 
-export async function fetchMyAppointments(
+export function fetchMyAppointments(
+  studentId: string,
+): Promise<Appointment[]> {
+  return cached(`appts:${studentId}`, 15000, () => _fetchMyAppointments(studentId)).then((a) => [...a])
+}
+
+async function _fetchMyAppointments(
   studentId: string,
 ): Promise<Appointment[]> {
   const { data, error } = await getSupabase()
@@ -42,6 +49,7 @@ export async function createAppointment(input: {
   /** v2 optional column — dropped automatically if the migration isn't applied */
   lesson_type?: string | null
 }): Promise<Appointment> {
+  invalidateCache('appts:')
   const base: Record<string, unknown> = {
     student_id: input.studentId,
     title: input.title,
@@ -77,6 +85,7 @@ export async function fetchAppointment(id: string): Promise<Appointment | null> 
 }
 
 export async function cancelAppointment(id: string): Promise<void> {
+  invalidateCache('appts:')
   const { error } = await getSupabase()
     .from('appointments')
     .update({ status: 'cancelled' })
@@ -90,6 +99,7 @@ export async function cancelAppointment(id: string): Promise<void> {
  * so an RLS-filtered no-op surfaces as an error instead of a silent "success".
  */
 export async function cancelMyAppointment(id: string): Promise<void> {
+  invalidateCache('appts:')
   const { data, error } = await getSupabase()
     .from('appointments')
     .update({ status: 'cancelled' })
@@ -102,6 +112,7 @@ export async function cancelMyAppointment(id: string): Promise<void> {
 }
 
 export async function deleteAppointment(id: string): Promise<void> {
+  invalidateCache('appts:')
   const { error } = await getSupabase().from('appointments').delete().eq('id', id)
   if (error) throw error
 }
@@ -135,6 +146,7 @@ export async function setAppointmentStatus(
   id: string,
   status: AppointmentStatus,
 ): Promise<void> {
+  invalidateCache('appts:')
   const { error } = await getSupabase()
     .from('appointments')
     .update({ status })
@@ -163,6 +175,7 @@ export async function updateAppointment(
   id: string,
   patch: AppointmentDetailsPatch,
 ): Promise<Appointment> {
+  invalidateCache('appts:')
   const { data, error } = await getSupabase()
     .from('appointments')
     .update(patch)
@@ -180,6 +193,7 @@ export async function adminCreateAppointment(
     'title' | 'starts_at'
   >,
 ): Promise<Appointment> {
+  invalidateCache('appts:')
   const { studentId, ...rest } = input
   const { data, error } = await getSupabase()
     .from('appointments')

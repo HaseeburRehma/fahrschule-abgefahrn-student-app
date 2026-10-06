@@ -4,6 +4,7 @@
  */
 
 import { getSupabase } from '@/lib/supabase/client'
+import { cached, invalidateCache } from '@/lib/cache'
 import type {
   Package,
   TheoryClass,
@@ -11,7 +12,11 @@ import type {
   Profile,
 } from '@/lib/types'
 
-export async function fetchTheoryTopics(): Promise<TheoryTopic[]> {
+export function fetchTheoryTopics(): Promise<TheoryTopic[]> {
+  return cached('topics', 600000, () => _fetchTheoryTopics()).then((a) => [...a])
+}
+
+async function _fetchTheoryTopics(): Promise<TheoryTopic[]> {
   const { data, error } = await getSupabase()
     .from('theory_topics')
     .select('*')
@@ -46,7 +51,11 @@ export async function fetchTopicById(
 }
 
 /** Classes the student is enrolled in, newest-first not applied — caller sorts. */
-export async function fetchMyClasses(studentId: string): Promise<TheoryClass[]> {
+export function fetchMyClasses(studentId: string): Promise<TheoryClass[]> {
+  return cached(`classes:${studentId}`, 60000, () => _fetchMyClasses(studentId)).then((a) => [...a])
+}
+
+async function _fetchMyClasses(studentId: string): Promise<TheoryClass[]> {
   const { data, error } = await getSupabase()
     .from('class_enrollments')
     .select('theory_classes(*)')
@@ -117,7 +126,11 @@ export async function deleteMyAccount(): Promise<void> {
 }
 
 /** IDs of theory topics the student has marked as completed. */
-export async function fetchMyDoneTopics(userId: string): Promise<Set<string>> {
+export function fetchMyDoneTopics(userId: string): Promise<Set<string>> {
+  return cached(`done:${userId}`, 60000, () => _fetchMyDoneTopics(userId)).then((s) => new Set(s))
+}
+
+async function _fetchMyDoneTopics(userId: string): Promise<Set<string>> {
   const { data, error } = await getSupabase()
     .from('topic_progress')
     .select('topic_id')
@@ -131,6 +144,7 @@ export async function setTopicDone(
   topicId: string,
   done: boolean,
 ): Promise<void> {
+  invalidateCache('done:')
   const supabase = getSupabase()
   if (done) {
     const { error } = await supabase

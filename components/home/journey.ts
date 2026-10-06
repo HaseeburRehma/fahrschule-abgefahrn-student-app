@@ -3,8 +3,9 @@
  * Shared by Home (hero card / stepper) and Fortschritt (timeline) so both show the same numbers.
  */
 
-import { format } from 'date-fns'
-import { de as deLocale, enUS } from 'date-fns/locale'
+import { format } from 'date-fns/format'
+import { de as deLocale } from 'date-fns/locale/de'
+import { enUS } from 'date-fns/locale/en-US'
 
 import { fetchMyDoneTopics, fetchTheoryTopics } from '@/lib/data'
 import type { Locale, Profile } from '@/lib/types'

@@ -2,7 +2,11 @@ import React, { useEffect, useState } from 'react'
 import { Alert, Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
-import { CalendarDays, FileText, GraduationCap, Minus, Plus } from 'lucide-react-native'
+import { CalendarDots as CalendarDays } from 'phosphor-react-native/src/icons/CalendarDots'
+import { FileText } from 'phosphor-react-native/src/icons/FileText'
+import { GraduationCap } from 'phosphor-react-native/src/icons/GraduationCap'
+import { Minus } from 'phosphor-react-native/src/icons/Minus'
+import { Plus } from 'phosphor-react-native/src/icons/Plus'
 
 import { useTranslation } from '@/lib/i18n'
 import {

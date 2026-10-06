@@ -5,46 +5,12 @@
 import React from 'react'
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   Text,
   TextInput,
   View,
   type TextInputProps,
 } from 'react-native'
-
-const LION = require('../assets/lion.png')
-const WORDMARK = require('../assets/logo.png')
-
-// Aspect ratio of the wordmark (assets/logo.png ≈ 410:83).
-const WORDMARK_RATIO = 410 / 83
-
-/** The lion mark on a rounded near-black tile (avatar / compact brand). */
-export function Brand({ size = 56 }: { size?: number }) {
-  return (
-    <View
-      className="items-center justify-center rounded-2xl bg-ink"
-      style={{ width: size, height: size }}
-    >
-      <Image
-        source={LION}
-        style={{ width: size * 0.72, height: size * 0.72 }}
-        resizeMode="contain"
-      />
-    </View>
-  )
-}
-
-/** The full "#FAHRSCHULE ABGEFAHRN" wordmark (lion + text). */
-export function Logo({ width = 220 }: { width?: number }) {
-  return (
-    <Image
-      source={WORDMARK}
-      style={{ width, height: width / WORDMARK_RATIO }}
-      resizeMode="contain"
-    />
-  )
-}
 
 export function Button({
   label,

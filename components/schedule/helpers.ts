@@ -2,8 +2,9 @@
  * Shared helpers for the Termine area: lesson types, icons, Figma date formats.
  */
 
-import { format } from 'date-fns'
-import { de as deLocale, enUS } from 'date-fns/locale'
+import { format } from 'date-fns/format'
+import { de as deLocale } from 'date-fns/locale/de'
+import { enUS } from 'date-fns/locale/en-US'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 import { BookOpen } from 'phosphor-react-native/src/icons/BookOpen'
 import { Exam } from 'phosphor-react-native/src/icons/Exam'

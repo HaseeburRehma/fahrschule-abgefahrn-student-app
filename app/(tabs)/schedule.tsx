@@ -53,6 +53,7 @@ import { addToCalendar } from '@/lib/calendar'
 import { scheduleReminders, REMINDER_LEAD_HOURS } from '@/lib/reminders'
 import type { TheoryClass } from '@/lib/types'
 import { useRequestGuard } from '@/lib/use-request-guard'
+import { invalidateCache } from '@/lib/cache'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 
 type Tab = 'upcoming' | 'past'
@@ -137,6 +138,7 @@ export default function Schedule() {
   )
 
   const onRefresh = useCallback(async () => {
+    invalidateCache()
     setRefreshing(true)
     try {
       const ok = await load()

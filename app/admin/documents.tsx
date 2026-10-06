@@ -4,7 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack, useFocusEffect } from 'expo-router'
 import * as DocumentPicker from 'expo-document-picker'
 import * as FileSystem from 'expo-file-system/legacy'
-import { FileText, Trash2, Upload } from 'lucide-react-native'
+import { FileText } from 'phosphor-react-native/src/icons/FileText'
+import { Trash as Trash2 } from 'phosphor-react-native/src/icons/Trash'
+import { UploadSimple as Upload } from 'phosphor-react-native/src/icons/UploadSimple'
 
 import { useTranslation } from '@/lib/i18n'
 import {

@@ -2,7 +2,8 @@ import React, { useCallback, useState } from 'react'
 import { Alert, Platform, Pressable, ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack, useFocusEffect } from 'expo-router'
-import { UserCheck, X } from 'lucide-react-native'
+import { UserCheck } from 'phosphor-react-native/src/icons/UserCheck'
+import { X } from 'phosphor-react-native/src/icons/X'
 
 import { useTranslation } from '@/lib/i18n'
 import {

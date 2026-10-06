@@ -23,6 +23,7 @@ import {
   type DocRow,
 } from '@/lib/documents'
 import { formatDate } from '@/lib/format'
+import { invalidateCache } from '@/lib/cache'
 
 /** Figma uses file-text for PDFs (contracts/certificates); images get file-image. */
 function kindIcon(path: string): PhosphorIcon {
@@ -188,6 +189,7 @@ export default function DocumentsScreen() {
   )
 
   const onRefresh = useCallback(async () => {
+    invalidateCache()
     setRefreshing(true)
     try {
       const ok = await load()

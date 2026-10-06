@@ -7,8 +7,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { differenceInCalendarDays, format, isSameYear } from 'date-fns'
-import { de as deLocale, enUS } from 'date-fns/locale'
+import { differenceInCalendarDays } from 'date-fns/differenceInCalendarDays'
+import { format } from 'date-fns/format'
+import { isSameYear } from 'date-fns/isSameYear'
+import { de as deLocale } from 'date-fns/locale/de'
+import { enUS } from 'date-fns/locale/en-US'
 import { PaperPlaneTilt } from 'phosphor-react-native/src/icons/PaperPlaneTilt'
 
 import { C, ErrorState, F, T, useToast } from '@/components/ds'

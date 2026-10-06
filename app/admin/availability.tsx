@@ -2,7 +2,9 @@ import React, { useCallback, useState } from 'react'
 import { Alert, Platform, Pressable, ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack, useFocusEffect } from 'expo-router'
-import { CalendarClock, Plus, Trash2 } from 'lucide-react-native'
+import { CalendarCheck as CalendarClock } from 'phosphor-react-native/src/icons/CalendarCheck'
+import { Plus } from 'phosphor-react-native/src/icons/Plus'
+import { Trash as Trash2 } from 'phosphor-react-native/src/icons/Trash'
 
 import { useTranslation } from '@/lib/i18n'
 import {

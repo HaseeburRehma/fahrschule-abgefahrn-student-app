@@ -36,6 +36,7 @@ import { scheduleReminders } from '@/lib/reminders'
 import { ExamDateSheet, type ExamKind } from '@/components/theory/exam-date-sheet'
 import { daysUntil, parseIsoDay, shortDate } from '@/components/theory/dates'
 import { useRequestGuard } from '@/lib/use-request-guard'
+import { invalidateCache } from '@/lib/cache'
 
 /** Mandatory driving lessons before the practical exam (Figma "12 Pflicht-Fahrstunden"). */
 const REQUIRED_LESSONS = 12
@@ -101,6 +102,7 @@ export default function ExamsScreen() {
   )
 
   const onRefresh = useCallback(async () => {
+    invalidateCache()
     setRefreshing(true)
     try {
       const [, ok] = await Promise.all([refreshProfile().catch(() => {}), loadTopics()])

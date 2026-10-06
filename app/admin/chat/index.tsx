@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react'
 import { FlatList, Pressable, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack, useFocusEffect, useRouter } from 'expo-router'
-import { ChevronRight } from 'lucide-react-native'
+import { CaretRight as ChevronRight } from 'phosphor-react-native/src/icons/CaretRight'
 
 import { useTranslation } from '@/lib/i18n'
 import { fetchConversations, type Conversation } from '@/lib/chat'

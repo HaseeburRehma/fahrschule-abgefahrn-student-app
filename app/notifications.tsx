@@ -7,8 +7,12 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react'
 import { Alert, Platform, Pressable, RefreshControl, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { differenceInCalendarDays, differenceInMinutes, format, isSameYear } from 'date-fns'
-import { de as deLocale, enUS } from 'date-fns/locale'
+import { differenceInCalendarDays } from 'date-fns/differenceInCalendarDays'
+import { differenceInMinutes } from 'date-fns/differenceInMinutes'
+import { format } from 'date-fns/format'
+import { isSameYear } from 'date-fns/isSameYear'
+import { de as deLocale } from 'date-fns/locale/de'
+import { enUS } from 'date-fns/locale/en-US'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 import { Bell } from 'phosphor-react-native/src/icons/Bell'
 import { BookOpen } from 'phosphor-react-native/src/icons/BookOpen'
@@ -26,6 +30,7 @@ import { stripAbbrDots } from '@/lib/format'
 import { useTranslation } from '@/lib/i18n'
 import { useNotifications } from '@/lib/notifications-context'
 import type { Locale, NotificationRow } from '@/lib/types'
+import { invalidateCache } from '@/lib/cache'
 
 /* ------------------------------------------------------------------ helpers */
 
@@ -174,6 +179,7 @@ export default function NotificationsScreen() {
   const deleting = useRef<Set<string>>(new Set())
 
   const onRefresh = useCallback(async () => {
+    invalidateCache()
     setRefreshing(true)
     try {
       const ok = await refresh()

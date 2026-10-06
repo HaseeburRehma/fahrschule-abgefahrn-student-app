@@ -1,7 +1,12 @@
 import { getSupabase } from '@/lib/supabase/client'
+import { cached, invalidateCache } from '@/lib/cache'
 
 /** Map of classId → attending(true/false) for the current student. */
-export async function fetchMyRsvp(userId: string): Promise<Map<string, boolean>> {
+export function fetchMyRsvp(userId: string): Promise<Map<string, boolean>> {
+  return cached(`rsvp:${userId}`, 60000, () => _fetchMyRsvp(userId)).then((m) => new Map(m))
+}
+
+async function _fetchMyRsvp(userId: string): Promise<Map<string, boolean>> {
   const { data, error } = await getSupabase()
     .from('class_rsvp')
     .select('class_id, attending')
@@ -17,6 +22,7 @@ export async function setRsvp(
   classId: string,
   attending: boolean,
 ): Promise<void> {
+  invalidateCache('rsvp:')
   const { error } = await getSupabase()
     .from('class_rsvp')
     .upsert(

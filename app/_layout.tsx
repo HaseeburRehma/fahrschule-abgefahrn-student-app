@@ -7,13 +7,6 @@ import { StatusBar } from 'expo-status-bar'
 import { useFonts } from 'expo-font'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { Montserrat_400Regular } from '@expo-google-fonts/montserrat/400Regular'
-import { Montserrat_500Medium } from '@expo-google-fonts/montserrat/500Medium'
-import { Montserrat_600SemiBold } from '@expo-google-fonts/montserrat/600SemiBold'
-import { Montserrat_700Bold } from '@expo-google-fonts/montserrat/700Bold'
-import { Montserrat_800ExtraBold } from '@expo-google-fonts/montserrat/800ExtraBold'
-import { Montserrat_900Black } from '@expo-google-fonts/montserrat/900Black'
-import { Montserrat_900Black_Italic } from '@expo-google-fonts/montserrat/900Black_Italic'
 
 import { ThemeProvider } from '@/lib/theme'
 import { I18nProvider } from '@/lib/i18n'
@@ -62,14 +55,16 @@ function RootErrorState({ retry }: { retry: () => Promise<void> }) {
 }
 
 export default function RootLayout() {
+  // Montserrat subset to Latin + punctuation (assets/fonts, ~53 KB each instead of ~335 KB):
+  // 2.4 MB → 0.37 MB to load before the first screen.
   const [fontsLoaded, fontError] = useFonts({
-    Montserrat_400Regular,
-    Montserrat_500Medium,
-    Montserrat_600SemiBold,
-    Montserrat_700Bold,
-    Montserrat_800ExtraBold,
-    Montserrat_900Black,
-    Montserrat_900Black_Italic,
+    Montserrat_400Regular: require('../assets/fonts/Montserrat_400Regular.ttf'),
+    Montserrat_500Medium: require('../assets/fonts/Montserrat_500Medium.ttf'),
+    Montserrat_600SemiBold: require('../assets/fonts/Montserrat_600SemiBold.ttf'),
+    Montserrat_700Bold: require('../assets/fonts/Montserrat_700Bold.ttf'),
+    Montserrat_800ExtraBold: require('../assets/fonts/Montserrat_800ExtraBold.ttf'),
+    Montserrat_900Black: require('../assets/fonts/Montserrat_900Black.ttf'),
+    Montserrat_900Black_Italic: require('../assets/fonts/Montserrat_900Black_Italic.ttf'),
   })
 
   return (

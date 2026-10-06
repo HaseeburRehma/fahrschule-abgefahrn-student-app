@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack, useFocusEffect } from 'expo-router'
-import { Trash2 } from 'lucide-react-native'
+import { Trash as Trash2 } from 'phosphor-react-native/src/icons/Trash'
 
 import { useTranslation } from '@/lib/i18n'
 import {

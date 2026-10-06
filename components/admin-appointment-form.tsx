@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react'
 import { Text, View } from 'react-native'
-import { format } from 'date-fns'
+import { format } from 'date-fns/format'
 
 import { useTranslation } from '@/lib/i18n'
 import {

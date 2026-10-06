@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react'
 import { FlatList, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack, useFocusEffect } from 'expo-router'
-import { Users } from 'lucide-react-native'
+import { Users } from 'phosphor-react-native/src/icons/Users'
 
 import { useTranslation } from '@/lib/i18n'
 import { fetchNotificationHistory, type SentNotification } from '@/lib/admin'
