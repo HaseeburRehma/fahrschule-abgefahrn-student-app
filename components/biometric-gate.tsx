@@ -9,13 +9,18 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { AppState, BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
-import { Lock } from 'lucide-react-native'
+import { AppState, BackHandler, Platform, StyleSheet, View } from 'react-native'
+import { LockSimple } from 'phosphor-react-native/src/icons/LockSimple'
 
-import { Brand } from '@/components/ui'
-import { getBiometricEnabled, authenticate, subscribeBiometricEnabled } from '@/lib/biometric'
+import { Button, C, HeroGlow, LinkButton, Logo, T } from '@/components/ds'
+import { getBiometricEnabled, authenticateDetailed, setBiometricEnabled, subscribeBiometricEnabled } from '@/lib/biometric'
+import { useUser } from '@/lib/user-context'
+import { useT } from '@/lib/i18n'
 
 export function BiometricGate({ children }: { children: React.ReactNode }) {
+  const t = useT()
+  const { session, signOut } = useUser()
+  const signedIn = !!session
   const [locked, setLocked] = useState(false)
   const lockedRef = useRef(false)
   const enabledRef = useRef(false)
@@ -32,12 +37,18 @@ export function BiometricGate({ children }: { children: React.ReactNode }) {
     if (authInFlight.current) return
     authInFlight.current = true
     try {
-      const ok = await authenticate('Fahrschule Abgefahrn')
-      if (ok) setLockedBoth(false)
+      const res = await authenticateDetailed(t('lock.prompt'))
+      if (res.success) setLockedBoth(false)
+      else if (res.unusable) {
+        // Biometrics/passcode were removed on this device (or Expo Go lacks Face ID):
+        // a retry can never succeed → turn the lock off instead of trapping the user.
+        await setBiometricEnabled(false)
+        setLockedBoth(false)
+      }
     } finally {
       authInFlight.current = false
     }
-  }, [setLockedBoth])
+  }, [setLockedBoth, t])
 
   useEffect(() => {
     if (Platform.OS === 'web') return
@@ -70,28 +81,39 @@ export function BiometricGate({ children }: { children: React.ReactNode }) {
 
   // While locked, the hardware back button must not navigate the hidden screens.
   useEffect(() => {
-    if (!locked || Platform.OS !== 'android') return
+    if (!locked || !signedIn || Platform.OS !== 'android') return
     const sub = BackHandler.addEventListener('hardwareBackPress', () => true)
     return () => sub.remove()
-  }, [locked])
+  }, [locked, signedIn])
+
+  // Nobody signed in → nothing to protect (the login screen asks for the password anyway).
+  const showLock = locked && signedIn
 
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ flex: 1 }} importantForAccessibility={locked ? 'no-hide-descendants' : 'auto'} accessibilityElementsHidden={locked}>
+      <View style={{ flex: 1 }} importantForAccessibility={showLock ? 'no-hide-descendants' : 'auto'} accessibilityElementsHidden={showLock}>
         {children}
       </View>
-      {locked ? (
-        <View style={[StyleSheet.absoluteFill, { zIndex: 2000, elevation: 2000 }]} className="items-center justify-center gap-6 bg-black">
-          <Brand size={72} />
-          <Pressable
-            onPress={tryUnlock}
-            accessibilityRole="button"
-            accessibilityLabel="Entsperren · Unlock"
-            className="flex-row items-center gap-2 rounded-2xl bg-brand px-6 py-4"
-          >
-            <Lock size={18} color="#0A0A0A" />
-            <Text className="font-bold text-ink">Entsperren · Unlock</Text>
-          </Pressable>
+      {showLock ? (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 2000, elevation: 2000, backgroundColor: C.bg, overflow: 'hidden' }]}>
+          <HeroGlow top={120} />
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 22, paddingHorizontal: 24 }}>
+            <Logo width={190} />
+            <View style={{ alignItems: 'center', gap: 6 }}>
+              <T variant="headingL" style={{ textAlign: 'center' }}>{t('lock.title')}</T>
+              <T variant="bodyM" color={C.muted} style={{ textAlign: 'center' }}>{t('lock.body')}</T>
+            </View>
+            <Button label={t('lock.unlock')} iconLeft={LockSimple} onPress={tryUnlock} style={{ alignSelf: 'stretch' }} />
+            <LinkButton
+              label={t('lock.signOut')}
+              color={C.muted}
+              onPress={async () => {
+                await setBiometricEnabled(false)
+                setLockedBoth(false)
+                await signOut()
+              }}
+            />
+          </View>
         </View>
       ) : null}
     </View>

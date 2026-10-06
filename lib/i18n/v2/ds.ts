@@ -1,5 +1,10 @@
 /** Shared design-system strings (states, toasts, tab bar, common actions). */
 export const de: Record<string, string> = {
+  'lock.title': 'App gesperrt',
+  'lock.body': 'Entsperre mit Face ID, Fingerabdruck oder deinem Geräte-Code.',
+  'lock.unlock': 'Entsperren',
+  'lock.signOut': 'Abmelden',
+  'lock.prompt': 'Fahrschule Abgefahrn entsperren',
   'ds.loading': 'Lädt deine Daten …',
   'ds.offline.title': 'Keine Verbindung',
   'ds.offline.body': 'Prüfe deine Internetverbindung und versuch es noch einmal.',
@@ -23,6 +28,11 @@ export const de: Record<string, string> = {
   'nav.profile': 'Profil',
 }
 export const en: Record<string, string> = {
+  'lock.title': 'App locked',
+  'lock.body': 'Unlock with Face ID, fingerprint or your device passcode.',
+  'lock.unlock': 'Unlock',
+  'lock.signOut': 'Sign out',
+  'lock.prompt': 'Unlock Fahrschule Abgefahrn',
   'ds.loading': 'Loading your data …',
   'ds.offline.title': 'No connection',
   'ds.offline.body': 'Check your internet connection and try again.',

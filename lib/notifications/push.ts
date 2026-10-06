@@ -12,7 +12,7 @@ import { useEffect, useRef } from 'react'
 import { Platform } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useRouter } from 'expo-router'
-import Constants from 'expo-constants'
+import Constants, { ExecutionEnvironment } from 'expo-constants'
 import * as Device from 'expo-device'
 import * as Notifications from 'expo-notifications'
 
@@ -48,7 +48,18 @@ async function ensureAndroidChannel() {
   })
 }
 
+/**
+ * Remote (server) push is available: real device, not web, and not Expo Go on
+ * Android (removed from Expo Go in SDK 53 — local notifications still work there).
+ */
+export function remotePushSupported(): boolean {
+  if (Platform.OS === 'web' || !Device.isDevice) return false
+  if (Platform.OS === 'android' && Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return false
+  return true
+}
+
 export async function getExpoPushToken(): Promise<string | null> {
+  if (!remotePushSupported()) return null
   const projectId =
     (Constants.expoConfig?.extra as any)?.eas?.projectId ??
     (Constants as any)?.easConfig?.projectId
@@ -70,7 +81,8 @@ function routeForNotification(
   router: ReturnType<typeof useRouter>,
 ) {
   const type = data?.type
-  if (type === 'schedule') router.push('/(tabs)/schedule')
+  if (typeof data?.appointment_id === 'string' && data.appointment_id) router.push(`/appointment/${data.appointment_id}` as any)
+  else if (type === 'schedule') router.push('/(tabs)/schedule')
   else if (type === 'theory') router.push('/(tabs)/theory')
   else if (type === 'exam') router.push('/exams' as any)
   else router.push('/notifications' as any)

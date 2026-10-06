@@ -52,6 +52,7 @@ function iconFor(n: NotificationRow): PhosphorIcon {
 function routeFor(n: NotificationRow): string | null {
   const d = (n.data ?? {}) as Record<string, any>
   if (typeof d.route === 'string' && d.route.startsWith('/')) return d.route
+  if (typeof d.appointment_id === 'string' && d.appointment_id) return `/appointment/${d.appointment_id}`
   const k = kindOf(n)
   if (k === 'document' || d.document_id) return d.document_id ? `/documents/${d.document_id}` : '/documents'
   if (k === 'chat' || k === 'message') return '/chat'

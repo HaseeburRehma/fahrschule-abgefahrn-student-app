@@ -13,6 +13,7 @@ import * as Device from 'expo-device'
 import * as Notifications from 'expo-notifications'
 
 import { getSupabase } from '@/lib/supabase/client'
+import { remotePushSupported } from '@/lib/notifications/push'
 
 export async function hasPushPermission(): Promise<boolean> {
   if (Platform.OS === 'web') return true
@@ -39,7 +40,7 @@ export async function requestPushPermission(): Promise<boolean> {
 
 /** Fetches the Expo push token and stores it on the profile. Best-effort, never throws. */
 export async function registerPushToken(userId: string | null | undefined): Promise<void> {
-  if (Platform.OS === 'web' || !userId || !Device.isDevice) return
+  if (Platform.OS === 'web' || !userId || !Device.isDevice || !remotePushSupported()) return
   try {
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {

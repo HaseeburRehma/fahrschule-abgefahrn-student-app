@@ -45,15 +45,34 @@ export async function setBiometricEnabled(v: boolean): Promise<void> {
   })
 }
 
-export async function authenticate(reason: string): Promise<boolean> {
-  if (Platform.OS === 'web') return true
+export type AuthResult = { success: boolean; unusable: boolean }
+
+/**
+ * Errors after which a retry can never succeed on this device right now
+ * (biometrics removed / passcode off / Expo Go without Face ID entitlement).
+ * The lock must then step aside instead of trapping the user.
+ */
+const UNUSABLE = new Set(['not_enrolled', 'not_available', 'passcode_not_set', 'missing_usage_description'])
+
+export async function authenticateDetailed(reason: string): Promise<AuthResult> {
+  if (Platform.OS === 'web') return { success: true, unusable: false }
   try {
+    if (!(await isBiometricAvailable())) {
+      // no biometrics any more → fall back to the device passcode if there is one
+      const level = await LocalAuthentication.getEnrolledLevelAsync().catch(() => LocalAuthentication.SecurityLevel.NONE)
+      if (level === LocalAuthentication.SecurityLevel.NONE) return { success: false, unusable: true }
+    }
     const res = await LocalAuthentication.authenticateAsync({
       promptMessage: reason,
       disableDeviceFallback: false,
     })
-    return res.success
+    if (res.success) return { success: true, unusable: false }
+    return { success: false, unusable: UNUSABLE.has((res as { error?: string }).error ?? '') }
   } catch {
-    return false
+    return { success: false, unusable: false }
   }
+}
+
+export async function authenticate(reason: string): Promise<boolean> {
+  return (await authenticateDetailed(reason)).success
 }

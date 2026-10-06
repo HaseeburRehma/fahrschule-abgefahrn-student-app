@@ -6,6 +6,8 @@ import React, { useEffect, useState } from 'react'
 import { Pressable, View } from 'react-native'
 import { Check } from 'phosphor-react-native/src/icons/Check'
 import { Globe } from 'phosphor-react-native/src/icons/Globe'
+import { getSupabase } from '@/lib/supabase/client'
+import { useUser } from '@/lib/user-context'
 
 import { Button, C, GLOW, Sheet, T } from '@/components/ds'
 import { useTranslation } from '@/lib/i18n'
@@ -47,6 +49,7 @@ function Option({ label, selected, onPress }: { label: string; selected: boolean
 
 export function LanguageSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { t, locale, setLocale } = useTranslation()
+  const { session } = useUser()
   const [choice, setChoice] = useState<Locale>(locale)
 
   // Re-sync the pending choice each time the sheet opens.
@@ -55,7 +58,12 @@ export function LanguageSheet({ visible, onClose }: { visible: boolean; onClose:
   }, [visible, locale])
 
   function done() {
-    if (choice !== locale) setLocale(choice)
+    if (choice !== locale) {
+      setLocale(choice)
+      // server-side texts (appointment notifications) follow the profile locale
+      const uid = session?.user?.id
+      if (uid) getSupabase().from('profiles').update({ locale: choice }).eq('id', uid).then(() => {}, () => {})
+    }
     onClose()
   }
 
