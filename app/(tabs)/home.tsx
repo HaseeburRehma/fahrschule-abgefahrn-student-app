@@ -49,7 +49,10 @@ const AMBER = '#FFC83D'
 
 export default function Home() {
   const { t, locale } = useTranslation()
-  const narrow = useWindowDimensions().width < 360
+  const screenW = useWindowDimensions().width
+  const narrow = screenW < 360
+  // Below Figma's 390pt frame the 3-up stat tiles get tighter so "Fahrstunden" stays on one line
+  const compactStats = screenW < 390
   const router = useRouter()
   const { profile, session, refreshProfile } = useUser()
   const { unreadCount } = useNotifications()
@@ -246,18 +249,21 @@ export default function Home() {
           value={`${journey.theoryDone}/${journey.theoryTotal}`}
           label={t('home.v2.stat.theory')}
           onPress={() => router.push('/theory' as any)}
+          compact={compactStats}
         />
         <StatTile
           icon={SteeringWheel}
           value={String(journey.lessons)}
           label={t('home.v2.stat.lessons')}
           onPress={() => router.push('/progress' as any)}
+          compact={compactStats}
         />
         <StatTile
           icon={RoadHorizon}
           value={`${journey.specialDone}/3`}
           label={t('home.v2.stat.special')}
           onPress={() => setSheet(true)}
+          compact={compactStats}
         />
       </View>
 
@@ -460,12 +466,34 @@ function StepDot({ state }: { state: Stage['state'] }) {
   return <View style={[base, { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line }]} />
 }
 
-function StatTile({ icon, value, label, onPress }: { icon: PhosphorIcon; value: string; label: string; onPress: () => void }) {
+function StatTile({
+  icon,
+  value,
+  label,
+  onPress,
+  compact,
+}: {
+  icon: PhosphorIcon
+  value: string
+  label: string
+  onPress: () => void
+  /** < 390pt wide: 12px padding + 11px label so "Fahrstunden" fits without truncating */
+  compact?: boolean
+}) {
   return (
-    <Card radius={24} padding={14} onPress={onPress} style={{ flex: 1, gap: 10 }}>
+    <Card radius={24} padding={compact ? 12 : 14} onPress={onPress} style={{ flex: 1, gap: 10 }}>
       <IconTile icon={icon} size={32} iconSize={17} radius={14} />
       <T variant="headingL" numberOfLines={1}>{value}</T>
-      <T variant="caption" color={C.muted} numberOfLines={1}>{label}</T>
+      <T
+        variant="caption"
+        color={C.muted}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
+        style={compact ? { fontSize: 11, letterSpacing: 0 } : undefined}
+      >
+        {label}
+      </T>
     </Card>
   )
 }
