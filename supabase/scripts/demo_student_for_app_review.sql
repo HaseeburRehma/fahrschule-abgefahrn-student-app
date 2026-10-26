@@ -18,6 +18,7 @@ declare
   v_now  timestamptz := now();
   v_today date := (now() at time zone 'Europe/Berlin')::date;
   v_topic6 uuid;
+  v_admin uuid;
 begin
   if v_password like 'REPLACE-%' or length(v_password) < 8 then
     raise exception 'Set v_password (min. 8 characters) before running this script.';
@@ -58,6 +59,19 @@ begin
            updated_at = v_now
      where id = v_uid;
   end if;
+
+  -- The SQL editor has no signed-in user, so is_admin() is false and the
+  -- appointment triggers would treat these inserts as a student's (no past
+  -- dates, no "confirmed", no instructor). Act as an existing admin for THIS
+  -- transaction only — the same path the admin screens use.
+  select id into v_admin from public.profiles
+   where role = 'admin' and is_active
+   order by created_at limit 1;
+  if v_admin is null then
+    raise exception 'No active admin profile found.';
+  end if;
+  perform set_config('request.jwt.claim.sub', v_admin::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated')::text, true);
 
   -- 2) profile (row is created as role 'student' by the on_auth_user_created trigger)
   insert into public.profiles (id, email, role)
