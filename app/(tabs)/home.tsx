@@ -16,6 +16,8 @@ import { Fire } from 'phosphor-react-native/src/icons/Fire'
 import { GraduationCap } from 'phosphor-react-native/src/icons/GraduationCap'
 import { RoadHorizon } from 'phosphor-react-native/src/icons/RoadHorizon'
 import { SteeringWheel } from 'phosphor-react-native/src/icons/SteeringWheel'
+import { Target } from 'phosphor-react-native/src/icons/Target'
+import { Trophy } from 'phosphor-react-native/src/icons/Trophy'
 
 import {
   C,
@@ -204,7 +206,11 @@ export default function Home() {
             <HeroTitle size="M" line1={t('home.v2.road1')} line2={t('home.v2.road2')} />
           </View>
           {streak > 0 ? (
-            <View
+            <Pressable
+              onPress={() => router.push('/streak' as any)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t('quiz.v2.hud.streak', { n: streak })}
               style={{
                 backgroundColor: C.surface,
                 borderRadius: 999,
@@ -218,7 +224,7 @@ export default function Home() {
             >
               <Fire size={18} color={AMBER} weight="fill" />
               <T variant="labelM">{String(streak)}</T>
-            </View>
+            </Pressable>
           ) : null}
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: narrow ? 12 : 16 }}>
@@ -331,6 +337,21 @@ export default function Home() {
             title={t('home.v2.quick.chat')}
             body={t('home.v2.quick.chatBody')}
             onPress={() => router.push('/chat' as any)}
+          />
+        </View>
+        {/* Theorie-Quiz & Liga (Figma 09 / 11) */}
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <QuickTile
+            icon={Target}
+            title={t('quiz.v2.intro.title')}
+            body={t('quiz.v2.dailyGoal')}
+            onPress={() => router.push('/daily-goal' as any)}
+          />
+          <QuickTile
+            icon={Trophy}
+            title={t('quiz.v2.league')}
+            body={t('quiz.v2.badges')}
+            onPress={() => router.push('/league' as any)}
           />
         </View>
       </View>

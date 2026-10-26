@@ -26,6 +26,25 @@ export const C = {
   dangerLine: '#4A1A1C',
   successToast: '#0E1A10',
   overlay: 'rgba(0,0,0,0.65)',
+  // Gamification (Figma section 09/11)
+  gold: '#FFC83D',
+  goldBg: '#2A2410',
+  heart: '#FF5A5A',
+  sheetGreen: '#0E1A0F',
+  // Light "celebration card" palette
+  paper: '#FFFFFF',
+  paperTile: '#F1F3EF',
+  paperTileGreen: '#EDF4EA',
+  paperInk: '#121212',
+  paperDeep: '#0C2608',
+  paperSub: '#5B615A',
+  paperSubGreen: '#5B7A52',
+  paperGreenText: '#2F5A26',
+  paperGreen: '#0A6B14',
+  paperPink: '#C21E5C',
+  paperGoldText: '#9A6B0A',
+  paperBlue: '#1E5AD6',
+  celebrate: '#6AD255',
 } as const
 
 export const F = {
@@ -36,6 +55,9 @@ export const F = {
   xbold: 'Montserrat_800ExtraBold',
   black: 'Montserrat_900Black',
   blackItalic: 'Montserrat_900Black_Italic',
+  tomorrowMedium: 'Tomorrow_500Medium',
+  tomorrowSemibold: 'Tomorrow_600SemiBold',
+  tomorrowBold: 'Tomorrow_700Bold',
 } as const
 
 /** Typography styles (Figma text styles). */

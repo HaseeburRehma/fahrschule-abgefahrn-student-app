@@ -17,7 +17,8 @@
     "build:android": "eas build --platform android --profile production",
     "build:all": "eas build --platform all --profile production",
     "submit:ios": "eas submit --platform ios --latest",
-    "submit:android": "eas submit --platform android --latest"
+    "submit:android": "eas submit --platform android --latest",
+    "test": "vitest run"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
@@ -62,7 +63,8 @@
     "@types/react": "~19.1.17",
     "babel-preset-expo": "~54.0.10",
     "react-refresh": "^0.14.2",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.4"
   },
   "overrides": {
     "postcss": "^8.5.29",

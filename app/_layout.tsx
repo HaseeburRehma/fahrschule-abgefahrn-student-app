@@ -65,6 +65,10 @@ export default function RootLayout() {
     Montserrat_800ExtraBold: require('../assets/fonts/Montserrat_800ExtraBold.ttf'),
     Montserrat_900Black: require('../assets/fonts/Montserrat_900Black.ttf'),
     Montserrat_900Black_Italic: require('../assets/fonts/Montserrat_900Black_Italic.ttf'),
+    // Tomorrow — only on the light "celebration" cards (quiz intro / mastered / streak)
+    Tomorrow_500Medium: require('../assets/fonts/Tomorrow-Medium.ttf'),
+    Tomorrow_600SemiBold: require('../assets/fonts/Tomorrow-SemiBold.ttf'),
+    Tomorrow_700Bold: require('../assets/fonts/Tomorrow-Bold.ttf'),
   })
 
   return (

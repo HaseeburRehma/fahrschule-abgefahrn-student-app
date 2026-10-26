@@ -10,13 +10,14 @@ import { Check } from 'phosphor-react-native/src/icons/Check'
 import { Fire } from 'phosphor-react-native/src/icons/Fire'
 import { GraduationCap } from 'phosphor-react-native/src/icons/GraduationCap'
 import { LockSimple } from 'phosphor-react-native/src/icons/LockSimple'
+import { Medal } from 'phosphor-react-native/src/icons/Medal'
 import { Minus } from 'phosphor-react-native/src/icons/Minus'
 import { Plus } from 'phosphor-react-native/src/icons/Plus'
 import { RoadHorizon } from 'phosphor-react-native/src/icons/RoadHorizon'
 import { SteeringWheel } from 'phosphor-react-native/src/icons/SteeringWheel'
 import { Trophy } from 'phosphor-react-native/src/icons/Trophy'
 
-import { C, Card, ErrorState, HeroTitle, LoadingScreenSkeleton, Screen, T, useToast } from '@/components/ds'
+import { C, Card, ErrorState, HeroTitle, IconTile, LoadingScreenSkeleton, Screen, T, useToast } from '@/components/ds'
 import { ProgressBar } from '@/components/home/progress-ring'
 import { SpecialDrivesSheet } from '@/components/home/special-drives-sheet'
 import {
@@ -217,6 +218,18 @@ export default function ProgressScreen() {
           {t('progress.v2.stages', { done: journey.doneEtappen, total: TOTAL_ETAPPEN })}
         </T>
       </Card>
+
+      {/* Gamification shortcuts (Figma 09: Liga / Abzeichen) */}
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Card radius={20} padding={14} onPress={() => router.push('/league' as any)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <IconTile icon={Trophy} size={36} iconSize={20} radius={12} />
+          <T variant="titleM" style={{ flex: 1 }} numberOfLines={1}>{t('quiz.v2.league')}</T>
+        </Card>
+        <Card radius={20} padding={14} onPress={() => router.push('/badges' as any)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <IconTile icon={Medal} size={36} iconSize={20} radius={12} />
+          <T variant="titleM" style={{ flex: 1 }} numberOfLines={1}>{t('quiz.v2.badges')}</T>
+        </Card>
+      </View>
 
       <T variant="titleM">{t('progress.v2.roadmap')}</T>
 

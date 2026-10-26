@@ -5,12 +5,13 @@
 
 import React, { useCallback, useRef, useState } from 'react'
 import { View } from 'react-native'
-import { useFocusEffect, useLocalSearchParams } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 import { BookOpen } from 'phosphor-react-native/src/icons/BookOpen'
 import { CalendarDots } from 'phosphor-react-native/src/icons/CalendarDots'
 import { Check } from 'phosphor-react-native/src/icons/Check'
 import { CheckCircle } from 'phosphor-react-native/src/icons/CheckCircle'
+import { Target } from 'phosphor-react-native/src/icons/Target'
 
 import { Button, C, Card, EmptyState, ErrorState, Pill, Screen, Skeleton, T, TopBar, useToast } from '@/components/ds'
 import { useTranslation } from '@/lib/i18n'
@@ -148,14 +149,25 @@ export default function TheoryDetailScreen() {
       header={<TopBar title={t('theory.v2.topicN', { n: topic.number })} />}
       gap={16}
       footer={
-        <Button
-          label={isDone ? t('theory.v2.markUndone') : t('theory.v2.markDone')}
-          variant={isDone ? 'secondary' : 'primary'}
-          iconLeft={isDone ? undefined : CheckCircleFill}
-          loading={saving}
-          onPress={toggleDone}
-          style={{ marginHorizontal: 4 }}
-        />
+        <>
+          {topic.number >= 1 && topic.number <= 14 ? (
+            <Button
+              label={t('quiz.v2.startTopic')}
+              variant="secondary"
+              iconLeft={Target}
+              onPress={() => router.push(`/quiz/${topic.number}` as any)}
+              style={{ marginHorizontal: 4 }}
+            />
+          ) : null}
+          <Button
+            label={isDone ? t('theory.v2.markUndone') : t('theory.v2.markDone')}
+            variant={isDone ? 'secondary' : 'primary'}
+            iconLeft={isDone ? undefined : CheckCircleFill}
+            loading={saving}
+            onPress={toggleDone}
+            style={{ marginHorizontal: 4 }}
+          />
+        </>
       }
     >
       {/* Number / state + title */}

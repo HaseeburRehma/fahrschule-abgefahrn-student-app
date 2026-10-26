@@ -6,7 +6,21 @@ import Svg, { Circle } from 'react-native-svg'
 
 import { C, T } from '@/components/ds'
 
-export function ProgressRing({ percent, size = 84, stroke = 8 }: { percent: number; size?: number; stroke?: number }) {
+export function ProgressRing({
+  percent,
+  size = 84,
+  stroke = 8,
+  label,
+  caption,
+}: {
+  percent: number
+  size?: number
+  stroke?: number
+  /** replaces the "45%" center text (e.g. Tagesziel "1/2") */
+  label?: string
+  /** small uppercase line under the label (e.g. "LEKTIONEN") */
+  caption?: string
+}) {
   const r = (size - stroke) / 2
   const circ = 2 * Math.PI * r
   const pct = Number.isFinite(percent) ? Math.max(0, Math.min(100, percent)) : 0
@@ -41,7 +55,14 @@ export function ProgressRing({ percent, size = 84, stroke = 8 }: { percent: numb
           </Svg>
         </View>
       ) : null}
-      <T variant={size < 80 ? 'headingM' : 'headingL'}>{`${Math.round(pct)}%`}</T>
+      {label !== undefined ? (
+        <View style={{ alignItems: 'center' }}>
+          <T variant="displayL">{label}</T>
+          {caption ? <T variant="caption" color={C.muted}>{caption}</T> : null}
+        </View>
+      ) : (
+        <T variant={size < 80 ? 'headingM' : 'headingL'}>{`${Math.round(pct)}%`}</T>
+      )}
     </View>
   )
 }
