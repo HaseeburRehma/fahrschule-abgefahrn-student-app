@@ -19,19 +19,7 @@ import { SteeringWheel } from 'phosphor-react-native/src/icons/SteeringWheel'
 import { Target } from 'phosphor-react-native/src/icons/Target'
 import { Trophy } from 'phosphor-react-native/src/icons/Trophy'
 
-import {
-  C,
-  Card,
-  ErrorState,
-  HeroTitle,
-  IconButton,
-  IconTile,
-  LoadingScreenSkeleton,
-  Pill,
-  Screen,
-  T,
-  useToast,
-} from '@/components/ds'
+import { C, Card, ErrorState, HeroTitle, IconButton, IconTile, LoadingScreenSkeleton, Pill, Screen, T, useToast, PulseRing } from '@/components/ds'
 import { ProgressRing } from '@/components/home/progress-ring'
 import { SpecialDrivesSheet } from '@/components/home/special-drives-sheet'
 import { computeJourney, loadTheoryCounts, longDate, shortDate, timeRange, type Journey, type Stage } from '@/components/home/journey'
@@ -40,7 +28,7 @@ import { useUser } from '@/lib/user-context'
 import { useNotifications } from '@/lib/notifications-context'
 import { fetchMyAppointments, type Appointment } from '@/lib/appointments'
 import { shouldOfferPushPrompt } from '@/lib/auth/push'
-import { instructorFirstName, lessonTitle } from '@/components/schedule/helpers'
+import { lessonHeading } from '@/components/schedule/helpers'
 import { getSupabase } from '@/lib/supabase/client'
 import { useRequestGuard } from '@/lib/use-request-guard'
 import { invalidateCache } from '@/lib/cache'
@@ -288,9 +276,7 @@ export default function Home() {
             {nextAppt ? (
               <>
                 <T variant="titleM" numberOfLines={1}>
-                  {instructorFirstName(nextAppt)
-                    ? t('schedule.v2.with', { type: lessonTitle(nextAppt, t, locale), name: instructorFirstName(nextAppt)! })
-                    : lessonTitle(nextAppt, t, locale)}
+                  {lessonHeading(nextAppt, t, locale)}
                 </T>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -444,22 +430,26 @@ function StepDot({ state }: { state: Stage['state'] }) {
   }
   if (state === 'current') {
     return (
-      <View
-        style={[
-          base,
-          {
-            backgroundColor: C.tile,
-            borderWidth: 2,
-            borderColor: C.brand,
-            shadowColor: C.brand,
-            shadowOpacity: 0.5,
-            shadowRadius: 7,
-            shadowOffset: { width: 0, height: 0 },
-            elevation: 4,
-          },
-        ]}
-      >
-        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: C.brand }} />
+      // Figma "Strecke-Puls": the current stop pulses outward
+      <View style={{ width: 22, height: 22, alignItems: 'center', justifyContent: 'center' }}>
+        <PulseRing size={22} scaleTo={1.9} duration={1800} />
+        <View
+          style={[
+            base,
+            {
+              backgroundColor: C.tile,
+              borderWidth: 2,
+              borderColor: C.brand,
+              shadowColor: C.brand,
+              shadowOpacity: 0.5,
+              shadowRadius: 7,
+              shadowOffset: { width: 0, height: 0 },
+              elevation: 4,
+            },
+          ]}
+        >
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: C.brand }} />
+        </View>
       </View>
     )
   }

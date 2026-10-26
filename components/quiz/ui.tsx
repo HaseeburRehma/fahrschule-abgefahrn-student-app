@@ -11,7 +11,7 @@ import { Fire } from 'phosphor-react-native/src/icons/Fire'
 import { Heart } from 'phosphor-react-native/src/icons/Heart'
 import { Lightning } from 'phosphor-react-native/src/icons/Lightning'
 
-import { C, F, T } from '@/components/ds'
+import { C, F, FloatIdle, PopIn, PulseRing, T } from '@/components/ds'
 import type { DayState } from '@/lib/quiz/gamification'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -28,6 +28,7 @@ export const MASCOT = {
 /** Figma "Mascot/Placeholder": rounded mascot avatar used in the feedback sheet. */
 export function MascotAvatar({ pose, size = 64 }: { pose: 'thumbs' | 'think'; size?: number }) {
   return (
+    <PopIn>
     <View
       style={{ width: size, height: size, borderRadius: 16, backgroundColor: '#FEFBFA', overflow: 'hidden' }}
       accessibilityElementsHidden
@@ -35,19 +36,22 @@ export function MascotAvatar({ pose, size = 64 }: { pose: 'thumbs' | 'think'; si
     >
       <Image source={MASCOT[pose]} resizeMode="contain" style={{ width: size, height: size }} />
     </View>
+    </PopIn>
   )
 }
 
-/** Full-bleed mascot background (decorative). */
+/** Full-bleed mascot background (decorative) with the Figma "Maskottchen" idle float. */
 export function MascotBackdrop({ source, style }: { source: number; style?: StyleProp<ImageStyle> }) {
   return (
-    <Image
-      source={source}
-      resizeMode="cover"
-      accessibilityElementsHidden
-      importantForAccessibility="no"
-      style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }, style]}
-    />
+    <FloatIdle distance={8} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+      <Image
+        source={source}
+        resizeMode="cover"
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+        style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }, style]}
+      />
+    </FloatIdle>
   )
 }
 
@@ -243,6 +247,9 @@ export function WeekDots({ days, labels, light }: { days: DayState[]; labels: st
         }
         return (
           <View key={i} style={{ alignItems: 'center', gap: 5, flex: 1 }}>
+            <View style={{ width: light ? 34 : 36, height: light ? 34 : 36, alignItems: 'center', justifyContent: 'center' }}>
+            {/* Figma "Streak-Puls": today's dot breathes */}
+            {today ? <PulseRing size={light ? 34 : 36} scaleTo={1.45} duration={1800} filled /> : null}
             <View
               style={{
                 width: light ? 34 : 36,
@@ -260,6 +267,7 @@ export function WeekDots({ days, labels, light }: { days: DayState[]; labels: st
               ) : today ? (
                 <Fire size={16} color={light ? C.paperGreen : C.brand} weight="fill" />
               ) : null}
+            </View>
             </View>
             <T
               style={light ? { fontFamily: F.tomorrowMedium, fontSize: 11 } : undefined}

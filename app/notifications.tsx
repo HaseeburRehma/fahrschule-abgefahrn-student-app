@@ -230,7 +230,7 @@ export default function NotificationsScreen() {
       title={t('notifications.v2.title')}
       right={
         unreadCount > 0 ? (
-          <Pressable onPress={markAllAsRead} hitSlop={12} accessibilityRole="button" accessibilityLabel={t('notifications.v2.markAll')}>
+          <Pressable onPress={markAllAsRead} hitSlop={14} accessibilityRole="button" accessibilityLabel={t('notifications.v2.markAll')}>
             {({ pressed }) => (
               <T variant="labelM" color={C.brand} style={{ opacity: pressed ? 0.7 : 1 }}>
                 {t('notifications.v2.markAll')}

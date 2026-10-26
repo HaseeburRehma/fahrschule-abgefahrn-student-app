@@ -106,7 +106,7 @@ begin
   delete from public.appointments where student_id = v_uid;
   insert into public.appointments (student_id, title, starts_at, ends_at, status, instructor_name, meeting_point, lesson_type)
   values
-    (v_uid, 'Fahrstunde mit Marco',
+    (v_uid, 'Fahrstunde',
      ((v_today + 2)::text || ' 14:00 Europe/Berlin')::timestamptz,
      ((v_today + 2)::text || ' 15:30 Europe/Berlin')::timestamptz,
      'confirmed', 'Marco', 'Fahrschule Abgefahrn', 'regular'),

@@ -270,7 +270,7 @@ function ExamCard({
         <IconTile icon={icon} size={44} iconSize={24} radius={14} tone={tileTone} />
         <View style={{ flex: 1, gap: 2 }}>
           <T variant="titleM" numberOfLines={1}>{title}</T>
-          <T variant="bodyS" color={C.muted} numberOfLines={1}>
+          <T variant="bodyS" color={C.muted} numberOfLines={2}>
             {day ? shortDate(day, locale, true) : t('exams.v2.noDate')}
           </T>
         </View>

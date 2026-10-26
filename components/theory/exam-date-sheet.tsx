@@ -142,6 +142,7 @@ export function ExamDateSheet({
                 lineHeight: 24,
                 paddingVertical: 16,
                 outlineWidth: 0,
+                outlineStyle: 'none',
               } as any
             }
           />

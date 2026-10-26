@@ -89,6 +89,18 @@ export function instructorFirstName(a: Pick<Appointment, 'instructor_name'>): st
   return a.instructor_name?.trim().split(/\s+/)[0] || null
 }
 
+/** "Fahrstunde mit Marco" — without doubling the name when the title already contains it. */
+export function lessonHeading(
+  a: Pick<Appointment, 'title' | 'instructor_name'>,
+  t: (k: string, v?: Record<string, string | number>) => string,
+  locale: Locale,
+): string {
+  const title = lessonTitle(a, t, locale)
+  const name = instructorFirstName(a)
+  if (!name || title.toLowerCase().includes(name.toLowerCase())) return title
+  return t('schedule.v2.with', { type: title, name })
+}
+
 /* ------------------------------------------------------------------ dates */
 
 const DE_MON = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']

@@ -289,6 +289,7 @@ export function ChatThread({
                 fontSize: 15,
                 lineHeight: 22,
                 outlineWidth: 0,
+                outlineStyle: 'none',
               } as any
             }
           />

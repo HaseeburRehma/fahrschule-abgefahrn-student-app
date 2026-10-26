@@ -268,6 +268,7 @@ export function Input({
               paddingVertical: multiline ? 0 : 16,
               textAlignVertical: multiline ? 'top' : 'center',
               outlineWidth: 0,
+              outlineStyle: 'none',
             } as any,
             style,
           ]}

@@ -17,7 +17,7 @@ import { RoadHorizon } from 'phosphor-react-native/src/icons/RoadHorizon'
 import { SteeringWheel } from 'phosphor-react-native/src/icons/SteeringWheel'
 import { Trophy } from 'phosphor-react-native/src/icons/Trophy'
 
-import { C, Card, ErrorState, HeroTitle, IconTile, LoadingScreenSkeleton, Screen, T, useToast } from '@/components/ds'
+import { C, Card, ErrorState, HeroTitle, IconTile, LoadingScreenSkeleton, Screen, T, useToast, PulseRing } from '@/components/ds'
 import { ProgressBar } from '@/components/home/progress-ring'
 import { SpecialDrivesSheet } from '@/components/home/special-drives-sheet'
 import {
@@ -320,8 +320,12 @@ function StageNode({ stageKey, state }: { stageKey: StageKey; state: StageState 
   if (state === 'current') {
     const Icon = ICONS[stageKey]
     return (
-      <View style={[base, { backgroundColor: C.tile, borderWidth: 2.5, borderColor: C.brand }, GREEN_GLOW, { elevation: 4 }]}>
-        <Icon size={22} color={C.brand} weight="fill" />
+      // Figma "Strecke-Puls": the current stage pulses outward
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <PulseRing size={size} scaleTo={1.6} duration={1800} />
+        <View style={[base, { backgroundColor: C.tile, borderWidth: 2.5, borderColor: C.brand }, GREEN_GLOW, { elevation: 4 }]}>
+          <Icon size={22} color={C.brand} weight="fill" />
+        </View>
       </View>
     )
   }

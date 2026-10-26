@@ -14,7 +14,7 @@ import { SteeringWheel } from 'phosphor-react-native/src/icons/SteeringWheel'
 import { Trophy } from 'phosphor-react-native/src/icons/Trophy'
 import { X } from 'phosphor-react-native/src/icons/X'
 
-import { Button, C, IconButton, Screen, T } from '@/components/ds'
+import { Button, C, IconButton, Screen, T, PulseRing } from '@/components/ds'
 import { useT } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
 
@@ -61,6 +61,10 @@ export default function Success() {
 
       {/* Medal cluster (180×180) */}
       <Animated.View style={{ width: 180, height: 180, alignSelf: 'center', marginTop: 72, transform: [{ scale }] }}>
+        {/* Figma "Geschafft": soft green halo pulsing out from the medal */}
+        <View style={{ position: 'absolute', left: 20, top: 20, width: 140, height: 140, alignItems: 'center', justifyContent: 'center' }}>
+          <PulseRing size={140} scaleTo={1.35} duration={2000} filled />
+        </View>
         <View
           style={{
             position: 'absolute',

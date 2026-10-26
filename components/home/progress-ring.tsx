@@ -1,10 +1,12 @@
 /** Figma Home hero ring: 84×84, 8px stroke, #1C1E1C track, green arc from 12 o'clock with soft green glow. */
 
 import React from 'react'
-import { Platform, View } from 'react-native'
+import { Animated, Platform, View } from 'react-native'
 import Svg, { Circle } from 'react-native-svg'
 
-import { C, T } from '@/components/ds'
+import { C, T, useFill } from '@/components/ds'
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 
 export function ProgressRing({
   percent,
@@ -25,6 +27,8 @@ export function ProgressRing({
   const circ = 2 * Math.PI * r
   const pct = Number.isFinite(percent) ? Math.max(0, Math.min(100, percent)) : 0
   const p = pct / 100
+  // Figma "Fortschritt": the arc fills up from 0 when it appears / changes
+  const fill = useFill(p)
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
@@ -42,14 +46,15 @@ export function ProgressRing({
           ]}
         >
           <Svg width={size} height={size}>
-            <Circle
+            <AnimatedCircle
               cx={size / 2}
               cy={size / 2}
               r={r}
               stroke={C.brand}
               strokeWidth={stroke}
               fill="none"
-              strokeDasharray={`${circ * p} ${circ}`}
+              strokeDasharray={`${circ} ${circ}`}
+              strokeDashoffset={fill.interpolate({ inputRange: [0, 1], outputRange: [circ, 0] })}
               transform={`rotate(-90 ${size / 2} ${size / 2})`}
             />
           </Svg>
@@ -70,12 +75,14 @@ export function ProgressRing({
 /** Thin green progress bar (h6 r3, #1C1E1C track, glowing fill) used on Fortschritt. */
 export function ProgressBar({ value, height = 6 }: { value: number; height?: number }) {
   const v = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0
+  // Figma "Vollgas": the bar fills up when it appears / changes
+  const fill = useFill(v)
   return (
     <View style={{ height, borderRadius: height / 2, backgroundColor: C.surface, alignSelf: 'stretch' }}>
       {v > 0 ? (
-        <View
+        <Animated.View
           style={{
-            width: `${v * 100}%`,
+            width: fill.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
             height,
             borderRadius: height / 2,
             backgroundColor: C.brand,

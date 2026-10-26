@@ -6,7 +6,7 @@
  */
 
 import React, { useRef, useState } from 'react'
-import { Image, Pressable, ScrollView, View } from 'react-native'
+import { Animated, Image, Pressable, ScrollView, View } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CheckCircle } from 'phosphor-react-native/src/icons/CheckCircle'
@@ -16,7 +16,7 @@ import { SignOut } from 'phosphor-react-native/src/icons/SignOut'
 import { X } from 'phosphor-react-native/src/icons/X'
 import { XCircle } from 'phosphor-react-native/src/icons/XCircle'
 
-import { Button, C, F, Sheet, SheetHero, T, useToast } from '@/components/ds'
+import { Button, C, F, GreenLight, Sheet, SheetHero, T, useFill, useToast } from '@/components/ds'
 import {
   MASCOT,
   MascotAvatar,
@@ -35,7 +35,7 @@ import { QUIZ_IMAGES } from '@/lib/quiz/images'
 import { recordQuizAttempt, type RecordedAttempt } from '@/lib/quiz/api'
 import { formatDuration } from '@/lib/quiz/gamification'
 
-type Phase = 'intro' | 'play' | 'result'
+type Phase = 'intro' | 'go' | 'play' | 'result'
 
 export default function QuizScreen() {
   const { topic: topicParam } = useLocalSearchParams<{ topic: string }>()
@@ -62,6 +62,8 @@ export default function QuizScreen() {
   const topicName = content ? (locale === 'en' ? content.short_en : content.short_de) : ''
   const q = round[idx]
   const lives = Math.max(0, LIVES - wrong)
+  // Figma "Vollgas": the top bar fills smoothly after each answer (hook must run on every render)
+  const progressFill = useFill(round.length ? Math.max(0.04, (idx + (checked ? 1 : 0)) / round.length) : 0, 500)
   // Best possible XP for this round — same rule as record_quiz_attempt (10/answer + 20 perfect bonus).
   const maxXp = round.length * 10 + 20
 
@@ -159,12 +161,23 @@ export default function QuizScreen() {
           />
           <PaperButton
             label={t('quiz.v2.start')}
-            onPress={() => {
-              startedAt.current = Date.now()
-              setPhase('play')
-            }}
+            onPress={() => setPhase('go')}
           />
         </PaperCard>
+      </View>
+    )
+  }
+
+  /* ------------------------------------------------- "Grünes Licht" countdown */
+  if (phase === 'go') {
+    return (
+      <View style={{ flex: 1, backgroundColor: C.bg }}>
+        <GreenLight
+          onDone={() => {
+            startedAt.current = Date.now()
+            setPhase('play')
+          }}
+        />
       </View>
     )
   }
@@ -236,9 +249,9 @@ export default function QuizScreen() {
           accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }}
           style={{ flex: 1, height: 14, borderRadius: 7, backgroundColor: C.surface, overflow: 'hidden' }}
         >
-          <View
+          <Animated.View
             style={{
-              width: `${Math.max(4, progress * 100)}%`,
+              width: progressFill.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
               height: 14,
               borderRadius: 7,
               backgroundColor: C.brand,
