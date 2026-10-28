@@ -1,4 +1,5 @@
 import '../global.css'
+import '@/lib/theme/web-styles'
 
 import React from 'react'
 import { View } from 'react-native'
