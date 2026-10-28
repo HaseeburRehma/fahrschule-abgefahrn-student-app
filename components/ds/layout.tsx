@@ -3,7 +3,7 @@
  */
 
 import React from 'react'
-import { Image, KeyboardAvoidingView, Platform, ScrollView, View, type StyleProp, type ViewStyle, type RefreshControlProps } from 'react-native'
+import { Image, KeyboardAvoidingView, Platform, ScrollView, View, useWindowDimensions, type StyleProp, type ViewStyle, type RefreshControlProps } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
@@ -14,6 +14,14 @@ import { C } from './tokens'
 import { T } from './primitives'
 import { IconButton } from './controls'
 import { useT } from '@/lib/i18n'
+
+/** The app runs in a centred column at most this wide (wide web windows, iPad). */
+export const APP_MAX_WIDTH = 672
+
+/** Width of the app column — use this instead of the window width for layout maths. */
+export function useAppWidth(): number {
+  return Math.min(useWindowDimensions().width, APP_MAX_WIDTH)
+}
 
 const GLOW_IMG = require('@/assets/brand/hero-glow.png')
 

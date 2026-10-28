@@ -13,7 +13,7 @@ import { Heart } from 'phosphor-react-native/src/icons/Heart'
 import { Lightning } from 'phosphor-react-native/src/icons/Lightning'
 import { Star } from 'phosphor-react-native/src/icons/Star'
 
-import { C, F, FloatIdle, PopIn, PulseRing, T } from '@/components/ds'
+import { C, F, FloatIdle, PopIn, PulseRing, T, useAppWidth } from '@/components/ds'
 import type { DayState } from '@/lib/quiz/gamification'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -53,7 +53,8 @@ export function MascotTile() {
  * and y≈466 — the framing of the Figma video. Idle float = "Maskottchen".
  */
 export function MascotStage() {
-  const { width, height } = useWindowDimensions()
+  const width = useAppWidth()
+  const { height } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   // scale from the 390×844 frame; capped by height so tablets don't get a giant lion
   const s = Math.min(width / 390, height / 844)
@@ -90,7 +91,7 @@ export function StageImage({ lionW }: { lionW: number }) {
 /* ------------------------------------------------------------------ light celebration card */
 
 export function PaperCard({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
-  const { width } = useWindowDimensions()
+  const width = useAppWidth()
   return (
     <View
       style={[

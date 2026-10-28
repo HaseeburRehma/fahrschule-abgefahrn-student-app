@@ -17,7 +17,7 @@ import { AuthGuard } from '@/components/auth-guard'
 import { SessionGuardRunner } from '@/components/session-guard-runner'
 import { PushRegistrar } from '@/components/push-registrar'
 import { BiometricGate } from '@/components/biometric-gate'
-import { C, ErrorState, ToastProvider } from '@/components/ds'
+import { APP_MAX_WIDTH, C, ErrorState, ToastProvider } from '@/components/ds'
 import { useT } from '@/lib/i18n'
 
 /**
@@ -33,7 +33,7 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
     <SafeAreaProvider>
       <I18nProvider>
         <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center' }}>
-          <View style={{ flex: 1, width: '100%', maxWidth: 672, paddingHorizontal: 20, paddingVertical: 40 }}>
+          <View style={{ flex: 1, width: '100%', maxWidth: APP_MAX_WIDTH, paddingHorizontal: 20, paddingVertical: 40 }}>
             <RootErrorState retry={retry} />
           </View>
         </View>
@@ -86,7 +86,7 @@ export default function RootLayout() {
                   {/* On web, center the app in a phone-width column so wide
                       desktop screens don't stretch the UI. */}
                   <View style={{ flex: 1, width: '100%', backgroundColor: C.bg, alignItems: 'center' }}>
-                    <View style={{ flex: 1, width: '100%', maxWidth: 672 }}>
+                    <View style={{ flex: 1, width: '100%', maxWidth: APP_MAX_WIDTH }}>
                       <ToastProvider>
                         <AuthGuard>
                           <SessionGuardRunner />

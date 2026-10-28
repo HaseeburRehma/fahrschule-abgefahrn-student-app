@@ -4,11 +4,11 @@
  */
 
 import React from 'react'
-import { useWindowDimensions, View } from 'react-native'
+import { View } from 'react-native'
 import { router } from 'expo-router'
 import { ArrowRight } from 'phosphor-react-native/src/icons/ArrowRight'
 
-import { Button, C, ErrorState, FloatIdle, Screen, Skeleton, T, TopBar } from '@/components/ds'
+import { Button, C, ErrorState, FloatIdle, Screen, Skeleton, T, TopBar, useAppWidth } from '@/components/ds'
 import { ProgressRing } from '@/components/home/progress-ring'
 import { Hud, StageImage, WEEKDAY_LABELS, WeekDots } from '@/components/quiz/ui'
 import { useTranslation } from '@/lib/i18n'
@@ -20,8 +20,7 @@ export default function DailyGoalScreen() {
   const { t, locale } = useTranslation()
   const { profile } = useUser()
   const { attempts, loading, error, reload } = useQuizAttempts()
-  const { width } = useWindowDimensions()
-  const bandW = width - 40
+  const bandW = useAppWidth() - 40
   const lionW = bandW * 0.8675
 
   if (loading) {

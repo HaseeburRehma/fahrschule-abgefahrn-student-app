@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback, useRef, useState } from 'react'
-import { useWindowDimensions, View } from 'react-native'
+import { View } from 'react-native'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 import { BookOpen } from 'phosphor-react-native/src/icons/BookOpen'
@@ -13,7 +13,7 @@ import { Check } from 'phosphor-react-native/src/icons/Check'
 import { CheckCircle } from 'phosphor-react-native/src/icons/CheckCircle'
 import { Target } from 'phosphor-react-native/src/icons/Target'
 
-import { Button, C, Card, EmptyState, ErrorState, Pill, Screen, Skeleton, T, TopBar, useToast } from '@/components/ds'
+import { Button, C, Card, EmptyState, ErrorState, Pill, Screen, Skeleton, T, TopBar, useAppWidth, useToast } from '@/components/ds'
 import { useTranslation } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
 import { fetchMyClasses, fetchMyDoneTopics, fetchTopicById, setTopicDone, splitByTime } from '@/lib/data'
@@ -28,7 +28,7 @@ const CheckCircleFill = ((props: any) => <CheckCircle {...props} weight="fill" /
 export default function TheoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { t, locale } = useTranslation()
-  const { width } = useWindowDimensions()
+  const width = useAppWidth()
   const { profile, session } = useUser()
   const toast = useToast()
   const uid: string | null = session?.user?.id ?? null

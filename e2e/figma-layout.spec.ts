@@ -193,3 +193,22 @@ test('Figma: no horizontal overflow from 320 to 430pt', async ({ page }) => {
     }
   }
 })
+
+test('iPad: the app column holds the mascot stage and the Tagesziel band', async ({ page }) => {
+  // the app is a centred column of at most 672pt (APP_MAX_WIDTH); art must be laid out in it
+  await page.setViewportSize({ width: 1032, height: 1376 })
+  const columnCentre = 1032 / 2
+  for (const route of ['/quiz/6', '/streak']) {
+    await open(page, route, 1500)
+    const lion = await page.getByTestId('float-idle').first().evaluate((el) => {
+      const r = el.getBoundingClientRect()
+      return r.left + r.width / 2
+    })
+    expect(Math.abs(lion - columnCentre), `${route}: lion centre ${lion}`).toBeLessThan(4)
+  }
+  await open(page, '/daily-goal', 1500)
+  const sw = await page.evaluate(() => document.documentElement.scrollWidth)
+  expect(sw).toBeLessThanOrEqual(1032)
+  const band = await page.getByTestId('float-idle').first().evaluate((el) => el.parentElement!.getBoundingClientRect().width)
+  expect(band).toBeLessThanOrEqual(672 - 40 + 1)
+})
