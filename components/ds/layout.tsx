@@ -73,7 +73,7 @@ export function Screen({
   const insets = useSafeAreaInsets()
   const bottomPad = footer ? 16 : tabBar ? 24 : Math.max(insets.bottom, 16) + 16
   const inner: StyleProp<ViewStyle> = [
-    { paddingHorizontal: padded ? 20 : 0, paddingTop: header ? 8 : 12, paddingBottom: bottomPad, gap },
+    { paddingHorizontal: padded ? 20 : 0, paddingTop: 12, paddingBottom: bottomPad, gap },
     contentStyle,
   ]
 

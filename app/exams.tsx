@@ -268,7 +268,8 @@ function ExamCard({
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <IconTile icon={icon} size={44} iconSize={24} radius={14} tone={tileTone} />
-        <View style={{ flex: 1, gap: 2 }}>
+        {/* Figma lets the subtitle run into the 12pt gap before the pill (e.g. "Noch kein Termin geplant") */}
+        <View style={{ flex: 1, gap: 2, marginRight: -8 }}>
           <T variant="titleM" numberOfLines={1}>{title}</T>
           <T variant="bodyS" color={C.muted} numberOfLines={2}>
             {day ? shortDate(day, locale, true) : t('exams.v2.noDate')}

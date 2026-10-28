@@ -82,7 +82,7 @@ export default function AppointmentDetail() {
 
   if (loading) {
     return (
-      <Screen glow={-30} header={header} gap={16} contentStyle={{ paddingTop: 8 }}>
+      <Screen glow={-30} header={header} gap={16}>
         <Skeleton height={150} radius={20} />
         <Skeleton height={200} radius={20} />
         <Skeleton height={120} radius={18} />
@@ -158,7 +158,6 @@ export default function AppointmentDetail() {
       glow={-30}
       header={header}
       gap={16}
-      contentStyle={{ paddingTop: 8 }}
       footer={
         canCancel ? (
           <Button variant="dangerSoft" label={t('appointment.v2.cancel')} onPress={() => setCancelOpen(true)} style={{ height: 52, marginHorizontal: 4 }} />
@@ -181,7 +180,8 @@ export default function AppointmentDetail() {
           <View style={{ width: 50, height: 50, borderRadius: 13, backgroundColor: C.tile, alignItems: 'center', justifyContent: 'center' }}>
             <Icon size={26} color={C.brand} />
           </View>
-          <View style={{ flex: 1, gap: 3 }}>
+          {/* Figma's "Fahrstunde" fills the space up to the pill exactly — let it use part of the gap */}
+          <View style={{ flex: 1, gap: 3, marginRight: -8 }}>
             <T variant="headingL" numberOfLines={1}>{lessonTitle(appt, t, locale)}</T>
             {typeLabel ? (
               <T variant="bodyS" color={C.muted} numberOfLines={1}>{typeLabel}</T>

@@ -4,16 +4,15 @@
  */
 
 import React from 'react'
-import { Image, View } from 'react-native'
+import { useWindowDimensions, View } from 'react-native'
 import { router } from 'expo-router'
 import { ArrowRight } from 'phosphor-react-native/src/icons/ArrowRight'
 
-import { Button, C, ErrorState, Screen, Skeleton, T, TopBar } from '@/components/ds'
+import { Button, C, ErrorState, FloatIdle, Screen, Skeleton, T, TopBar } from '@/components/ds'
 import { ProgressRing } from '@/components/home/progress-ring'
-import { Hud, MASCOT, WEEKDAY_LABELS, WeekDots } from '@/components/quiz/ui'
+import { Hud, StageImage, WEEKDAY_LABELS, WeekDots } from '@/components/quiz/ui'
 import { useTranslation } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
-import { THEORY_CONTENT } from '@/lib/theory-content'
 import { DAILY_GOAL, formatXp, todayCount, totalXp, weekDays } from '@/lib/quiz/gamification'
 import { useQuizAttempts } from '@/lib/quiz/use-quiz-attempts'
 
@@ -21,11 +20,14 @@ export default function DailyGoalScreen() {
   const { t, locale } = useTranslation()
   const { profile } = useUser()
   const { attempts, loading, error, reload } = useQuizAttempts()
+  const { width } = useWindowDimensions()
+  const bandW = width - 40
+  const lionW = bandW * 0.8675
 
   if (loading) {
     return (
       <Screen glow={-60} header={<TopBar />} gap={20}>
-        <Skeleton height={235} radius={24} />
+        <Skeleton height={Math.round(bandW * (468 / 350))} radius={24} />
         <Skeleton width={180} height={180} radius={90} style={{ alignSelf: 'center' }} />
         <Skeleton height={60} />
       </Screen>
@@ -44,8 +46,6 @@ export default function DailyGoalScreen() {
   // Next topic: the lowest-numbered one without a mastered round yet.
   const mastered = new Set(attempts.filter((a) => a.mastered).map((a) => a.topic_number))
   const nextTopic = Array.from({ length: 14 }, (_, i) => i + 1).find((n) => !mastered.has(n)) ?? 1
-  const next = THEORY_CONTENT[nextTopic]
-  const nextTitle = next ? (locale === 'en' ? next.short_en : next.short_de) : ''
 
   return (
     <Screen
@@ -68,19 +68,18 @@ export default function DailyGoalScreen() {
         <Hud streak={profile?.streak_days ?? 0} xp={formatXp(totalXp(attempts), locale)} />
       </View>
 
-      {/* Figma: lion head on green — show the top of the full-body artwork (549×900) */}
-      <View style={{ height: 235, borderRadius: 24, overflow: 'hidden', backgroundColor: C.celebrate, alignItems: 'center' }}>
-        <Image
-          source={MASCOT.celebrate}
-          resizeMode="cover"
-          // fixed height so the head is framed the same at every width; the card's green fills the sides
-          style={{ height: 520, aspectRatio: 549 / 900, marginTop: -150 }}
-          accessibilityElementsHidden
-          importantForAccessibility="no"
-        />
+      {/* Figma "Mascot Video Band" (350×468 at 390pt): full-body lion, ~55% scale, centred */}
+      <View
+        style={{ height: Math.round(bandW * (468 / 350)), borderRadius: 24, overflow: 'hidden', backgroundColor: C.celebrate }}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <FloatIdle distance={8} style={{ position: 'absolute', top: -0.34 * bandW, left: bandW / 2 }}>
+          <StageImage lionW={lionW} />
+        </FloatIdle>
       </View>
 
-      <View style={{ alignItems: 'center', gap: 14 }}>
+      <View style={{ alignItems: 'center', gap: 20 }}>
         <ProgressRing
           percent={pct}
           size={180}
@@ -91,7 +90,6 @@ export default function DailyGoalScreen() {
         <T variant="titleM" color={C.brand}>
           {pct >= 100 ? t('quiz.v2.goal.done') : t('quiz.v2.goal.label', { pct })}
         </T>
-        <T variant="bodyS" color={C.muted}>{t('quiz.v2.goal.next', { title: nextTitle })}</T>
       </View>
 
       <WeekDots days={weekDays(attempts)} labels={WEEKDAY_LABELS[locale]} />

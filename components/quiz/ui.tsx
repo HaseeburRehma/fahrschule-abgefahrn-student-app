@@ -1,105 +1,108 @@
 /**
  * Shared pieces for the Theorie-Quiz & gamification screens (Figma sections 09 / 11):
- * mascot images, speech bubble, the light "celebration" card with Tomorrow
- * stats, the HUD (streak / XP / hearts) and the Mon–Sun day dots.
+ * mascot images, the green mascot stage, the light "Celebration Card" with
+ * Tomorrow stats, the HUD (streak / XP / hearts) and the Mon–Sun day dots.
  */
 
 import React from 'react'
-import { Image, Pressable, View, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native'
+import { Image, Pressable, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Check } from 'phosphor-react-native/src/icons/Check'
 import { Fire } from 'phosphor-react-native/src/icons/Fire'
 import { Heart } from 'phosphor-react-native/src/icons/Heart'
 import { Lightning } from 'phosphor-react-native/src/icons/Lightning'
+import { Star } from 'phosphor-react-native/src/icons/Star'
 
 import { C, F, FloatIdle, PopIn, PulseRing, T } from '@/components/ds'
 import type { DayState } from '@/lib/quiz/gamification'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 export const MASCOT = {
-  /** waving head-and-shoulders on a light background (Quiz Intro, Tagesziel card) */
-  wave: require('../../assets/mascot/wave.jpg'),
-  /** full-body lion on green (Lektion gemeistert, Streak) */
-  celebrate: require('../../assets/mascot/celebrate.jpg'),
-  thumbs: require('../../assets/mascot/pose-thumbs.png'),
+  /**
+   * Full-body lion on green (Quiz Intro, Quiz gemeistert, Streak, Tagesziel). The 549×900
+   * artwork sits at x=320 on a 1189×1420 canvas whose green is extended from its edges,
+   * so it can be cropped anywhere without a seam.
+   */
+  stage: require('../../assets/mascot/stage.jpg'),
   think: require('../../assets/mascot/pose-think.png'),
 }
 /* eslint-enable @typescript-eslint/no-require-imports */
 
-/** Figma "Mascot/Placeholder": rounded mascot avatar used in the feedback sheet. */
-export function MascotAvatar({ pose, size = 64 }: { pose: 'thumbs' | 'think'; size?: number }) {
+/** Figma "Mascot Video Tile": 64pt green tile with the whole lion (feedback sheet). Pops in. */
+export function MascotTile() {
   return (
     <PopIn>
-    <View
-      style={{ width: size, height: size, borderRadius: 16, backgroundColor: '#FEFBFA', overflow: 'hidden' }}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      <Image source={MASCOT[pose]} resizeMode="contain" style={{ width: size, height: size }} />
-    </View>
+      <View
+        style={{ width: 64, height: 64, borderRadius: 16, backgroundColor: C.celebrate, overflow: 'hidden' }}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {/* lion (source y 318–822) scaled to ~56pt tall, centred */}
+        <View style={{ position: 'absolute', left: 32, top: -33 }}>
+          <StageImage lionW={61} />
+        </View>
+      </View>
     </PopIn>
   )
 }
 
-/** Full-bleed mascot background (decorative) with the Figma "Maskottchen" idle float. */
-export function MascotBackdrop({ source, style }: { source: number; style?: StyleProp<ImageStyle> }) {
+/**
+ * Figma "Mascot Video BG": the full-body lion standing on a full-screen green
+ * stage (09 Quiz Intro / Quiz gemeistert / Streak). At 390pt the image is 412pt
+ * wide with its top 150pt above the screen, which puts the lion between y≈88
+ * and y≈466 — the framing of the Figma video. Idle float = "Maskottchen".
+ */
+export function MascotStage() {
+  const { width, height } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
+  // scale from the 390×844 frame; capped by height so tablets don't get a giant lion
+  const s = Math.min(width / 390, height / 844)
   return (
-    <FloatIdle distance={8} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-      <Image
-        source={source}
-        resizeMode="cover"
-        accessibilityElementsHidden
-        importantForAccessibility="no"
-        style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' }, style]}
-      />
-    </FloatIdle>
+    <View
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.celebrate, overflow: 'hidden' }}
+    >
+      <FloatIdle distance={8} style={{ position: 'absolute', left: width / 2, top: insets.top - 204 * s }}>
+        <StageImage lionW={412 * s} />
+      </FloatIdle>
+    </View>
   )
 }
 
-/** Figma "Speech Bubble": dark bubble with a downward tail. */
-export function SpeechBubble({ children, style }: { children: string; style?: StyleProp<ViewStyle> }) {
+/**
+ * The stage artwork with the lion's 549px source frame rendered `lionW` wide,
+ * horizontally centred on the parent's left edge (position the parent at the
+ * centre line). Top of the source frame = top of this view.
+ */
+export function StageImage({ lionW }: { lionW: number }) {
+  const k = lionW / 549
   return (
-    <View style={[{ alignSelf: 'flex-start', maxWidth: 240 }, style]}>
-      <View
-        style={{
-          backgroundColor: C.surface,
-          borderColor: C.line,
-          borderWidth: 1,
-          borderRadius: 18,
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-        }}
-      >
-        <T variant="bodyL">{children}</T>
-      </View>
-      <View
-        style={{
-          marginLeft: 16,
-          width: 0,
-          height: 0,
-          borderLeftWidth: 9,
-          borderRightWidth: 9,
-          borderTopWidth: 10,
-          borderLeftColor: 'transparent',
-          borderRightColor: 'transparent',
-          borderTopColor: C.surface,
-        }}
-      />
-    </View>
+    <Image
+      source={MASCOT.stage}
+      resizeMode="cover"
+      style={{ position: 'absolute', left: -(1189 / 2) * k, top: 0, width: 1189 * k, height: 1420 * k }}
+    />
   )
 }
 
 /* ------------------------------------------------------------------ light celebration card */
 
 export function PaperCard({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
+  const { width } = useWindowDimensions()
   return (
     <View
       style={[
         {
           backgroundColor: C.paper,
           borderRadius: 28,
-          paddingHorizontal: 20,
-          paddingVertical: 22,
-          gap: 16,
+          padding: 20,
+          gap: 13,
+          // Figma: 16pt side margins, bottom 14pt above the screen edge (the home indicator sits over its padding)
+          width: Math.min(width - 32, 520),
+          alignSelf: 'center',
+          marginBottom: 14,
           shadowColor: '#000',
           shadowOpacity: 0.22,
           shadowRadius: 14,
@@ -123,14 +126,7 @@ const PAPER_TONE: Record<PaperTone, string> = {
 }
 
 /** Three-up stat tiles ("10 Fragen · 5 Leben · +50 Punkte"). */
-export function PaperStats({
-  items,
-  tint = 'neutral',
-}: {
-  items: { value: string; label: string; tone: PaperTone }[]
-  /** neutral = #F1F3EF tiles (intro), green = #EDF4EA tiles (results) */
-  tint?: 'neutral' | 'green'
-}) {
+export function PaperStats({ items }: { items: { value: string; label: string; tone: PaperTone }[] }) {
   return (
     <View style={{ flexDirection: 'row', gap: 10 }}>
       {items.map((s) => (
@@ -141,17 +137,17 @@ export function PaperStats({
           style={{
             flex: 1,
             alignItems: 'center',
-            gap: 4,
-            borderRadius: 16,
-            paddingVertical: 16,
-            paddingHorizontal: 8,
-            backgroundColor: tint === 'green' ? C.paperTileGreen : C.paperTile,
+            gap: 3,
+            borderRadius: 14,
+            paddingVertical: 12,
+            paddingHorizontal: 6,
+            backgroundColor: C.paperTileGreen,
           }}
         >
-          <T style={{ fontFamily: F.tomorrowBold, fontSize: 22 }} color={PAPER_TONE[s.tone]}>
+          <T style={{ fontFamily: F.tomorrowBold, fontSize: 19, lineHeight: 23 }} color={PAPER_TONE[s.tone]} numberOfLines={1}>
             {s.value}
           </T>
-          <T style={{ fontFamily: F.tomorrowMedium, fontSize: 12 }} color={tint === 'green' ? C.paperSubGreen : C.paperSub}>
+          <T style={{ fontFamily: F.tomorrowMedium, fontSize: 11, lineHeight: 13 }} color={C.paperSubGreen} numberOfLines={1}>
             {s.label}
           </T>
         </View>
@@ -170,7 +166,7 @@ export function PaperButton({ label, onPress, variant = 'primary' }: { label: st
       accessibilityLabel={label}
       style={({ pressed }) => [
         {
-          height: primary ? 54 : 46,
+          height: primary ? 49 : 44,
           borderRadius: 999,
           alignItems: 'center',
           justifyContent: 'center',
@@ -179,7 +175,7 @@ export function PaperButton({ label, onPress, variant = 'primary' }: { label: st
         pressed ? { opacity: 0.85 } : null,
       ]}
     >
-      <T style={{ fontFamily: F.tomorrowBold, fontSize: primary ? 16 : 14 }} color={primary ? C.paperDeep : C.paperInk}>
+      <T style={{ fontFamily: F.tomorrowBold, fontSize: primary ? 16 : 14, lineHeight: primary ? 19 : 17 }} color={primary ? C.paperDeep : C.paperInk}>
         {label}
       </T>
     </Pressable>
@@ -188,12 +184,12 @@ export function PaperButton({ label, onPress, variant = 'primary' }: { label: st
 
 export function PaperTitle({ title, subtitle, align = 'center' }: { title: string; subtitle?: string; align?: 'left' | 'center' }) {
   return (
-    <View style={{ gap: 4 }}>
-      <T style={{ fontFamily: F.tomorrowBold, fontSize: 26, textAlign: align }} color={C.paperDeep} accessibilityRole="header">
+    <View style={{ gap: 13 }}>
+      <T style={{ fontFamily: F.tomorrowBold, fontSize: 26, lineHeight: 31, textAlign: align }} color={C.paperDeep} accessibilityRole="header">
         {title}
       </T>
       {subtitle ? (
-        <T style={{ fontFamily: F.tomorrowMedium, fontSize: 14, textAlign: align }} color={C.paperGreenText}>
+        <T style={{ fontFamily: F.tomorrowMedium, fontSize: 14, lineHeight: 17, textAlign: align }} color={C.paperGreenText}>
           {subtitle}
         </T>
       ) : null}
@@ -231,49 +227,74 @@ export function Hud({ streak, xp, lives }: { streak?: number; xp?: string; lives
 
 /* ------------------------------------------------------------------ week dots */
 
-/** Mon–Sun row. `light` = streak celebration card, otherwise the dark Tagesziel row. */
+/** Mon–Sun row: `light` = streak celebration card, otherwise the dark Tagesziel row. */
 export function WeekDots({ days, labels, light }: { days: DayState[]; labels: string[]; light?: boolean }) {
+  return light ? <LightWeek days={days} labels={labels} /> : <DarkWeek days={days} labels={labels} />
+}
+
+/** Figma 09/Streak: 34pt dots, 8pt apart, centred; ✓ done, ★ today (breathing). */
+function LightWeek({ days, labels }: { days: DayState[]; labels: string[] }) {
   return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 6 }}>
+    <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8 }}>
       {days.map((d, i) => {
         const done = d === 'done' || d === 'todayDone'
         const today = d === 'today' || d === 'todayDone'
-        let bg: string = light ? C.paperTileGreen : C.surface
-        let border: string | undefined
-        if (done) bg = C.brand
-        else if (today) {
-          bg = light ? '#DFF5E1' : C.tile
-          border = light ? undefined : C.brand
-        }
+        const bg = done ? C.brand : today ? '#DFF5E1' : C.paperTileGreen
         return (
-          <View key={i} style={{ alignItems: 'center', gap: 5, flex: 1 }}>
-            <View style={{ width: light ? 34 : 36, height: light ? 34 : 36, alignItems: 'center', justifyContent: 'center' }}>
-            {/* Figma "Streak-Puls": today's dot breathes */}
-            {today ? <PulseRing size={light ? 34 : 36} scaleTo={1.45} duration={1800} filled /> : null}
-            <View
-              style={{
-                width: light ? 34 : 36,
-                height: light ? 34 : 36,
-                borderRadius: 999,
-                backgroundColor: bg,
-                borderWidth: border ? 1.5 : 0,
-                borderColor: border,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {done ? (
-                <Check size={16} color={light ? C.paperDeep : C.onBrand} weight="bold" />
-              ) : today ? (
-                <Fire size={16} color={light ? C.paperGreen : C.brand} weight="fill" />
-              ) : null}
+          <View key={i} style={{ width: 34, alignItems: 'center', gap: 5 }}>
+            <View style={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center' }}>
+              {/* Figma "Streak-Puls" */}
+              {today ? <PulseRing size={34} scaleTo={1.45} duration={1800} filled /> : null}
+              <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
+                {done ? (
+                  <Check size={16} color={C.paperDeep} weight="bold" />
+                ) : today ? (
+                  <Star size={14} color={C.paperGreen} weight="fill" />
+                ) : null}
+              </View>
             </View>
-            </View>
-            <T
-              style={light ? { fontFamily: F.tomorrowMedium, fontSize: 11 } : undefined}
-              variant={light ? undefined : 'caption'}
-              color={light ? C.paperSubGreen : today ? C.brand : C.dim}
-            >
+            <T style={{ fontFamily: F.tomorrowMedium, fontSize: 11, lineHeight: 13 }} color={C.paperSubGreen}>
+              {labels[i]}
+            </T>
+          </View>
+        )
+      })}
+    </View>
+  )
+}
+
+/** Figma 11/Tagesziel: done = green pill with ✓, today = outlined pill with 🔥, rest = empty 38pt circles. */
+function DarkWeek({ days, labels }: { days: DayState[]; labels: string[] }) {
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      {days.map((d, i) => {
+        const done = d === 'done' || d === 'todayDone'
+        const today = d === 'today'
+        return (
+          <View key={i} style={{ alignItems: 'center', gap: 6, minWidth: 20 }}>
+            {done ? (
+              <View style={{ width: 18, height: 38, borderRadius: 19, backgroundColor: C.brand, alignItems: 'center', justifyContent: 'center' }}>
+                <Check size={18} color={C.onBrand} weight="bold" />
+              </View>
+            ) : today ? (
+              <View
+                style={{
+                  width: 22,
+                  height: 38,
+                  borderRadius: 19,
+                  borderWidth: 2,
+                  borderColor: C.brand,
+                  backgroundColor: 'rgba(0,255,36,0.18)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Fire size={18} color={C.brand} weight="fill" />
+              </View>
+            ) : (
+              <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: C.surface, borderWidth: 1, borderColor: C.line }} />
+            )}
+            <T variant="caption" color={today || d === 'todayDone' ? C.brand : C.dim}>
               {labels[i]}
             </T>
           </View>

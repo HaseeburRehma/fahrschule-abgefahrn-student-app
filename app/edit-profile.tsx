@@ -182,7 +182,7 @@ export default function EditProfile() {
       header={header}
       padded={false}
       gap={20}
-      contentStyle={{ paddingHorizontal: 24, paddingTop: 10 }}
+      contentStyle={{ paddingHorizontal: 24, paddingTop: 15 }}
       footer={
         <View style={{ marginHorizontal: 4 }}>
           <Button label={t('profile.v2.edit.saveChanges')} onPress={save} loading={busy} disabled={!profile} />

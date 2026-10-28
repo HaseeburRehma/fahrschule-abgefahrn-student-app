@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback, useRef, useState } from 'react'
-import { View } from 'react-native'
+import { useWindowDimensions, View } from 'react-native'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 import { BookOpen } from 'phosphor-react-native/src/icons/BookOpen'
@@ -28,6 +28,7 @@ const CheckCircleFill = ((props: any) => <CheckCircle {...props} weight="fill" /
 export default function TheoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { t, locale } = useTranslation()
+  const { width } = useWindowDimensions()
   const { profile, session } = useUser()
   const toast = useToast()
   const uid: string | null = session?.user?.id ?? null
@@ -180,7 +181,7 @@ export default function TheoryDetailScreen() {
             <Pill tone="green" label={t('theory.v2.state.current')} />
           ) : null}
         </View>
-        <T variant="displayL">{topicTitle(topic, locale)}</T>
+        <T variant="displayL" style={fitLongestWord(topicTitle(topic, locale), width - 40)}>{topicTitle(topic, locale)}</T>
       </View>
 
       {/* Worum geht's? */}
@@ -240,4 +241,15 @@ export default function TheoryDetailScreen() {
       ) : null}
     </Screen>
   )
+}
+
+/**
+ * Display/L is 34pt; long German compounds ("Verkehrsregelungen") would otherwise
+ * break mid-word. Shrink just enough for the longest word to fit one line
+ * (Montserrat Black averages ~0.62em per character; 0.64 leaves headroom).
+ */
+function fitLongestWord(text: string, width: number) {
+  const longest = Math.max(...text.split(/\s+/).map((w) => w.length))
+  const size = Math.min(34, Math.floor(width / (longest * 0.64)))
+  return size < 34 ? { fontSize: size, lineHeight: Math.round(size * 1.12) } : undefined
 }

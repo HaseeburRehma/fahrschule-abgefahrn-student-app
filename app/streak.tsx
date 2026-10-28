@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X } from 'phosphor-react-native/src/icons/X'
 
 import { C } from '@/components/ds'
-import { MASCOT, MascotBackdrop, PaperButton, PaperCard, PaperTitle, WEEKDAY_LABELS, WeekDots } from '@/components/quiz/ui'
+import { MascotStage, PaperButton, PaperCard, PaperTitle, WEEKDAY_LABELS, WeekDots } from '@/components/quiz/ui'
 import { useTranslation } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
 import { weekDays } from '@/lib/quiz/gamification'
@@ -29,7 +29,7 @@ export default function StreakScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.celebrate }}>
-      <MascotBackdrop source={MASCOT.celebrate} style={{ bottom: 200 }} />
+      <MascotStage />
       <View style={{ paddingTop: insets.top + 4, paddingHorizontal: 20 }}>
         <Pressable
           onPress={close}
@@ -41,7 +41,7 @@ export default function StreakScreen() {
         </Pressable>
       </View>
       <View style={{ flex: 1 }} />
-      <PaperCard style={{ marginHorizontal: 16, marginBottom: Math.max(insets.bottom, 16) + 8, gap: 14, padding: 20 }}>
+      <PaperCard style={{ gap: 14 }}>
         <PaperTitle title={title} subtitle={t('quiz.v2.streak.body')} />
         <WeekDots light days={weekDays(attempts)} labels={WEEKDAY_LABELS[locale]} />
         <PaperButton label={t('quiz.v2.streak.cta')} onPress={close} />

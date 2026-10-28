@@ -219,22 +219,10 @@ export default function ProgressScreen() {
         </T>
       </Card>
 
-      {/* Gamification shortcuts (Figma 09: Liga / Abzeichen) */}
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <Card radius={20} padding={14} onPress={() => router.push('/league' as any)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <IconTile icon={Trophy} size={36} iconSize={20} radius={12} />
-          <T variant="titleM" style={{ flex: 1 }} numberOfLines={1}>{t('quiz.v2.league')}</T>
-        </Card>
-        <Card radius={20} padding={14} onPress={() => router.push('/badges' as any)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <IconTile icon={Medal} size={36} iconSize={20} radius={12} />
-          <T variant="titleM" style={{ flex: 1 }} numberOfLines={1}>{t('quiz.v2.badges')}</T>
-        </Card>
-      </View>
-
       <T variant="titleM">{t('progress.v2.roadmap')}</T>
 
-      {/* Dein Fahrplan */}
-      <View style={{ gap: ROW_GAP }}>
+      {/* Dein Fahrplan — cards start 6pt above their node (Figma), hence the pull-up */}
+      <View style={{ gap: ROW_GAP, marginTop: -6 }}>
         {journey.stages.map((s, i) => {
           const nextStage = journey.stages[i + 1]
           const reached = (st?: StageState) => st === 'done' || st === 'current'
@@ -291,6 +279,18 @@ export default function ProgressScreen() {
             </View>
           )
         })}
+      </View>
+
+      {/* Gamification shortcuts (Figma 09: Liga / Abzeichen) — below the Fahrplan so the Figma layout above stays intact */}
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Card radius={20} padding={14} onPress={() => router.push('/league' as any)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <IconTile icon={Trophy} size={36} iconSize={20} radius={12} />
+          <T variant="titleM" style={{ flex: 1 }} numberOfLines={1}>{t('quiz.v2.league')}</T>
+        </Card>
+        <Card radius={20} padding={14} onPress={() => router.push('/badges' as any)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <IconTile icon={Medal} size={36} iconSize={20} radius={12} />
+          <T variant="titleM" style={{ flex: 1 }} numberOfLines={1}>{t('quiz.v2.badges')}</T>
+        </Card>
       </View>
 
       <SpecialDrivesSheet visible={sheet} onClose={() => setSheet(false)} />
@@ -359,15 +359,17 @@ function StageCard({
   return (
     <Card
       radius={20}
-      padding={14}
+      padding={15}
       onPress={onPress}
-      style={{ flex: 1, gap: 8, minHeight: 88, borderColor: state === 'goal' ? AMBER_LINE : C.line }}
+      // Figma: 15pt padding, rows every 112pt (92 + ROW_GAP)
+      style={{ flex: 1, gap: 8, minHeight: 92, borderColor: state === 'goal' ? AMBER_LINE : C.line }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 20 }}>
         <T variant="titleM" color={state === 'locked' ? C.muted : C.white} style={{ flex: 1 }} numberOfLines={1}>
           {t(`progress.v2.stage.${stageKey}`)}
         </T>
-        {right}
+        {/* 28pt controls overhang the 20pt title line so the row keeps the Figma rhythm */}
+        {right ? <View style={{ marginVertical: -4 }}>{right}</View> : null}
       </View>
       <T variant="bodyS" color={subColor}>{subtitle}</T>
     </Card>

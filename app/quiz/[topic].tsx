@@ -19,13 +19,12 @@ import { XCircle } from 'phosphor-react-native/src/icons/XCircle'
 import { Button, C, F, GreenLight, Sheet, SheetHero, T, useFill, useToast } from '@/components/ds'
 import {
   MASCOT,
-  MascotAvatar,
-  MascotBackdrop,
+  MascotTile,
+  MascotStage,
   PaperButton,
   PaperCard,
   PaperStats,
   PaperTitle,
-  SpeechBubble,
 } from '@/components/quiz/ui'
 import { useTranslation } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
@@ -131,27 +130,14 @@ export default function QuizScreen() {
   /* ---------------------------------------------------------------- intro */
   if (phase === 'intro') {
     return (
-      <View style={{ flex: 1, backgroundColor: '#FEFBFA' }}>
-        <MascotBackdrop source={MASCOT.wave} />
-        <View style={{ paddingTop: insets.top + 4, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', height: 52 + insets.top }}>
+      <View style={{ flex: 1, backgroundColor: C.celebrate }}>
+        <MascotStage />
+        <View style={{ paddingTop: insets.top + 4, paddingHorizontal: 20 }}>
           <CloseButton onPress={close} label={t('ds.close')} />
-          <T variant="headingL" color={C.paperInk} style={{ flex: 1, textAlign: 'center', marginRight: 40 }}>
-            {t('quiz.v2.intro.title')}
-          </T>
         </View>
-        <SpeechBubble style={{ marginLeft: 40, marginTop: 8 }}>
-          {t('quiz.v2.intro.speech', { n: round.length })}
-        </SpeechBubble>
         <View style={{ flex: 1 }} />
-        <PaperCard style={{ marginHorizontal: 16, marginBottom: Math.max(insets.bottom, 16) + 8 }}>
-          <View style={{ gap: 2 }}>
-            <T style={{ fontFamily: F.tomorrowSemibold, fontSize: 12, letterSpacing: 1 }} color={C.paperGreen}>
-              {t('quiz.v2.intro.kicker', { n: topic })}
-            </T>
-            <T style={{ fontFamily: F.tomorrowBold, fontSize: 22 }} color={C.paperInk} accessibilityRole="header">
-              {topicName}
-            </T>
-          </View>
+        <PaperCard>
+          <PaperTitle title={t('quiz.v2.intro.title')} subtitle={t('quiz.v2.intro.speech', { n: round.length })} />
           <PaperStats
             items={[
               { value: String(round.length), label: t('quiz.v2.intro.questions'), tone: 'green' },
@@ -159,10 +145,7 @@ export default function QuizScreen() {
               { value: `+${maxXp}`, label: t('quiz.v2.intro.points'), tone: 'gold' },
             ]}
           />
-          <PaperButton
-            label={t('quiz.v2.start')}
-            onPress={() => setPhase('go')}
-          />
+          <PaperButton label={t('quiz.v2.start')} onPress={() => setPhase('go')} />
         </PaperCard>
       </View>
     )
@@ -188,41 +171,43 @@ export default function QuizScreen() {
     const pct = Math.round((correct / total) * 100)
     const mastered = saved ? saved.mastered : correct * 5 >= total * 4
     const xp = saved?.xp ?? correct * 10 + (correct === total ? 20 : 0)
-    const streak = saved?.streak_days ?? profile?.streak_days ?? 0
+    const firstName = profile?.first_name?.trim()
     return (
       <View style={{ flex: 1, backgroundColor: mastered ? C.celebrate : C.bg }}>
         {mastered ? (
-          <MascotBackdrop source={MASCOT.celebrate} style={{ bottom: 220 }} />
+          <>
+            <MascotStage />
+            <View style={{ flex: 1 }} />
+          </>
         ) : (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: insets.top + 20, gap: 12 }}>
             <Image source={MASCOT.think} resizeMode="contain" style={{ width: 200, height: 260 }} accessibilityElementsHidden />
           </View>
         )}
-        <View style={{ flex: mastered ? 1 : 0 }} />
-        <PaperCard style={{ marginHorizontal: 16, marginBottom: Math.max(insets.bottom, 16) + 8, gap: 14 }}>
+        <PaperCard style={mastered ? undefined : { marginBottom: Math.max(insets.bottom, 16) + 8 }}>
           <PaperTitle
             title={mastered ? t('quiz.v2.res.mastered') : t('quiz.v2.res.failed')}
-            subtitle={t('quiz.v2.res.topic', { n: topic, title: topicName })}
+            subtitle={
+              mastered
+                ? firstName
+                  ? t('quiz.v2.res.summary', { c: correct, t: total, name: firstName })
+                  : t('quiz.v2.res.summaryNoName', { c: correct, t: total })
+                : t('quiz.v2.res.topic', { n: topic, title: topicName })
+            }
           />
           {!mastered ? (
             <T style={{ fontFamily: F.tomorrowMedium, fontSize: 14, textAlign: 'center' }} color={C.paperSub}>
               {t('quiz.v2.res.failedBody')}
             </T>
           ) : null}
-          <View style={{ alignSelf: 'center', backgroundColor: C.brand, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 }}>
-            <T style={{ fontFamily: F.tomorrowBold, fontSize: 15 }} color={C.paperDeep}>
-              {t('quiz.v2.res.xp', { n: xp })}
-            </T>
-          </View>
           <PaperStats
-            tint="green"
             items={[
-              { value: String(streak), label: t('quiz.v2.res.streak'), tone: 'green' },
-              { value: `${pct}%`, label: t('quiz.v2.res.correct'), tone: 'green' },
-              { value: formatDuration(durationMs.current), label: t('quiz.v2.res.time'), tone: 'pink' },
+              { value: `+${xp}`, label: t('quiz.v2.res.points'), tone: 'gold' },
+              { value: `${pct}%`, label: t('quiz.v2.res.accuracy'), tone: 'green' },
+              { value: formatDuration(durationMs.current), label: t('quiz.v2.res.timeLabel'), tone: 'blue' },
             ]}
           />
-          <PaperButton label={t('quiz.v2.continue')} onPress={close} />
+          <PaperButton label={mastered ? t('quiz.v2.res.toRoute') : t('quiz.v2.continue')} onPress={close} />
           {!mastered ? <PaperButton variant="soft" label={t('quiz.v2.res.again')} onPress={restart} /> : null}
         </PaperCard>
       </View>
@@ -267,7 +252,7 @@ export default function QuizScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 220, gap: 20 }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 220, gap: 16 }}>
         {tf ? (
           <>
             <T variant="headingL" accessibilityRole="header">{t('quiz.v2.q.trueFalse')}</T>
@@ -327,6 +312,7 @@ export default function QuizScreen() {
                 key={o.id}
                 label={text(o, locale)}
                 multi={multi}
+                center={q.kind === 'sign'}
                 state={optionState(q, o.id, selected, checked)}
                 onPress={() => toggle(o.id)}
               />
@@ -387,7 +373,20 @@ const OPT_STYLE: Record<OptState, { bg: string; border: string; fg: string; widt
   dim: { bg: '#121412', border: C.line, fg: C.dim, width: 1.5 },
 }
 
-function OptionRow({ label, multi, state, onPress }: { label: string; multi: boolean; state: OptState; onPress: () => void }) {
+/** Figma "09/Quiz Multiple Choice" row; sign questions centre their (short) answers like "09/Quiz Schild". */
+function OptionRow({
+  label,
+  multi,
+  center,
+  state,
+  onPress,
+}: {
+  label: string
+  multi: boolean
+  center?: boolean
+  state: OptState
+  onPress: () => void
+}) {
   const s = OPT_STYLE[state]
   const checked = state === 'selected' || state === 'correct' || state === 'wrong'
   return (
@@ -413,19 +412,7 @@ function OptionRow({ label, multi, state, onPress }: { label: string; multi: boo
         pressed && state === 'idle' ? { opacity: 0.85 } : null,
       ]}
     >
-      {multi && (state === 'idle' || state === 'selected') ? (
-        <View
-          style={{
-            width: 20,
-            height: 20,
-            borderRadius: 6,
-            borderWidth: 1.5,
-            borderColor: state === 'selected' ? C.brand : C.lineStrong,
-            backgroundColor: state === 'selected' ? C.brand : 'transparent',
-          }}
-        />
-      ) : null}
-      <T variant="titleM" color={s.fg} style={{ flex: 1 }}>{label}</T>
+      <T variant="titleM" color={s.fg} style={{ flex: 1, textAlign: center ? 'center' : 'left' }}>{label}</T>
       {state === 'correct' ? <CheckCircle size={24} color={C.brand} weight="fill" /> : null}
       {state === 'wrong' ? <XCircle size={24} color={C.danger} /> : null}
     </Pressable>
@@ -494,16 +481,18 @@ function FeedbackSheet({
         backgroundColor: correct ? C.sheetGreen : C.dangerToast,
         paddingHorizontal: 20,
         paddingTop: 18,
-        paddingBottom: Math.max(bottomInset, 16) + 20,
+        // Figma: 36pt below the button on a 34pt home-indicator phone
+        paddingBottom: Math.max(bottomInset + 2, 20),
         gap: 14,
       }}
     >
-      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
-        <MascotAvatar pose={correct ? 'thumbs' : 'think'} />
+      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+        <MascotTile />
         <View style={{ flex: 1, gap: 2 }}>
           <T variant="headingL" color={correct ? C.brand : C.danger}>{title}</T>
-          {correctLine ? <T variant="bodyS">{correctLine}</T> : null}
-          <T variant="bodyS" color={C.muted} numberOfLines={5}>{body}</T>
+          <T variant="bodyS" color={C.muted} numberOfLines={5}>
+            {correctLine ? `${correctLine} ${body}` : body}
+          </T>
         </View>
       </View>
       <Button label={button} variant={correct ? 'primary' : 'danger'} onPress={onContinue} />

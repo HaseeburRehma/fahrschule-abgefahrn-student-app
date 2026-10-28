@@ -204,7 +204,8 @@ export default function SignUp() {
             clearField('password')
           }}
           error={errs.password}
-          hint={t('auth.field.passwordHint')}
+          // Figma shows the empty form without it; the rule appears once typing starts
+          hint={password ? t('auth.field.passwordHint') : undefined}
           maxLength={PASSWORD_MAX}
           secureTextEntry
           autoCapitalize="none"

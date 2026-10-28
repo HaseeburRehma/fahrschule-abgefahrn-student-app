@@ -44,7 +44,7 @@ export const C = {
   paperPink: '#C21E5C',
   paperGoldText: '#9A6B0A',
   paperBlue: '#1E5AD6',
-  celebrate: '#6AD255',
+  celebrate: '#71D65A', // matches the lower edge of assets/mascot/stage.jpg
 } as const
 
 export const F = {

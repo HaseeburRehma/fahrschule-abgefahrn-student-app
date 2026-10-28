@@ -227,7 +227,6 @@ export default function Booking() {
       header={header}
       gap={22}
       keyboard
-      contentStyle={{ paddingTop: 8 }}
       footer={
         ready ? (
           <Button
