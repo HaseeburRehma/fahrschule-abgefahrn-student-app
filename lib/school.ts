@@ -5,7 +5,7 @@
  */
 
 export const SCHOOL = {
-  legalName: 'Hashtag Fahrschule Abgefahrn GmbH',
+  legalName: 'Verkehrsfahrschule Abgefahrn 5.0 Düsseldorf GmbH',
   street: 'Ellerstraße 53',
   city: '40227 Düsseldorf',
   phone: '0211 41 60 91 12',

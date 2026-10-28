@@ -108,16 +108,18 @@ const SCREENS: Screen[] = [
   {
     route: '/info',
     frame: 'DE/Info',
+    // Figma's placeholder company name fits one line; the real legal name (imprint) wraps
+    // to two, so it is checked as a 40pt box and everything below sits 19pt lower.
     texts: [
       ['Info & Kontakt', 76, 67, 167, 26],
-      ['Hashtag Fahrschule Abgefahrn GmbH', 39, 180, 273, 20],
-      ['Anrufen', 87, 248, 50, 16],
-      ['WhatsApp', 87, 315, 65, 16],
-      ['E-Mail', 87, 381, 38, 16],
-      ['Route', 87, 466, 37, 16],
-      ['ÖFFNUNGSZEITEN', 20, 552, 126, 16],
-      ['Montag – Freitag', 37, 599, 138, 24],
-      ['FOLGE UNS', 20, 722, 79, 16],
+      ['Verkehrsfahrschule Abgefahrn 5.0 Düsseldorf GmbH', 39, 180, 273, 40],
+      ['Anrufen', 87, 248 + 19, 50, 16],
+      ['WhatsApp', 87, 315 + 19, 65, 16],
+      ['E-Mail', 87, 381 + 19, 38, 16],
+      ['Route', 87, 466 + 19, 37, 16],
+      ['ÖFFNUNGSZEITEN', 20, 552 + 19, 126, 16],
+      ['Montag – Freitag', 37, 599 + 19, 138, 24],
+      ['FOLGE UNS', 20, 722 + 19, 79, 16],
     ],
   },
   {
