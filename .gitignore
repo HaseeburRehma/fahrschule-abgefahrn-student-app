@@ -54,3 +54,6 @@ e2e/.auth/
 e2e/report/
 e2e/results/
 e2e-run.log
+
+# Filled-in SQL scripts with real credentials
+*.local.sql
