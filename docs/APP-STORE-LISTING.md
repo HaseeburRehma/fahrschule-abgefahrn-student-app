@@ -1,7 +1,7 @@
 # App Store listing — Fahrschule Abgefahrn (iOS 1.0.0)
 
 App Store Connect app id **6827141269** · bundle `de.fahrschuleabgefahrn.app` · primary language **German**.
-Draft for review — nothing below is entered in App Store Connect until approved.
+Entered in App Store Connect on 2026-10-28 for version **1.0.0 (build 10)**.
 
 ## App information
 - **Name:** Fahrschule Abgefahrn
@@ -10,8 +10,10 @@ Draft for review — nothing below is entered in App Store Connect until approve
 - **Privacy policy URL:** https://fahrschule-abgefahrn.de/datenschutz
 - **Support URL:** https://fahrschule-abgefahrn.de/kontakt
 - **Marketing URL:** https://fahrschule-abgefahrn.de
-- **Copyright:** © 2026 Fahrschule Abgefahrn
-- **Price:** Free · all countries where German is useful (default: all)
+- **Copyright:** © 2026 Verkehrsfahrschule Abgefahrn 5.0 Düsseldorf GmbH (legal name from the website imprint)
+- **Price:** Free · available in all 175 countries/regions
+- **Age rating:** 4+ (only “Messaging and Chat” = yes)
+- **Content rights:** contains third-party content (official traffic-sign graphics) with the necessary rights
 
 ## Promotional text (≤170)
 Theorie, Fahrstunden und Prüfungen an einem Ort – mit Theorie-Quiz, Tagesziel und Fahrschüler-Liga. Exklusiv für Fahrschüler:innen der Fahrschule Abgefahrn.
@@ -43,13 +45,14 @@ Fahrschule,Führerschein,Theorie,Fahrstunde,Prüfung,Klasse B,Theorieprüfung,Qu
 - **Notes for review:** The app is for enrolled students of Fahrschule Abgefahrn (driving school in Düsseldorf). Accounts are created by the school or with the school's sign-up code. The demo account is a test student with sample data. Account deletion: Profil → Konto löschen.
 - **Contact:** to be filled by the account owner
 
-## App Privacy (from the app's privacy manifest — confirm before publishing)
+## App Privacy (published 2026-10-28)
 Data linked to the user, not used for tracking:
-- Contact info: **Name**, **Email address**, **Phone number** — App functionality (email also: authentication)
+- Contact info: **Name**, **Email address**, **Phone number** — App functionality
 - Identifiers: **User ID** — App functionality
 - User content: **Other user content** (chat messages, documents, quiz results) — App functionality
 - No tracking, no third-party advertising.
 
-## Screenshots needed
-- iPhone 6.9" (1320×2868) — required
+## Screenshots (store-assets/app-store/)
+- iPhone 6.1"/6.3" (1206×2622) — App Store Connect's required iPhone slot (`iphone-6.3/`); the 6.9" set (`iphone-6.9/`, 1320×2868) is optional
 - iPad 13" (2064×2752) — required because the app supports iPad (`ios.supportsTablet: true`)
+- All captured from the demo student account; regenerate after UI changes
