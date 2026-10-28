@@ -54,6 +54,7 @@ export const de: Record<string, string> = {
 
   // Tagesziel (11/Tagesziel)
   'quiz.v2.goal.hello': 'Moin,',
+  'quiz.v2.goal.helloAlone': 'Moin!',
   'quiz.v2.goal.lessons': 'LEKTIONEN',
   'quiz.v2.goal.label': 'Tagesziel · {pct} %',
   'quiz.v2.goal.done': 'Tagesziel geschafft!',
@@ -148,6 +149,7 @@ export const en: Record<string, string> = {
   'quiz.v2.res.limit': 'Daily limit reached – see you tomorrow',
 
   'quiz.v2.goal.hello': 'Hi,',
+  'quiz.v2.goal.helloAlone': 'Hi!',
   'quiz.v2.goal.lessons': 'LESSONS',
   'quiz.v2.goal.label': 'Daily goal · {pct}%',
   'quiz.v2.goal.done': 'Daily goal reached!',

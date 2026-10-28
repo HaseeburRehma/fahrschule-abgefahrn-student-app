@@ -41,6 +41,7 @@ export default function DailyGoalScreen() {
     )
   }
 
+  const firstName = profile?.first_name?.trim()
   const today = todayCount(attempts)
   const pct = Math.min(100, Math.round((today / DAILY_GOAL) * 100))
   // Next topic: the lowest-numbered one without a mastered round yet.
@@ -61,9 +62,17 @@ export default function DailyGoalScreen() {
       }
     >
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <View style={{ flex: 1 }}>
-          <T variant="bodyS" color={C.muted}>{t('quiz.v2.goal.hello')}</T>
-          <T variant="headingM" numberOfLines={1}>{profile?.first_name ?? ''}</T>
+        {/* Figma header row is 44pt tall with or without a name */}
+        <View style={{ flex: 1, minHeight: 44, justifyContent: 'center' }}>
+          {firstName ? (
+            <>
+              <T variant="bodyS" color={C.muted}>{t('quiz.v2.goal.hello')}</T>
+              <T variant="headingM" numberOfLines={1}>{firstName}</T>
+            </>
+          ) : (
+            // no name on the profile: one-line greeting instead of "Moin," over an empty line
+            <T variant="headingM">{t('quiz.v2.goal.helloAlone')}</T>
+          )}
         </View>
         <Hud streak={profile?.streak_days ?? 0} xp={formatXp(totalXp(attempts), locale)} />
       </View>

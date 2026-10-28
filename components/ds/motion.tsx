@@ -78,6 +78,7 @@ export function PulseRing({
   if (reduced) return null
   return (
     <Animated.View
+      testID="pulse-ring"
       pointerEvents="none"
       style={{
         position: 'absolute',
@@ -121,7 +122,7 @@ export function FloatIdle({
     return () => anim.stop()
   }, [v, duration, reduced])
   return (
-    <Animated.View style={[style, { transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, -distance] }) }] }]}>
+    <Animated.View testID="float-idle" style={[style, { transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, -distance] }) }] }]}>
       {children}
     </Animated.View>
   )
@@ -140,6 +141,7 @@ export function PopIn({ children, delay = 0, style }: { children: React.ReactNod
   }, [v, delay, reduced])
   return (
     <Animated.View
+      testID="pop-in"
       style={[
         style,
         { opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }), transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }) }] },
@@ -200,6 +202,7 @@ export function GreenLight({ onDone }: { onDone: () => void }) {
   const green = step >= 4
   return (
     <View
+      testID="green-light"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', gap: 22 }}
@@ -213,6 +216,7 @@ export function GreenLight({ onDone }: { onDone: () => void }) {
             return (
               <View
                 key={i}
+                testID="green-light-lamp"
                 style={[
                   { width: 48, height: 48, borderRadius: 24, backgroundColor: lit ? (green ? C.brand : '#5A5E5A') : '#2A2D2A' },
                   lit && green ? { shadowColor: color, shadowOpacity: 0.8, shadowRadius: 18, shadowOffset: { width: 0, height: 0 } } : null,

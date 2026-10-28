@@ -45,7 +45,7 @@ export function ProgressRing({
               : { shadowColor: C.brand, shadowOpacity: 0.5, shadowRadius: 7, shadowOffset: { width: 0, height: 0 } },
           ]}
         >
-          <Svg width={size} height={size}>
+          <Svg width={size} height={size} testID="progress-ring-arc">
             <AnimatedCircle
               cx={size / 2}
               cy={size / 2}
@@ -81,6 +81,7 @@ export function ProgressBar({ value, height = 6 }: { value: number; height?: num
     <View style={{ height, borderRadius: height / 2, backgroundColor: C.surface, alignSelf: 'stretch' }}>
       {v > 0 ? (
         <Animated.View
+          testID="progress-bar-fill"
           style={{
             width: fill.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
             height,

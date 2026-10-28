@@ -48,3 +48,9 @@ expo-env.d.ts
 google-play-service-account.json
 *-service-account.json
 ios/Certificates.p12
+
+# Playwright e2e — saved sign-in session and run output
+e2e/.auth/
+e2e/report/
+e2e/results/
+e2e-run.log
