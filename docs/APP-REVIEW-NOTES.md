@@ -42,12 +42,12 @@ The app is for the school's current and future students. New students find and i
 
 ---
 
-# Recording script (iPhone, latest iOS, TestFlight build 11)
+# Recording script (iPhone, latest iOS, TestFlight build 12)
 
 Before you start
 1. Re-run `supabase/scripts/demo_student_for_app_review.local.sql` in the Supabase SQL editor
    (the demo lesson was 30 Oct and is in the past now; this refreshes lesson, streak and quiz data).
-2. Install build 11 from TestFlight. Have the school sign-up code and a throw-away e-mail
+2. Install build 12 from TestFlight (build 11 drops button and card styles on iOS — do not record on it). Have the school sign-up code and a throw-away e-mail
    address ready (e.g. a `+test` alias of your own) for the registration part.
 3. Control Center → add Screen Recording if it isn't there. Do Not Disturb on (no private notifications in the video).
 
@@ -59,6 +59,6 @@ Record (one take, ~3 minutes; Apple wants it to start at app launch)
    → answer one question → Prüfen → Weiter → close. Termine → "+" booking form (don't send).
    Fortschritt. Profil.
 4. Profil → Konto löschen → confirm → app returns to the welcome/login screen (account deletion, required by Apple).
-5. Anmelden with the demo account (appreview@fahrschule-abgefahrn.de) → show Start with data,
+5. Anmelden with the demo account (appreview@fahrschule-abgefahrn.de — not an admin account; the reviewer must not see Admin-Bereich or real student data) → show Start with data,
    Theorie-Quiz/Tagesziel, Liga, a booked lesson in Termine, Chat.
-6. Stop recording. Upload the video under App Review Information → Attachment.
+6. Stop recording. Send the original file from Photos (AirDrop / Files), not via WhatsApp — WhatsApp shrinks it to 384×848.
