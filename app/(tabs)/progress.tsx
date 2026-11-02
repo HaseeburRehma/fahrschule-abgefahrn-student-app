@@ -1,7 +1,8 @@
 /** Figma "DE/Fortschritt" (1277:1284) · EN 1296:2145. */
 
 import React, { useCallback, useMemo, useRef, useState } from 'react'
-import { Pressable, RefreshControl, View } from 'react-native'
+import { RefreshControl, View } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import { useFocusEffect, useRouter } from 'expo-router'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 import { BookOpen } from 'phosphor-react-native/src/icons/BookOpen'

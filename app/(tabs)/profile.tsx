@@ -5,7 +5,8 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react'
-import { Platform, Pressable, View } from 'react-native'
+import { Platform, View } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import { useRouter } from 'expo-router'
 import Constants from 'expo-constants'
 import * as Notifications from 'expo-notifications'

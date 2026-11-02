@@ -5,7 +5,8 @@
  */
 
 import React, { useCallback, useState } from 'react'
-import { Linking, Pressable, View } from 'react-native'
+import { Linking, View } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 import { CalendarDots } from 'phosphor-react-native/src/icons/CalendarDots'

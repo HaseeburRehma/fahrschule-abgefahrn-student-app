@@ -4,7 +4,8 @@
  */
 
 import React from 'react'
-import { Pressable, View } from 'react-native'
+import { View } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 import { CalendarDots } from 'phosphor-react-native/src/icons/CalendarDots'
 import { Clock } from 'phosphor-react-native/src/icons/Clock'

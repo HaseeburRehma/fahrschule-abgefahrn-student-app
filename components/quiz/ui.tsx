@@ -5,7 +5,8 @@
  */
 
 import React from 'react'
-import { Image, Pressable, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native'
+import { Image, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Check } from 'phosphor-react-native/src/icons/Check'
 import { Fire } from 'phosphor-react-native/src/icons/Fire'

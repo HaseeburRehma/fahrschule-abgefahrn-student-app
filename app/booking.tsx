@@ -9,7 +9,8 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Pressable, ScrollView, View, useWindowDimensions } from 'react-native'
+import { ScrollView, View, useWindowDimensions } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import { router, useLocalSearchParams } from 'expo-router'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 import { Moon } from 'phosphor-react-native/src/icons/Moon'

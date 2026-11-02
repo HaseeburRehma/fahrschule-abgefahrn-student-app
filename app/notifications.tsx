@@ -5,7 +5,8 @@
  */
 
 import React, { useCallback, useMemo, useRef, useState } from 'react'
-import { Alert, Platform, Pressable, RefreshControl, View } from 'react-native'
+import { Alert, Platform, RefreshControl, View } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import { useRouter } from 'expo-router'
 import { differenceInCalendarDays } from 'date-fns/differenceInCalendarDays'
 import { differenceInMinutes } from 'date-fns/differenceInMinutes'

@@ -3,7 +3,8 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Pressable, RefreshControl, View } from 'react-native'
+import { RefreshControl, View } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import { useFocusEffect, useRouter } from 'expo-router'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 import { ChatCircleDots } from 'phosphor-react-native/src/icons/ChatCircleDots'

@@ -4,7 +4,6 @@
 
 import React from 'react'
 import {
-  Pressable,
   Text,
   View,
   type StyleProp,
@@ -12,6 +11,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native'
+import { Pressable } from './pressable'
 import { SvgXml } from 'react-native-svg'
 import type { Icon as PhosphorIcon, IconWeight } from 'phosphor-react-native'
 

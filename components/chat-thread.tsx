@@ -5,7 +5,8 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from 'react-native'
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, TextInput, View } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { differenceInCalendarDays } from 'date-fns/differenceInCalendarDays'
 import { format } from 'date-fns/format'

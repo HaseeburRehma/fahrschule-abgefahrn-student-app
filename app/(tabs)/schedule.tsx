@@ -5,7 +5,8 @@
  */
 
 import React, { useCallback, useMemo, useRef, useState } from 'react'
-import { Pressable, RefreshControl, View } from 'react-native'
+import { RefreshControl, View } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import { router, useFocusEffect } from 'expo-router'
 import { ArrowSquareOut } from 'phosphor-react-native/src/icons/ArrowSquareOut'
 import { BookOpen } from 'phosphor-react-native/src/icons/BookOpen'

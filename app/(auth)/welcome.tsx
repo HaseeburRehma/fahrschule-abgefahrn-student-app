@@ -4,7 +4,8 @@
  */
 
 import React, { useCallback, useRef, useState } from 'react'
-import { Animated, FlatList, Pressable, ScrollView, View, useWindowDimensions, type ViewStyle } from 'react-native'
+import { Animated, FlatList, ScrollView, View, useWindowDimensions, type ViewStyle } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import type { Icon as PhosphorIcon, IconWeight } from 'phosphor-react-native'

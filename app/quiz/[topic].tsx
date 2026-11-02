@@ -6,7 +6,8 @@
  */
 
 import React, { useRef, useState } from 'react'
-import { Animated, Image, Pressable, ScrollView, View } from 'react-native'
+import { Animated, Image, ScrollView, View } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CheckCircle } from 'phosphor-react-native/src/icons/CheckCircle'

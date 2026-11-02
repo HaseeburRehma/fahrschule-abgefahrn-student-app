@@ -3,7 +3,8 @@
  */
 
 import React, { useEffect, useState } from 'react'
-import { Pressable, View } from 'react-native'
+import { View } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import { Check } from 'phosphor-react-native/src/icons/Check'
 import { Globe } from 'phosphor-react-native/src/icons/Globe'
 import { getSupabase } from '@/lib/supabase/client'

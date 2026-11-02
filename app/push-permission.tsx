@@ -4,7 +4,8 @@
  */
 
 import React, { useEffect, useState } from 'react'
-import { Platform, Pressable } from 'react-native'
+import { Platform } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import { router } from 'expo-router'
 import { Bell } from 'phosphor-react-native/src/icons/Bell'
 

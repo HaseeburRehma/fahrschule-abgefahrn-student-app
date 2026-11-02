@@ -1,7 +1,8 @@
 /** Figma "07/Sonderfahrten" (1309:2848): bottom sheet with the three mandatory special drives. */
 
 import React, { useEffect, useRef, useState } from 'react'
-import { Pressable, View } from 'react-native'
+import { View } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import { router } from 'expo-router'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 import { Check } from 'phosphor-react-native/src/icons/Check'

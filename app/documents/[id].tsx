@@ -5,7 +5,8 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Image, Linking, Platform, Pressable, Share, View } from 'react-native'
+import { ActivityIndicator, Image, Linking, Platform, Share, View } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import { useLocalSearchParams } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
 import { DownloadSimple } from 'phosphor-react-native/src/icons/DownloadSimple'

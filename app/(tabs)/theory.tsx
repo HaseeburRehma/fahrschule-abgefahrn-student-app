@@ -4,7 +4,8 @@
  */
 
 import React, { useCallback, useRef, useState } from 'react'
-import { Pressable, RefreshControl, View } from 'react-native'
+import { RefreshControl, View } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import { router, useFocusEffect } from 'expo-router'
 import { BookOpen } from 'phosphor-react-native/src/icons/BookOpen'
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight'

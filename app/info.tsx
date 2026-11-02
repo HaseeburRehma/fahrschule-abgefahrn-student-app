@@ -4,7 +4,8 @@
  */
 
 import React from 'react'
-import { Linking, Pressable, View } from 'react-native'
+import { Linking, View } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight'
 import { EnvelopeSimple } from 'phosphor-react-native/src/icons/EnvelopeSimple'

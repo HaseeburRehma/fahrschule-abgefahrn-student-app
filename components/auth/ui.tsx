@@ -4,7 +4,8 @@
  */
 
 import React from 'react'
-import { Image, Pressable, ScrollView, View } from 'react-native'
+import { Image, ScrollView, View } from 'react-native'
+import { Pressable } from '@/components/ds/pressable'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Icon as PhosphorIcon, IconProps } from 'phosphor-react-native'
 import { WarningCircle } from 'phosphor-react-native/src/icons/WarningCircle'

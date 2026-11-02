@@ -5,14 +5,14 @@
 import React, { useState } from 'react'
 import {
   ActivityIndicator,
-  Pressable,
-
   TextInput,
   View,
   type StyleProp,
   type TextInputProps,
   type ViewStyle,
- Platform } from 'react-native'
+  Platform,
+} from 'react-native'
+import { Pressable } from './pressable'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 import { ArrowLeft } from 'phosphor-react-native/src/icons/ArrowLeft'
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight'
