@@ -288,8 +288,8 @@ export function ChatThread({
                 fontFamily: F.regular,
                 fontSize: 15,
                 lineHeight: 22,
-                outlineWidth: 0,
-                outlineStyle: 'none',
+                // browser focus ring off (web only — iOS accepts just solid/dotted/dashed)
+                ...(Platform.OS === 'web' ? { outlineWidth: 0, outlineStyle: 'none' } : null),
               } as any
             }
           />

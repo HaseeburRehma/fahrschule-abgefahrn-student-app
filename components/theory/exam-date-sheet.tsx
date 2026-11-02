@@ -141,8 +141,8 @@ export function ExamDateSheet({
                 fontSize: 16,
                 lineHeight: 24,
                 paddingVertical: 16,
-                outlineWidth: 0,
-                outlineStyle: 'none',
+                // browser focus ring off (web only — iOS accepts just solid/dotted/dashed)
+                ...(Platform.OS === 'web' ? { outlineWidth: 0, outlineStyle: 'none' } : null),
               } as any
             }
           />

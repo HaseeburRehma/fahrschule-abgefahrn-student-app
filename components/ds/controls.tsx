@@ -12,7 +12,7 @@ import {
   type StyleProp,
   type TextInputProps,
   type ViewStyle,
-} from 'react-native'
+ Platform } from 'react-native'
 import type { Icon as PhosphorIcon } from 'phosphor-react-native'
 import { ArrowLeft } from 'phosphor-react-native/src/icons/ArrowLeft'
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight'
@@ -267,8 +267,8 @@ export function Input({
               lineHeight: multiline ? 22 : undefined,
               paddingVertical: multiline ? 0 : 16,
               textAlignVertical: multiline ? 'top' : 'center',
-              outlineWidth: 0,
-              outlineStyle: 'none',
+              // browser focus ring off (web only — iOS accepts just solid/dotted/dashed)
+              ...(Platform.OS === 'web' ? { outlineWidth: 0, outlineStyle: 'none' } : null),
             } as any,
             style,
           ]}
