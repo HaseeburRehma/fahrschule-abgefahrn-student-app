@@ -40,6 +40,7 @@ import {
   lessonIcon,
   monthYear,
   shortDate,
+  storedLessonTitle,
   weekdayShort,
   type SpecialKind,
 } from '@/components/schedule/helpers'
@@ -162,7 +163,9 @@ export default function Booking() {
     if (!uid || !picked || !selectedDay || busyRef.current) return
     busyRef.current = true
     setBusy(true)
-    const title = mode === 'special' ? t(`schedule.v2.type.${kind}`) : t('booking.v2.type.lesson')
+    // stored title is always German (see storedLessonTitle); the sheet shows the localized one
+    const title = storedLessonTitle(mode === 'special' ? kind : 'lesson')
+    const shownTitle = mode === 'special' ? t(`schedule.v2.type.${kind}`) : t('booking.v2.type.lesson')
     const lesson_type = mode === 'special' ? kind : 'regular'
     try {
       let created
@@ -194,7 +197,7 @@ export default function Booking() {
         })
       }
       setSent({
-        title,
+        title: shownTitle,
         when: t('booking.v2.sent.at', { date: shortDate(created.starts_at, locale), time: hm(created.starts_at) }),
         confirmed: created.status === 'confirmed',
         icon: mode === 'special' ? lessonIcon(kind) : SteeringWheel,

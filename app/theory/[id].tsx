@@ -21,6 +21,7 @@ import { topicDetail, topicTitle } from '@/lib/theory-content'
 import type { TheoryClass, TheoryTopic } from '@/lib/types'
 import { hhmm, shortDate } from '@/components/theory/dates'
 import { useRequestGuard } from '@/lib/use-request-guard'
+import { OfficialSourcesNote } from '@/components/theory/official-sources'
 
 /** Button renders its icons with weight="bold"; Figma uses the filled check-circle here. */
 const CheckCircleFill = ((props: any) => <CheckCircle {...props} weight="fill" />) as unknown as PhosphorIcon
@@ -239,6 +240,8 @@ export default function TheoryDetailScreen() {
           </View>
         </Card>
       ) : null}
+
+      <OfficialSourcesNote compact />
     </Screen>
   )
 }

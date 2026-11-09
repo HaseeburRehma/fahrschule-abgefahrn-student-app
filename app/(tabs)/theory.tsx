@@ -20,6 +20,7 @@ import { topicTitle } from '@/lib/theory-content'
 import type { TheoryTopic } from '@/lib/types'
 import { useRequestGuard } from '@/lib/use-request-guard'
 import { invalidateCache } from '@/lib/cache'
+import { OfficialSourcesNote } from '@/components/theory/official-sources'
 
 type TopicState = 'done' | 'current' | 'locked' | 'open'
 
@@ -188,6 +189,8 @@ export default function TheoryScreen() {
           </View>
         </>
       )}
+
+      <OfficialSourcesNote />
     </Screen>
   )
 }

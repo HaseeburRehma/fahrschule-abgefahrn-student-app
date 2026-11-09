@@ -30,6 +30,7 @@ import {
 import { useTranslation } from '@/lib/i18n'
 import { useUser } from '@/lib/user-context'
 import { THEORY_CONTENT } from '@/lib/theory-content'
+import { MascotIdle } from '@/components/quiz/lion'
 import { buildRound, isCorrect, isTrueFalse, LIVES, text, type QuizQuestion } from '@/lib/quiz/bank'
 import { QUIZ_IMAGES } from '@/lib/quiz/images'
 import { recordQuizAttempt, type RecordedAttempt } from '@/lib/quiz/api'
@@ -182,7 +183,9 @@ export default function QuizScreen() {
           </>
         ) : (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: insets.top + 20, gap: 12 }}>
-            <Image source={MASCOT.think} resizeMode="contain" style={{ width: 200, height: 260 }} accessibilityElementsHidden />
+            <MascotIdle>
+              <Image source={MASCOT.think} resizeMode="contain" style={{ width: 200, height: 260 }} accessibilityElementsHidden />
+            </MascotIdle>
           </View>
         )}
         <PaperCard style={mastered ? undefined : { marginBottom: Math.max(insets.bottom, 16) + 8 }}>
@@ -492,7 +495,7 @@ function FeedbackSheet({
         <View style={{ flex: 1, gap: 2 }}>
           <T variant="headingL" color={correct ? C.brand : C.danger}>{title}</T>
           <T variant="bodyS" color={C.muted} numberOfLines={5}>
-            {correctLine ? `${correctLine} ${body}` : body}
+            {correctLine ? `${correctLine}\n${body}` : body}
           </T>
         </View>
       </View>

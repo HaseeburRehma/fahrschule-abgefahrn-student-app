@@ -22,6 +22,14 @@ export const SCHOOL = {
   impressumUrl: 'https://fahrschule-abgefahrn.de/impressum/',
   datenschutzUrl: 'https://fahrschule-abgefahrn.de/datenschutz/',
   websiteUrl: 'https://fahrschule-abgefahrn.de/',
+  /** Official sources for the theory content (shown with the not-a-government-app notice). */
+  officialSources: [
+    { key: 'sources.fev', url: 'https://www.gesetze-im-internet.de/fev_2010/' },
+    { key: 'sources.stvo', url: 'https://www.gesetze-im-internet.de/stvo_2013/' },
+    { key: 'sources.stvg', url: 'https://www.gesetze-im-internet.de/stvg/' },
+    { key: 'sources.catalog', url: 'https://argetp21.de/' },
+    { key: 'sources.authority', url: 'https://www.duesseldorf.de/kfz' },
+  ],
   /** Official social profiles (linked from fahrschule-abgefahrn.de). */
   social: {
     instagram: 'https://www.instagram.com/fahrschule_abgefahrn/',

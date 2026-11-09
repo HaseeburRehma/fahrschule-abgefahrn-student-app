@@ -12,6 +12,7 @@ import { ClockCounterClockwise as History } from 'phosphor-react-native/src/icon
 import { FileText } from 'phosphor-react-native/src/icons/FileText'
 import { Sparkle as Sparkles } from 'phosphor-react-native/src/icons/Sparkle'
 import { CaretRight as ChevronRight } from 'phosphor-react-native/src/icons/CaretRight'
+import { CaretLeft } from 'phosphor-react-native/src/icons/CaretLeft'
 import { Key as KeyRound } from 'phosphor-react-native/src/icons/Key'
 import { ShieldCheck } from 'phosphor-react-native/src/icons/ShieldCheck'
 
@@ -56,7 +57,24 @@ export default function AdminHome() {
 
   return (
     <SafeAreaView className="flex-1 bg-black" edges={['bottom']}>
-      <Stack.Screen options={{ title: t('admin.title') }} />
+      <Stack.Screen
+        options={{
+          title: t('admin.title'),
+          // first screen of the nested admin stack: the native header has nothing to go back to,
+          // so give it an explicit way back to the profile tab
+          headerLeft: () => (
+            <Pressable
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile' as any))}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.back')}
+              style={{ paddingRight: 8 }}
+            >
+              <CaretLeft size={24} color="#FFFFFF" weight="bold" />
+            </Pressable>
+          ),
+        }}
+      />
       <ScrollView contentContainerClassName="p-5 gap-3">
         {/* Stats */}
         <View className="flex-row gap-3">

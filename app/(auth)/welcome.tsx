@@ -3,8 +3,8 @@
  * Shown once on first launch; "Überspringen" or the last CTA marks it seen and opens Login.
  */
 
-import React, { useCallback, useRef, useState } from 'react'
-import { Animated, FlatList, ScrollView, View, useWindowDimensions, type ViewStyle } from 'react-native'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { Animated, Easing, FlatList, Platform, ScrollView, View, useWindowDimensions, type ViewStyle } from 'react-native'
 import { Pressable } from '@/components/ds/pressable'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
@@ -20,12 +20,13 @@ import { RoadHorizon } from 'phosphor-react-native/src/icons/RoadHorizon'
 import { SteeringWheel } from 'phosphor-react-native/src/icons/SteeringWheel'
 import { Trophy } from 'phosphor-react-native/src/icons/Trophy'
 
-import { Button, C, T } from '@/components/ds'
+import { Button, C, PopIn, PulseRing, T, useReducedMotion } from '@/components/ds'
 import { ONBOARDING_EMPHASIS, ScaledGlow } from '@/components/auth/ui'
 import { markOnboardingSeen } from '@/lib/auth/flow'
 import { useT } from '@/lib/i18n'
 
 const AMBER = '#FFC83D'
+const NATIVE = Platform.OS !== 'web'
 
 type Tile = { icon: PhosphorIcon; weight: IconWeight; color: string; x: number; y: number }
 type Page = { key: string; center: PhosphorIcon; left: Tile; right: Tile }
@@ -64,58 +65,154 @@ const tileGlow: ViewStyle = {
   elevation: 6,
 }
 
-function SideTile({ tile }: { tile: Tile }) {
-  const Icon = tile.icon
+/** Idle bob for the floating tiles: up/down with a slight tilt, each tile on its own phase. */
+function Bob({ children, duration, delay, distance = 8, tilt = 3 }: { children: React.ReactNode; duration: number; delay: number; distance?: number; tilt?: number }) {
+  const reduced = useReducedMotion()
+  const v = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    if (reduced) {
+      v.setValue(0)
+      return
+    }
+    const half = duration / 2
+    const ease = Easing.inOut(Easing.sin)
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(v, { toValue: 1, duration: half, easing: ease, useNativeDriver: NATIVE }),
+        Animated.timing(v, { toValue: 0, duration: half, easing: ease, useNativeDriver: NATIVE }),
+      ]),
+    )
+    const timer = setTimeout(() => anim.start(), delay)
+    return () => {
+      clearTimeout(timer)
+      anim.stop()
+    }
+  }, [v, duration, delay, reduced])
   return (
-    <View
-      style={[
-        {
-          position: 'absolute',
-          left: tile.x,
-          top: tile.y,
-          width: 52,
-          height: 52,
-          borderRadius: 16,
-          backgroundColor: C.card,
-          borderWidth: 1,
-          borderColor: C.line,
-          alignItems: 'center',
-          justifyContent: 'center',
-        },
-        tileGlow,
-      ]}
+    <Animated.View
+      style={{
+        transform: [
+          { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, -distance] }) },
+          { rotate: v.interpolate({ inputRange: [0, 1], outputRange: [`${-tilt}deg`, `${tilt}deg`] }) },
+        ],
+      }}
     >
-      <Icon size={26} color={tile.color} weight={tile.weight} />
-    </View>
+      {children}
+    </Animated.View>
   )
 }
 
-function Illustration({ page }: { page: Page }) {
+/** Slow "breathing" scale for the big centre icon. */
+function Breathe({ children }: { children: React.ReactNode }) {
+  const reduced = useReducedMotion()
+  const v = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    if (reduced) return
+    const ease = Easing.inOut(Easing.sin)
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(v, { toValue: 1, duration: 1300, easing: ease, useNativeDriver: NATIVE }),
+        Animated.timing(v, { toValue: 0, duration: 1300, easing: ease, useNativeDriver: NATIVE }),
+      ]),
+    )
+    anim.start()
+    return () => anim.stop()
+  }, [v, reduced])
+  return <Animated.View style={{ transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) }] }}>{children}</Animated.View>
+}
+
+function SideTile({ tile, side, p }: { tile: Tile; side: 'left' | 'right'; p: Animated.AnimatedInterpolation<number> }) {
+  const Icon = tile.icon
+  // parallax: the tiles travel further than the page while swiping (right tile = "closer" to the camera)
+  const travel = side === 'left' ? 56 : 112
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        left: tile.x,
+        top: tile.y,
+        width: 52,
+        height: 52,
+        transform: [
+          { translateX: p.interpolate({ inputRange: [-1, 0, 1], outputRange: [travel, 0, -travel] }) },
+          { translateY: p.interpolate({ inputRange: [-1, 0, 1], outputRange: [18, 0, 18] }) },
+          { rotate: p.interpolate({ inputRange: [-1, 0, 1], outputRange: ['-24deg', '0deg', '24deg'] }) },
+        ],
+      }}
+    >
+      <PopIn delay={side === 'left' ? 160 : 300}>
+        <Bob duration={side === 'left' ? 2800 : 3400} delay={side === 'left' ? 0 : 700}>
+          <View
+            style={[
+              {
+                width: 52,
+                height: 52,
+                borderRadius: 16,
+                backgroundColor: C.card,
+                borderWidth: 1,
+                borderColor: C.line,
+                alignItems: 'center',
+                justifyContent: 'center',
+              },
+              tileGlow,
+            ]}
+          >
+            <Icon size={26} color={tile.color} weight={tile.weight} />
+          </View>
+        </Bob>
+      </PopIn>
+    </Animated.View>
+  )
+}
+
+function Illustration({ page, index, x, width }: { page: Page; index: number; x: Animated.Value; width: number }) {
   const Center = page.center
+  // -1 … 0 … 1 = page is left of / at / right of the viewport
+  const w = Math.max(width, 1)
+  const p = x.interpolate({ inputRange: [(index - 1) * w, index * w, (index + 1) * w], outputRange: [1, 0, -1], extrapolate: 'clamp' })
   return (
     <View style={{ width: ART, height: ART, alignSelf: 'center' }}>
-      <View
-        style={[
-          {
-            position: 'absolute',
-            left: 45,
-            top: 45,
-            width: 150,
-            height: 150,
-            borderRadius: 75,
-            backgroundColor: C.tile,
-            borderWidth: 2,
-            borderColor: C.brand,
-            alignItems: 'center',
-            justifyContent: 'center',
-          },
-          tileGlow,
-        ]}
+      <Animated.View
+        style={{
+          position: 'absolute',
+          left: 45,
+          top: 45,
+          width: 150,
+          height: 150,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: p.interpolate({ inputRange: [-1, 0, 1], outputRange: [0.35, 1, 0.35] }),
+          transform: [
+            { scale: p.interpolate({ inputRange: [-1, 0, 1], outputRange: [0.72, 1, 0.72] }) },
+            { rotate: p.interpolate({ inputRange: [-1, 0, 1], outputRange: ['14deg', '0deg', '-14deg'] }) },
+          ],
+        }}
       >
-        <Center size={74} color={C.brand} />
-      </View>
-      <SideTile tile={page.left} />
-      <SideTile tile={page.right} />
+        <PulseRing size={150} scaleTo={1.32} duration={2200} />
+        <PopIn>
+          <View
+            style={[
+              {
+                width: 150,
+                height: 150,
+                borderRadius: 75,
+                backgroundColor: C.tile,
+                borderWidth: 2,
+                borderColor: C.brand,
+                alignItems: 'center',
+                justifyContent: 'center',
+              },
+              tileGlow,
+            ]}
+          >
+            <Breathe>
+              <Center size={74} color={C.brand} />
+            </Breathe>
+          </View>
+        </PopIn>
+      </Animated.View>
+      <SideTile tile={page.left} side="left" p={p} />
+      <SideTile tile={page.right} side="right" p={p} />
     </View>
   )
 }
@@ -214,7 +311,7 @@ export default function Welcome() {
             })}
             getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
             extraData={`${width}:${topPad}`}
-            renderItem={({ item }) => (
+            renderItem={({ item, index }) => (
               // Short screens (e.g. 320×568): the illustration + text are taller than the pager —
               // let the page scroll vertically instead of cutting the text off.
               <ScrollView
@@ -224,7 +321,7 @@ export default function Welcome() {
                 bounces={false}
                 nestedScrollEnabled
               >
-                <Illustration page={item} />
+                <Illustration page={item} index={index} x={x} width={width} />
                 <View style={{ marginTop: 50, paddingHorizontal: 32, gap: 14, alignItems: 'center' }}>
                   <View style={{ alignSelf: 'stretch' }}>
                     <T variant="displayL" style={{ textAlign: 'center' }}>{t(`auth.onb.${item.key}.line1`)}</T>

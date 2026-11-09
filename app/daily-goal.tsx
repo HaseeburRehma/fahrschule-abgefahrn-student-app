@@ -8,7 +8,7 @@ import { View } from 'react-native'
 import { router } from 'expo-router'
 import { ArrowRight } from 'phosphor-react-native/src/icons/ArrowRight'
 
-import { Button, C, ErrorState, FloatIdle, Screen, Skeleton, T, TopBar, useAppWidth } from '@/components/ds'
+import { Button, C, ErrorState, Screen, Skeleton, T, TopBar, useAppWidth } from '@/components/ds'
 import { ProgressRing } from '@/components/home/progress-ring'
 import { Hud, StageImage, WEEKDAY_LABELS, WeekDots } from '@/components/quiz/ui'
 import { useTranslation } from '@/lib/i18n'
@@ -82,9 +82,9 @@ export default function DailyGoalScreen() {
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        <FloatIdle distance={8} style={{ position: 'absolute', top: -0.34 * bandW, left: bandW / 2 }}>
-          <StageImage lionW={lionW} />
-        </FloatIdle>
+        <View style={{ position: 'absolute', top: -0.34 * bandW, left: bandW / 2 }}>
+          <StageImage lionW={lionW} interactive />
+        </View>
       </View>
 
       <View style={{ alignItems: 'center', gap: 20 }}>

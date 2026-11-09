@@ -14,8 +14,9 @@ import { Heart } from 'phosphor-react-native/src/icons/Heart'
 import { Lightning } from 'phosphor-react-native/src/icons/Lightning'
 import { Star } from 'phosphor-react-native/src/icons/Star'
 
-import { C, F, FloatIdle, PopIn, PulseRing, T, useAppWidth } from '@/components/ds'
+import { C, F, PopIn, PulseRing, T, useAppWidth } from '@/components/ds'
 import type { DayState } from '@/lib/quiz/gamification'
+import { AnimatedLion } from './lion'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 export const MASCOT = {
@@ -25,6 +26,8 @@ export const MASCOT = {
    * so it can be cropped anywhere without a seam.
    */
   stage: require('../../assets/mascot/stage.jpg'),
+  /** the stage without the lion — the lion itself is animated on top (components/quiz/lion.tsx) */
+  stageBg: require('../../assets/mascot/stage-bg.jpg'),
   think: require('../../assets/mascot/pose-think.png'),
 }
 /* eslint-enable @typescript-eslint/no-require-imports */
@@ -40,7 +43,7 @@ export function MascotTile() {
       >
         {/* lion (source y 318–822) scaled to ~56pt tall, centred */}
         <View style={{ position: 'absolute', left: 32, top: -33 }}>
-          <StageImage lionW={61} />
+          <StageImage lionW={61} hopEvery={2600} />
         </View>
       </View>
     </PopIn>
@@ -61,14 +64,14 @@ export function MascotStage() {
   const s = Math.min(width / 390, height / 844)
   return (
     <View
-      pointerEvents="none"
+      pointerEvents="box-none"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.celebrate, overflow: 'hidden' }}
     >
-      <FloatIdle distance={8} style={{ position: 'absolute', left: width / 2, top: insets.top - 204 * s }}>
-        <StageImage lionW={412 * s} />
-      </FloatIdle>
+      <View pointerEvents="box-none" style={{ position: 'absolute', left: width / 2, top: insets.top - 204 * s }}>
+        <StageImage lionW={412 * s} interactive />
+      </View>
     </View>
   )
 }
@@ -78,14 +81,17 @@ export function MascotStage() {
  * horizontally centred on the parent's left edge (position the parent at the
  * centre line). Top of the source frame = top of this view.
  */
-export function StageImage({ lionW }: { lionW: number }) {
+export function StageImage({ lionW, interactive = false, hopEvery }: { lionW: number; interactive?: boolean; hopEvery?: number }) {
   const k = lionW / 549
   return (
-    <Image
-      source={MASCOT.stage}
-      resizeMode="cover"
-      style={{ position: 'absolute', left: -(1189 / 2) * k, top: 0, width: 1189 * k, height: 1420 * k }}
-    />
+    <>
+      <Image
+        source={MASCOT.stageBg}
+        resizeMode="cover"
+        style={{ position: 'absolute', left: -(1189 / 2) * k, top: 0, width: 1189 * k, height: 1420 * k }}
+      />
+      <AnimatedLion k={k} interactive={interactive} hopEvery={hopEvery} />
+    </>
   )
 }
 

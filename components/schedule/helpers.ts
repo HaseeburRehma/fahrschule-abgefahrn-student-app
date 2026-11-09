@@ -63,25 +63,47 @@ export function lessonSubtitle(
 }
 
 /**
- * Display title: appointments store a German title ("Fahrstunde", "Autobahnfahrt" …).
- * In English, translate the standard titles (Figma EN: "Lesson with Marco"); custom titles stay as entered.
+ * Title stored on a new appointment. Always German, whatever language the student
+ * uses, so the school sees one language and lessonTitle() can translate it back.
+ */
+export function storedLessonTitle(kind: 'lesson' | SpecialKind): string {
+  return { lesson: 'Fahrstunde', autobahn: 'Autobahnfahrt', night: 'Nachtfahrt', overland: 'Überlandfahrt' }[kind]
+}
+
+/**
+ * Standard titles in either language → i18n key. Older requests were stored in the
+ * student's UI language ("Driving lesson", "Highway drive"), so both spellings map.
+ */
+const STANDARD_TITLE_KEY: Record<string, string> = {
+  fahrstunde: 'schedule.v2.title.lesson',
+  theoriestunde: 'schedule.v2.title.theory',
+  regelfahrt: 'schedule.v2.type.regular',
+  autobahnfahrt: 'schedule.v2.type.autobahn',
+  nachtfahrt: 'schedule.v2.type.night',
+  'überlandfahrt': 'schedule.v2.type.overland',
+  sonderfahrt: 'schedule.v2.type.special',
+  'prüfungsvorbereitung': 'schedule.v2.type.exam_prep',
+  'driving lesson': 'schedule.v2.title.lesson',
+  lesson: 'schedule.v2.title.lesson',
+  'theory lesson': 'schedule.v2.title.theory',
+  'standard lesson': 'schedule.v2.type.regular',
+  'highway drive': 'schedule.v2.type.autobahn',
+  'night drive': 'schedule.v2.type.night',
+  'country road drive': 'schedule.v2.type.overland',
+  'special drive': 'schedule.v2.type.special',
+  'exam preparation': 'schedule.v2.type.exam_prep',
+}
+
+/**
+ * Display title in the current language: standard titles are translated
+ * (Figma EN: "Lesson with Marco"); custom titles stay as entered.
  */
 export function lessonTitle(
   a: Pick<Appointment, 'title'>,
   t: (k: string, v?: Record<string, string | number>) => string,
-  locale: Locale,
+  _locale: Locale,
 ): string {
-  if (locale === 'de') return a.title
-  const key: Record<string, string> = {
-    fahrstunde: 'schedule.v2.title.lesson',
-    theoriestunde: 'schedule.v2.title.theory',
-    autobahnfahrt: 'schedule.v2.type.autobahn',
-    nachtfahrt: 'schedule.v2.type.night',
-    'überlandfahrt': 'schedule.v2.type.overland',
-    sonderfahrt: 'schedule.v2.type.special',
-    'prüfungsvorbereitung': 'schedule.v2.type.exam_prep',
-  }
-  const k = key[(a.title ?? '').trim().toLowerCase()]
+  const k = STANDARD_TITLE_KEY[(a.title ?? '').trim().toLowerCase()]
   return k ? t(k) : a.title
 }
 

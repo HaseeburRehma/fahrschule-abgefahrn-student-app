@@ -23,6 +23,7 @@ import { YoutubeLogo } from 'phosphor-react-native/src/icons/YoutubeLogo'
 import { C, ListGroup, ListRow, Logo, Screen, SectionLabel, T, TopBar } from '@/components/ds'
 import { useTranslation } from '@/lib/i18n'
 import { SCHOOL, mapsUrl, whatsappUrl } from '@/lib/school'
+import { OfficialSourcesNote } from '@/components/theory/official-sources'
 
 function open(url: string) {
   Linking.openURL(url).catch(() => {})
@@ -131,6 +132,9 @@ export default function InfoScreen() {
         <SocialButton icon={TiktokLogo} url={SCHOOL.social.tiktok} label="TikTok" />
         <SocialButton icon={YoutubeLogo} url={SCHOOL.social.youtube} label="YouTube" />
       </View>
+
+      {/* Not-a-government-app notice + official sources (Google Play Misleading Claims policy) */}
+      <OfficialSourcesNote />
 
       {/* Legal (required links; not in the Figma frame) */}
       <SectionLabel>{t('info.v2.legal')}</SectionLabel>
