@@ -119,7 +119,7 @@ export function StudentPerformanceSection({ studentId, topics, code }: { student
                     {n}. {tt(n)}
                   </Text>
                   {st?.mastered ? <Badge label={t('perf.masteredBadge')} tone="green" /> : null}
-                  <Text className="font-m-bold w-24 text-right text-[12px] text-neutral-200">
+                  <Text className="font-m-bold w-32 text-right text-[12px] text-neutral-200" numberOfLines={1}>
                     {pct === null ? t('perf.notPlayed') : `${pct} % · ${st!.rounds}×`}
                   </Text>
                 </View>

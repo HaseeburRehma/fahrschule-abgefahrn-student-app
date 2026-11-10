@@ -225,7 +225,7 @@ function SortableHeader({ sort, desc, onSort }: { sort: SortKey; desc: boolean; 
     { key: null, label: t('perf.col.topics'), flex: 1.4 },
     { key: 'xp_week', label: t('perf.col.xpWeek'), flex: 0.9 },
     { key: 'activity', label: t('perf.col.lastActive'), flex: 1.1 },
-    { key: 'lessons', label: t('perf.sort.lessons'), flex: 1 },
+    { key: 'lessons', label: t('perf.col.lessonsShort'), flex: 1 },
     { key: 'exam', label: t('perf.sort.exam'), flex: 1.3 },
     { key: null, label: '', flex: 1.8 },
   ]

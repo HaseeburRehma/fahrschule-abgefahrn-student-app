@@ -420,7 +420,15 @@ export default function ImportStudents() {
             </View>
             {error ? <Notice title={error} tone="red" /> : null}
             <Button
-              label={importable ? t(send ? 'inv.importSend' : 'inv.importOnly', { n: importable }) : t('inv.nothingToImport')}
+              label={
+                importable
+                  ? !send
+                    ? t('inv.importOnly', { n: importable })
+                    : regCount
+                      ? t('inv.importSendSplit', { n: importable, m: importable - regCount })
+                      : t('inv.importSend', { n: importable })
+                  : t('inv.nothingToImport')
+              }
               onPress={runImport}
               loading={busy}
               disabled={!importable || tooMany}
