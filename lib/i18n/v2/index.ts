@@ -6,8 +6,9 @@ import * as schedule from './schedule'
 import * as profile from './profile'
 import * as admin from './admin'
 import * as quiz from './quiz'
+import * as invites from './invites'
 
-const areas = [ds, auth, home, theory, schedule, profile, admin, quiz]
+const areas = [ds, auth, home, theory, schedule, profile, admin, quiz, invites]
 
 export const V2 = {
   de: Object.assign({}, ...areas.map((a) => a.de)) as Record<string, string>,

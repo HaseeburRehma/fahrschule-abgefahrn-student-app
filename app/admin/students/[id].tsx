@@ -30,6 +30,7 @@ import { Button, Card, ErrorText, Loader, TextField } from '@/components/ui'
 import { ChipSelect, PackagePicker, TopicPicker } from '@/components/admin-pickers'
 import { deDateToIso, isoToDeDate, maskDeDate } from '@/components/theory/dates'
 import type { Package, Profile, TheoryClass, TheoryTopic } from '@/lib/types'
+import { StudentPerformanceSection } from '@/components/admin/student-performance'
 
 function notify(msg: string) {
   if (Platform.OS === 'web') window.alert(msg)
@@ -224,7 +225,8 @@ export default function EditStudent() {
   return (
     <SafeAreaView className="flex-1 bg-black" edges={['bottom']}>
       <Stack.Screen options={{ title: t('admin.editStudent') }} />
-      <ScrollView contentContainerClassName="p-5 gap-4">
+      <ScrollView contentContainerStyle={{ padding: 20, gap: 16, width: '100%', maxWidth: 1200, alignSelf: 'center' }}>
+        <StudentPerformanceSection studentId={profile.id} topics={topics} code={profile.student_code} />
         <Card className="gap-3">
           <Text className="font-m-regular text-sm text-neutral-400">{profile.email}</Text>
           {profile.birth_date ? (

@@ -4,9 +4,13 @@
 // signup-with-code — public self sign-up for students (Figma "Registrieren").
 //
 // The app sends { first_name, last_name, email, password, school_code, locale }.
-// The school code must match app_settings.signup_code (e.g. "ABG-2026"); only
-// then a confirmed auth user + student profile is created. The app signs in
-// with the password right after.
+// `school_code` is either
+//   * the shared school code (app_settings.signup_code), or
+//   * a personal student code from an invite (student_invites) — accepted only
+//     together with the e-mail address it was sent to.
+// Then a confirmed auth user + student profile is created; the profile keeps
+// the personal code (or gets one generated) and a matching invite is marked
+// accepted. The app signs in with the password right after.
 //
 //   400 invalid_input | 403 invalid_code | 409 email_exists | 429 rate_limited
 //
@@ -14,6 +18,7 @@
 // ============================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { cleanPhone } from '../_shared/invites.ts'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -92,7 +97,30 @@ Deno.serve(async (req) => {
 
   const { data: setting } = await admin.from('app_settings').select('value').eq('key', 'signup_code').maybeSingle()
   const expected = norm(setting?.value)
-  if (!expected || norm(body.school_code) !== expected) return json({ error: 'invalid_code' }, 403)
+  const given = norm(body.school_code)
+  if (!given) return json({ error: 'invalid_code' }, 403)
+
+  // Personal code → must belong to an open invite for exactly this address.
+  // Shared school code → link an open invite for the address if there is one.
+  let invite: any = null
+  if (expected && given === expected) {
+    const { data } = await admin
+      .from('student_invites')
+      .select('id,student_code,status,first_name,last_name,phone')
+      .eq('email', email)
+      .maybeSingle()
+    if (data && data.status !== 'revoked' && data.status !== 'accepted') invite = data
+  } else {
+    const { data } = await admin
+      .from('student_invites')
+      .select('id,email,student_code,status,first_name,last_name,phone')
+      .eq('student_code', given)
+      .maybeSingle()
+    if (!data || data.email !== email || data.status === 'revoked' || data.status === 'accepted') {
+      return json({ error: 'invalid_code' }, 403)
+    }
+    invite = data
+  }
 
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
     email,
@@ -108,11 +136,30 @@ Deno.serve(async (req) => {
     return json({ error: createErr?.message ?? 'create_failed' }, 400)
   }
 
+  const uid = created.user.id
   const { error: updErr } = await admin
     .from('profiles')
-    .update({ email, first_name: first, last_name: last || null, role: 'student', locale })
-    .eq('id', created.user.id)
+    .update({
+      email,
+      first_name: first,
+      last_name: last || invite?.last_name || null,
+      role: 'student',
+      locale,
+      ...(invite?.phone ? { phone: cleanPhone(invite.phone) } : {}),
+    })
+    .eq('id', uid)
   if (updErr) return json({ error: updErr.message }, 500)
 
-  return json({ id: created.user.id })
+  if (invite) {
+    // Keep the invited code on the profile (a code generated on insert is replaced).
+    const { error: codeErr } = await admin.from('profiles').update({ student_code: invite.student_code }).eq('id', uid)
+    if (codeErr) console.error('could not set invited student code', codeErr.message)
+    const { error: invErr } = await admin
+      .from('student_invites')
+      .update({ status: 'accepted', accepted_at: new Date().toISOString(), profile_id: uid })
+      .eq('id', invite.id)
+    if (invErr) console.error('could not mark invite accepted', invErr.message)
+  }
+
+  return json({ id: uid })
 })

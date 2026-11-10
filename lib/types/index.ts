@@ -15,6 +15,8 @@ export interface Profile {
   role: UserRole
   locale: Locale
   is_active: boolean
+  /** personal student code (migration 20261110000001) */
+  student_code?: string | null
   push_token: string | null
   push_token_platform: string | null
   push_token_updated_at: string | null

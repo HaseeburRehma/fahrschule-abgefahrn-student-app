@@ -3,7 +3,7 @@ import '@/lib/theme/web-styles'
 
 import React from 'react'
 import { View } from 'react-native'
-import { Stack, type ErrorBoundaryProps } from 'expo-router'
+import { Stack, usePathname, type ErrorBoundaryProps } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { useFonts } from 'expo-font'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
@@ -18,6 +18,7 @@ import { SessionGuardRunner } from '@/components/session-guard-runner'
 import { PushRegistrar } from '@/components/push-registrar'
 import { BiometricGate } from '@/components/biometric-gate'
 import { APP_MAX_WIDTH, C, ErrorState, ToastProvider } from '@/components/ds'
+import { ADMIN_MAX_WIDTH } from '@/components/admin/kit'
 import { useT } from '@/lib/i18n'
 
 /**
@@ -56,6 +57,9 @@ function RootErrorState({ retry }: { retry: () => Promise<void> }) {
 }
 
 export default function RootLayout() {
+  // The admin dashboard gets a wide column (tables, grids); the student app stays phone-width.
+  const pathname = usePathname()
+  const columnWidth = pathname?.startsWith('/admin') ? ADMIN_MAX_WIDTH : APP_MAX_WIDTH
   // Montserrat subset to Latin + punctuation (assets/fonts, ~53 KB each instead of ~335 KB):
   // 2.4 MB → 0.37 MB to load before the first screen.
   const [fontsLoaded, fontError] = useFonts({
@@ -86,7 +90,7 @@ export default function RootLayout() {
                   {/* On web, center the app in a phone-width column so wide
                       desktop screens don't stretch the UI. */}
                   <View style={{ flex: 1, width: '100%', backgroundColor: C.bg, alignItems: 'center' }}>
-                    <View style={{ flex: 1, width: '100%', maxWidth: APP_MAX_WIDTH }}>
+                    <View style={{ flex: 1, width: '100%', maxWidth: columnWidth }}>
                       <ToastProvider>
                         <AuthGuard>
                           <SessionGuardRunner />
