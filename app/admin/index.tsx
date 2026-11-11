@@ -23,6 +23,7 @@ import { useTranslation } from '@/lib/i18n'
 import { fetchAdminStats, type AdminStats } from '@/lib/admin'
 import { fetchInvites, fetchPerformance, type Invite, type StudentPerformance } from '@/lib/invites'
 import { derive, kpis } from '@/lib/performance'
+import { useFeatureFlags } from '@/lib/flags'
 import { Grid, GREEN, Kpi, Page, SectionTitle } from '@/components/admin/kit'
 
 /** Admin dashboard — KPIs, quick actions and every admin area (web + phone). */
@@ -32,6 +33,7 @@ export default function AdminHome() {
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [perf, setPerf] = useState<StudentPerformance[] | null>(null)
   const [invites, setInvites] = useState<Invite[] | null>(null)
+  const { flags } = useFeatureFlags()
 
   useFocusEffect(
     useCallback(() => {
@@ -45,12 +47,13 @@ export default function AdminHome() {
   const openInvites = invites?.filter((i) => i.status === 'pending' || i.status === 'sent' || i.status === 'failed').length
   const failedInvites = invites?.filter((i) => i.status === 'failed').length ?? 0
 
+  // Feature flags: switched-off areas disappear from the quick actions.
   const quick: { href: string; label: string; hint: string; icon: React.ReactNode }[] = [
-    { href: '/admin/students/import', label: t('inv.importList'), hint: t('admin.dash.importHint'), icon: <UploadSimple size={22} color="#0A0A0A" /> },
+    flags.student_import && { href: '/admin/students/import', label: t('inv.importList'), hint: t('admin.dash.importHint'), icon: <UploadSimple size={22} color="#0A0A0A" /> },
     { href: '/admin/invites', label: t('inv.title'), hint: t('admin.dash.invitesHint'), icon: <EnvelopeSimple size={22} color="#0A0A0A" /> },
-    { href: '/admin/performance', label: t('perf.title'), hint: t('admin.dash.perfHint'), icon: <ChartLineUp size={22} color="#0A0A0A" /> },
+    flags.performance_dashboard && { href: '/admin/performance', label: t('perf.title'), hint: t('admin.dash.perfHint'), icon: <ChartLineUp size={22} color="#0A0A0A" /> },
     { href: '/admin/students/new', label: t('admin.addStudent'), hint: t('admin.dash.addHint'), icon: <UserPlus size={22} color="#0A0A0A" /> },
-  ]
+  ].filter(Boolean) as { href: string; label: string; hint: string; icon: React.ReactNode }[]
 
   const links: { href: string; label: string; icon: React.ReactNode }[] = [
     { href: '/admin/students', label: t('admin.students'), icon: <Users size={20} color={GREEN} /> },

@@ -18,7 +18,7 @@ import { Button, C, EmptyState, Input, Screen, T, TopBar, useToast } from '@/com
 import { AuthTitle, Spacer } from '@/components/auth/ui'
 import { getSupabase } from '@/lib/supabase/client'
 import { classifyPasswordError, passwordErrorKey } from '@/lib/auth/errors'
-import { parseAuthParams } from '@/lib/auth/recovery'
+import { clearRecoveryEvent, parseAuthParams, recoveryEventFresh } from '@/lib/auth/recovery'
 import { PASSWORD_MAX, passwordIssue, passwordIssueKey } from '@/lib/auth/password'
 import { isPwnedPassword } from '@/lib/auth/pwned'
 import { TimeoutError, withTimeout } from '@/lib/async'
@@ -43,8 +43,9 @@ async function establishSession(url: string | null): Promise<boolean> {
     return !error
   }
 
+  // An existing session only counts when it came from a recovery link just now.
   const { data } = await auth.getSession()
-  if (data?.session) return true
+  if (data?.session && recoveryEventFresh()) return true
 
   if (p.code) {
     const { data: ex, error } = await auth.exchangeCodeForSession(p.code)
@@ -118,6 +119,7 @@ export default function ResetPassword() {
       const { error } = await withTimeout(getSupabase().auth.updateUser({ password }), 20_000)
       if (error) throw error
       saved.current = true
+      clearRecoveryEvent()
       toast.show(t('auth.reset.saved'), 'success')
       router.replace('/home' as any)
     } catch (e) {

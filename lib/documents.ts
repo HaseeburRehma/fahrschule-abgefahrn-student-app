@@ -121,10 +121,13 @@ export async function uploadDocument(
   studentId?: string | null,
 ): Promise<void> {
   const supabase = getSupabase()
-  const ext = (filename.split('.').pop() || 'pdf').toLowerCase()
   const contentType = resolveDocumentMime(filename, mime) ?? mime
   const problem = validateDocumentFile(filename, contentType, byteSize(data))
   if (problem) throw new Error(problem)
+  // The stored name never comes from the user's filename (path traversal):
+  // the extension is derived from the validated MIME type.
+  const ext = safeDocumentExt(contentType)
+  if (studentId && !/^[0-9a-f-]{36}$/i.test(studentId)) throw new Error('bad_student')
   const name = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
   const path = studentId ? `students/${studentId}/${name}` : `general/${name}`
   const { error: upErr } = await supabase.storage
@@ -159,6 +162,19 @@ const EXT_MIME: Record<string, (typeof DOCUMENT_MIME_TYPES)[number]> = {
   png: 'image/png',
   heic: 'image/heic',
   webp: 'image/webp',
+}
+
+const MIME_EXT: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/heic': 'heic',
+  'image/webp': 'webp',
+}
+
+/** File extension for an allowed MIME type (never taken from user input). */
+export function safeDocumentExt(mime: string | null | undefined): string {
+  return MIME_EXT[(mime ?? '').toLowerCase()] ?? 'bin'
 }
 
 /** Allowed MIME type for a file (from its MIME, else its extension); null if not allowed. */

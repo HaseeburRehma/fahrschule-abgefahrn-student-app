@@ -1,0 +1,22 @@
+# Supabase project configuration as code (used by the Supabase CLI).
+# Gateway JWT verification per edge function. Functions with verify_jwt = false
+# authenticate callers themselves (shared secret, webhook signature, or a
+# public sign-up with rate limits) — see the header comment of each function.
+project_id = "fahrschule-abgefahrn"
+
+[functions.signup-with-code]
+verify_jwt = false
+
+[functions.intake-signup]
+verify_jwt = false
+
+[functions.push-dispatch]
+verify_jwt = false
+
+[functions.resend-webhook]
+verify_jwt = false
+
+# Verifies the admin JWT itself (auth.getUser + is_admin); the cron retry worker
+# authenticates with CRON_SECRET instead of a JWT.
+[functions.admin-invite-students]
+verify_jwt = false

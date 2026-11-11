@@ -1,42 +1,46 @@
-// @ts-nocheck  — Deno edge function (Deno global + https: imports). Checked by
-// the Deno runtime at deploy, not by the app's TypeScript.
+// @ts-nocheck  — Deno edge function. Checked by `deno check` in CI.
 // ============================================================================
-// admin-invite-students — bulk import + e-mail invites (admins only).
+// admin-invite-students — bulk import + e-mail invites.
 //
 //   POST { action: 'import', file_name, file_format, file_path?, rows: [...], send }
-//        Plans every row (see _shared/invites.ts → planImport), writes the
-//        invites, adopts file codes for students who already have an account,
-//        stores the import with its per-row outcome and — with send=true —
-//        e-mails every new / reopened invite.
+//        Header Idempotency-Key: <uuid> (or body.idempotency_key) — a retried or
+//        double-tapped import returns the first result instead of importing twice.
 //   POST { action: 'send', invite_ids: [...] }
 //        (Re)sends invites. Accepted / revoked ones and ones sent < 60 s ago are skipped.
+//   POST { action: 'retry' }  + header x-cron-secret
+//        Background worker (pg_cron → pg_net): re-sends failed invites whose
+//        next_attempt_at is due (exponential backoff, max 5 attempts, bounced
+//        addresses are never retried).
 //
-// E-mail goes through Resend. Secrets (Dashboard → Edge Functions → Secrets):
-//   RESEND_API_KEY   required to send
-//   MAIL_FROM        e.g. "Fahrschule Abgefahrn <app@fahrschule-abgefahrn.de>"
-//                    (domain must be verified in Resend)
-//   MAIL_REPLY_TO    optional, e.g. info@fahrschule-abgefahrn.de
-//   APP_WEB_URL      optional link to the web app
-// Without RESEND_API_KEY / MAIL_FROM the invites are still saved (status
-// pending) and the response says mail_configured: false.
+// Auth: admin JWT + public.is_admin() (RBAC) for import/send; CRON_SECRET for retry.
+// Limits: 2,000 rows / import, 500 invites / send, 30 imports + 120 sends per admin per hour.
+// Feature flags (app_settings): feature.student_import, feature.invite_emails.
 //
+// E-mail goes through Resend (batch API, ≤ 100 per request, Idempotency-Key per
+// batch so a retried request never sends twice). Timeouts + retries with
+// exponential backoff on 429/5xx; a circuit breaker stops hammering Resend
+// while it is down — those invites go to the retry queue instead.
+//
+// Secrets: RESEND_API_KEY, MAIL_FROM (verified domain), MAIL_REPLY_TO?, APP_WEB_URL?,
+//          CRON_SECRET (for the retry worker).
 // Deploy:  supabase functions deploy admin-invite-students
 // ============================================================================
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
-  MAX_IMPORT_ROWS,
-  MAX_SEND_PER_CALL,
-  buildInviteEmail,
-  normalizeEmail,
-  planImport,
-} from '../_shared/invites.ts'
-
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
+  CircuitBreaker,
+  HttpError,
+  badRequest,
+  conflict,
+  fetchWithRetry,
+  forbidden,
+  isUuid,
+  readJson,
+  sleep,
+  timingSafeEqual,
+  unauthorized,
+} from '../_shared/http.ts'
+import { MAX_IMPORT_ROWS, MAX_SEND_PER_CALL, buildInviteEmail, normalizeEmail, planImport } from '../_shared/invites.ts'
+import { type Ctx, enforceRateLimit, requireAdmin, serve, serviceClient } from '../_shared/serve.ts'
 
 const SCHOOL = {
   name: 'Fahrschule Abgefahrn',
@@ -45,19 +49,22 @@ const SCHOOL = {
 }
 
 const FORMATS = new Set(['xlsx', 'ods', 'csv', 'tsv', 'txt', 'paste'])
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const RESEND_COOLDOWN_MS = 60_000
+const MAX_ATTEMPTS = 5
+const MAX_BODY_BYTES = 3_000_000
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS, 'content-type': 'application/json' },
-  })
-}
+// One breaker per function instance: 3 failed Resend batches in a row → stop
+// calling Resend for 60 s; affected invites are queued for the retry worker.
+const resendBreaker = new CircuitBreaker('resend', 3, 60_000)
 
 const randomBytes = (n: number) => crypto.getRandomValues(new Uint8Array(n))
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const str = (v: unknown, max: number) => (v == null ? null : String(v).slice(0, max))
+
+/** Next retry time: 5 min · 2^attempt, capped at 6 h, ±20 % jitter. */
+export function nextAttemptAt(attempts: number, now = Date.now()): string {
+  const base = Math.min(6 * 3600_000, 5 * 60_000 * 2 ** attempts)
+  return new Date(now + base * (0.8 + Math.random() * 0.4)).toISOString()
+}
 
 /** PostgREST caps responses at 1000 rows — page through everything. */
 async function fetchAll(make: (from: number, to: number) => any): Promise<any[]> {
@@ -76,6 +83,13 @@ function chunks<T>(arr: T[], size: number): T[][] {
   return out
 }
 
+async function flags(db: any): Promise<Record<string, boolean>> {
+  const { data } = await db.from('app_settings').select('key,value').like('key', 'feature.%')
+  const out: Record<string, boolean> = {}
+  for (const r of data ?? []) out[r.key.slice(8)] = r.value === 'on'
+  return out
+}
+
 // ── e-mail ──────────────────────────────────────────────────────────────────
 
 interface InviteRow {
@@ -86,37 +100,59 @@ interface InviteRow {
   status: string
   send_count: number
   last_sent_at: string | null
+  attempts?: number
+  delivery_status?: string | null
 }
 
-type MailResult = 'sent' | 'failed' | 'skipped' | 'throttled' | 'not_configured'
+type MailResult = 'sent' | 'failed' | 'skipped' | 'throttled' | 'not_configured' | 'disabled' | 'queued'
+const INVITE_COLS = 'id,email,first_name,student_code,status,send_count,last_sent_at,attempts,delivery_status'
 
-async function sendInvites(admin: any, invites: InviteRow[]): Promise<Map<string, MailResult>> {
+async function sendInvites(ctx: Ctx, db: any, invites: InviteRow[], opts: { ignoreCooldown?: boolean } = {}): Promise<Map<string, MailResult>> {
+  const { log } = ctx
   const result = new Map<string, MailResult>()
-  const key = Deno.env.get('RESEND_API_KEY')
-  const from = Deno.env.get('MAIL_FROM')
-  const replyTo = Deno.env.get('MAIL_REPLY_TO') || undefined
-  const webUrl = Deno.env.get('APP_WEB_URL') || null
+  const key = ctx.env('RESEND_API_KEY')
+  const from = ctx.env('MAIL_FROM')
+  const replyTo = ctx.env('MAIL_REPLY_TO') || undefined
+  const webUrl = ctx.env('APP_WEB_URL') || null
   const now = Date.now()
 
   const due: InviteRow[] = []
   for (const inv of invites) {
-    if (inv.status === 'accepted' || inv.status === 'revoked') result.set(inv.id, 'skipped')
-    else if (inv.last_sent_at && now - new Date(inv.last_sent_at).getTime() < RESEND_COOLDOWN_MS)
+    if (inv.status === 'accepted' || inv.status === 'revoked' || inv.delivery_status === 'bounced' || inv.delivery_status === 'complained')
+      result.set(inv.id, 'skipped')
+    else if (!opts.ignoreCooldown && inv.last_sent_at && now - new Date(inv.last_sent_at).getTime() < RESEND_COOLDOWN_MS)
       result.set(inv.id, 'throttled')
     else due.push(inv)
   }
   if (!due.length) return result
+
+  if (!(await flags(db)).invite_emails) {
+    for (const inv of due) result.set(inv.id, 'disabled')
+    return result
+  }
   if (!key || !from) {
     for (const inv of due) result.set(inv.id, 'not_configured')
-    await admin
-      .from('student_invites')
-      .update({ last_error: 'mail_not_configured' })
-      .in('id', due.map((d) => d.id))
+    await db.from('student_invites').update({ last_error: 'mail_not_configured' }).in('id', due.map((d) => d.id))
     return result
   }
 
   for (const [i, batch] of chunks(due, 100).entries()) {
     if (i > 0) await sleep(600) // Resend default limit: 2 requests / second
+    const stamp = new Date().toISOString()
+
+    if (!resendBreaker.canRequest()) {
+      // Fail fast — queue for the background retry instead of waiting on timeouts.
+      await db.from('student_invites').upsert(
+        batch.map((inv) => ({
+          id: inv.id, email: inv.email, student_code: inv.student_code, status: 'failed',
+          last_error: 'provider_unavailable', next_attempt_at: nextAttemptAt(inv.attempts ?? 0),
+        })),
+        { onConflict: 'id' },
+      )
+      for (const inv of batch) result.set(inv.id, 'queued')
+      continue
+    }
+
     const payload = batch.map((inv) => {
       const mail = buildInviteEmail({
         email: inv.email,
@@ -130,21 +166,40 @@ async function sendInvites(admin: any, invites: InviteRow[]): Promise<Map<string
       })
       return { from, to: [inv.email], subject: mail.subject, html: mail.html, text: mail.text, ...(replyTo ? { reply_to: replyTo } : {}) }
     })
+
     let ok = false
     let errText = ''
+    let ids: (string | null)[] = []
     try {
-      const res = await fetch('https://api.resend.com/emails/batch', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
+      const res = await fetchWithRetry(
+        'https://api.resend.com/emails/batch',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${key}`,
+            'Content-Type': 'application/json',
+            // Same key on every retry of this batch → Resend sends it only once.
+            'Idempotency-Key': `${log.requestId}-${i}`,
+          },
+          body: JSON.stringify(payload),
+        },
+        { retries: 3, timeoutMs: 15_000, onRetry: (r) => log.warn('resend retry', r) },
+      )
       ok = res.ok
-      if (!ok) errText = `resend_${res.status}: ${(await res.text()).slice(0, 300)}`
+      if (ok) {
+        const json = await res.json().catch(() => null)
+        ids = Array.isArray(json?.data) ? json.data.map((d: any) => (typeof d?.id === 'string' ? d.id : null)) : []
+      } else errText = `resend_${res.status}: ${(await res.text()).slice(0, 300)}`
     } catch (e) {
       errText = `resend_unreachable: ${String(e?.message ?? e).slice(0, 300)}`
     }
-    const stamp = new Date().toISOString()
-    const updates = batch.map((inv) => ({
+    if (ok) resendBreaker.success()
+    else {
+      resendBreaker.failure()
+      log.error('resend batch failed', { batch: i, size: batch.length, error: errText, breaker: resendBreaker.state })
+    }
+
+    const updates = batch.map((inv, j) => ({
       id: inv.id,
       email: inv.email,
       student_code: inv.student_code,
@@ -152,9 +207,13 @@ async function sendInvites(admin: any, invites: InviteRow[]): Promise<Map<string
       send_count: ok ? (inv.send_count ?? 0) + 1 : inv.send_count ?? 0,
       last_sent_at: ok ? stamp : inv.last_sent_at,
       last_error: ok ? null : errText.slice(0, 500),
+      provider_message_id: ok ? ids[j] ?? null : null,
+      delivery_status: null,
+      attempts: ok ? 0 : (inv.attempts ?? 0) + 1,
+      next_attempt_at: ok || (inv.attempts ?? 0) + 1 >= MAX_ATTEMPTS ? null : nextAttemptAt(inv.attempts ?? 0),
     }))
-    const { error } = await admin.from('student_invites').upsert(updates, { onConflict: 'id' })
-    if (error) console.error('invite status update failed', error.message)
+    const { error } = await db.from('student_invites').upsert(updates, { onConflict: 'id' })
+    if (error) log.error('invite status update failed', { error: error.message })
     for (const inv of batch) result.set(inv.id, ok ? 'sent' : 'failed')
   }
   return result
@@ -162,15 +221,35 @@ async function sendInvites(admin: any, invites: InviteRow[]): Promise<Map<string
 
 // ── import ──────────────────────────────────────────────────────────────────
 
-async function handleImport(admin: any, callerId: string, body: any) {
+async function handleImport(ctx: Ctx, db: any, callerId: string, body: any) {
+  if (!(await flags(db)).student_import) throw forbidden('feature_disabled')
+
   const fileName = str(body.file_name, 255)?.trim()
   const format = String(body.file_format ?? '')
   const filePath = body.file_path == null ? null : String(body.file_path)
-  if (!fileName || !FORMATS.has(format)) return json({ error: 'invalid_input' }, 400)
-  if (filePath && (!/^imports\/[A-Za-z0-9._/-]{1,480}$/.test(filePath) || filePath.includes('..')))
-    return json({ error: 'invalid_input' }, 400)
-  if (!Array.isArray(body.rows) || body.rows.length === 0) return json({ error: 'no_rows' }, 400)
-  if (body.rows.length > MAX_IMPORT_ROWS) return json({ error: 'too_many_rows', max: MAX_IMPORT_ROWS }, 400)
+  if (!fileName || !FORMATS.has(format)) throw badRequest('invalid_input')
+  // Path traversal: only our own upload prefix, no "..", safe characters.
+  if (filePath && (!/^imports\/[A-Za-z0-9._/-]{1,480}$/.test(filePath) || filePath.includes('..'))) throw badRequest('invalid_file_path')
+  if (!Array.isArray(body.rows) || body.rows.length === 0) throw badRequest('no_rows')
+  if (body.rows.length > MAX_IMPORT_ROWS) throw badRequest('too_many_rows', { max: MAX_IMPORT_ROWS })
+
+  // Idempotency.
+  const idemKey = ctx.req.headers.get('idempotency-key') ?? body.idempotency_key ?? null
+  if (idemKey !== null && !isUuid(idemKey)) throw badRequest('invalid_idempotency_key')
+  if (idemKey) {
+    const { data: prior } = await db
+      .from('student_imports')
+      .select('id,completed_at,total_rows,invited,already_registered,skipped,emails_sent,emails_failed,rows')
+      .eq('created_by', callerId)
+      .eq('idempotency_key', idemKey)
+      .maybeSingle()
+    if (prior) {
+      if (!prior.completed_at) throw conflict('import_in_progress')
+      ctx.log.info('idempotent replay', { import_id: prior.id })
+      const { id, completed_at: _done, rows, ...summary } = prior
+      return ctx.json({ import_id: id, summary, rows: rows ?? [], mail_configured: Boolean(ctx.env('RESEND_API_KEY') && ctx.env('MAIL_FROM')), replayed: true })
+    }
+  }
 
   const rows = body.rows.map((r: any, i: number) => ({
     row: Number.isInteger(r?.row) && r.row > 0 && r.row < 1_000_000 ? r.row : i + 1,
@@ -181,13 +260,23 @@ async function handleImport(admin: any, callerId: string, body: any) {
     student_code: str(r?.student_code, 100),
   }))
 
+  // Record first (claims the idempotency key — a parallel duplicate hits the unique index).
+  const { data: imp, error: impErr } = await db
+    .from('student_imports')
+    .insert({ file_name: fileName, file_format: format, file_path: filePath, total_rows: rows.length, created_by: callerId, idempotency_key: idemKey })
+    .select('id')
+    .single()
+  if (impErr) {
+    if (impErr.code === '23505') throw conflict('import_in_progress')
+    ctx.log.error('import insert failed', { error: impErr.message })
+    throw new HttpError(500, 'import_failed')
+  }
+
   // Current state.
   const [profiles, invites, setting] = await Promise.all([
-    fetchAll((a, b) => admin.from('profiles').select('id,email,student_code,role').order('id').range(a, b)),
-    fetchAll((a, b) =>
-      admin.from('student_invites').select('id,email,first_name,last_name,phone,student_code,status').order('id').range(a, b),
-    ),
-    admin.from('app_settings').select('value').eq('key', 'signup_code').maybeSingle(),
+    fetchAll((a, b) => db.from('profiles').select('id,email,student_code,role').order('id').range(a, b)),
+    fetchAll((a, b) => db.from('student_invites').select('id,email,first_name,last_name,phone,student_code,status').order('id').range(a, b)),
+    db.from('app_settings').select('value').eq('key', 'signup_code').maybeSingle(),
   ])
   const profilesByEmail = new Map()
   const invitesByEmail = new Map()
@@ -203,14 +292,6 @@ async function handleImport(admin: any, callerId: string, body: any) {
   }
 
   const plan = planImport(rows, { profilesByEmail, invitesByEmail, codeOwners, schoolCode: setting.data?.value ?? null }, randomBytes)
-
-  // Import record first, so invites can point at it.
-  const { data: imp, error: impErr } = await admin
-    .from('student_imports')
-    .insert({ file_name: fileName, file_format: format, file_path: filePath, total_rows: rows.length, created_by: callerId })
-    .select('id')
-    .single()
-  if (impErr) return json({ error: impErr.message }, 500)
 
   // Invites: new + reopened, one upsert per 500 rows (keyed by e-mail).
   const inviteRows = plan.filter((p) => p.outcome === 'invite_new' || p.outcome === 'invite_update')
@@ -233,11 +314,12 @@ async function handleImport(admin: any, callerId: string, body: any) {
   })
   const failedEmails = new Set<string>()
   for (const part of chunks(upserts, 500)) {
-    const { error } = await admin.from('student_invites').upsert(part, { onConflict: 'email' })
+    const { error } = await db.from('student_invites').upsert(part, { onConflict: 'email' })
     if (!error) continue
-    // A code collided (e.g. a parallel import) — retry row by row to keep the rest.
+    // Race: a parallel import took one of the generated codes (unique index) —
+    // retry row by row so only the colliding rows are skipped.
     for (const one of part) {
-      const { error: e1 } = await admin.from('student_invites').upsert(one, { onConflict: 'email' })
+      const { error: e1 } = await db.from('student_invites').upsert(one, { onConflict: 'email' })
       if (e1) failedEmails.add(one.email)
     }
   }
@@ -251,7 +333,7 @@ async function handleImport(admin: any, callerId: string, body: any) {
   // Registered students: adopt the code from the file.
   for (const p of plan) {
     if (p.outcome !== 'registered' || p.reason !== 'code_updated') continue
-    const { error } = await admin.from('profiles').update({ student_code: p.student_code }).eq('id', p.target_id)
+    const { error } = await db.from('profiles').update({ student_code: p.student_code }).eq('id', p.target_id)
     if (error) {
       p.reason = 'code_taken'
       p.student_code = profilesByEmail.get(p.email)?.student_code ?? null
@@ -260,21 +342,18 @@ async function handleImport(admin: any, callerId: string, body: any) {
 
   // Send.
   let mail = new Map<string, MailResult>()
-  const mailConfigured = Boolean(Deno.env.get('RESEND_API_KEY') && Deno.env.get('MAIL_FROM'))
+  const mailConfigured = Boolean(ctx.env('RESEND_API_KEY') && ctx.env('MAIL_FROM'))
   const invitedEmails = plan.filter((p) => p.outcome === 'invite_new' || p.outcome === 'invite_update').map((p) => p.email)
   const idByEmail = new Map<string, string>()
   if (invitedEmails.length) {
     const saved = []
     for (const part of chunks(invitedEmails, 300)) {
-      const { data, error } = await admin
-        .from('student_invites')
-        .select('id,email,first_name,student_code,status,send_count,last_sent_at')
-        .in('email', part)
-      if (error) return json({ error: error.message }, 500)
+      const { data, error } = await db.from('student_invites').select(INVITE_COLS).in('email', part)
+      if (error) throw error
       saved.push(...(data ?? []))
     }
     for (const s of saved) idByEmail.set(s.email, s.id)
-    if (body.send === true) mail = await sendInvites(admin, saved)
+    if (body.send === true) mail = await sendInvites(ctx, db, saved)
   }
 
   const resultRows = plan.map((p) => {
@@ -299,71 +378,73 @@ async function handleImport(admin: any, callerId: string, body: any) {
     already_registered: count((r) => r.outcome === 'registered'),
     skipped: count((r) => r.outcome === 'skipped'),
     emails_sent: count((r) => r.mail === 'sent'),
-    emails_failed: count((r) => r.mail === 'failed'),
+    emails_failed: count((r) => r.mail === 'failed' || r.mail === 'queued'),
   }
-  const { error: updErr } = await admin.from('student_imports').update({ ...summary, rows: resultRows }).eq('id', imp.id)
-  if (updErr) console.error('import summary update failed', updErr.message)
+  const { error: updErr } = await db
+    .from('student_imports')
+    .update({ ...summary, rows: resultRows, completed_at: new Date().toISOString() })
+    .eq('id', imp.id)
+  if (updErr) ctx.log.error('import summary update failed', { error: updErr.message })
 
-  return json({ import_id: imp.id, summary, rows: resultRows, mail_configured: mailConfigured })
+  ctx.log.info('import done', { import_id: imp.id, ...summary })
+  return ctx.json({ import_id: imp.id, summary, rows: resultRows, mail_configured: mailConfigured })
 }
 
-async function handleSend(admin: any, body: any) {
-  const ids: string[] = Array.isArray(body.invite_ids) ? body.invite_ids.filter((x: unknown) => typeof x === 'string' && UUID_RE.test(x)) : []
-  if (!ids.length) return json({ error: 'invalid_input' }, 400)
-  if (ids.length > MAX_SEND_PER_CALL) return json({ error: 'too_many', max: MAX_SEND_PER_CALL }, 400)
+async function handleSend(ctx: Ctx, db: any, body: any) {
+  const ids: string[] = Array.isArray(body.invite_ids) ? body.invite_ids.filter(isUuid) : []
+  if (!ids.length) throw badRequest('invalid_input')
+  if (ids.length > MAX_SEND_PER_CALL) throw badRequest('too_many', { max: MAX_SEND_PER_CALL })
   const rows: InviteRow[] = []
   for (const part of chunks([...new Set(ids)], 300)) {
-    const { data, error } = await admin
-      .from('student_invites')
-      .select('id,email,first_name,student_code,status,send_count,last_sent_at')
-      .in('id', part)
-    if (error) return json({ error: error.message }, 500)
+    const { data, error } = await db.from('student_invites').select(INVITE_COLS).in('id', part)
+    if (error) throw error
     rows.push(...(data ?? []))
   }
-  const result = await sendInvites(admin, rows)
+  const result = await sendInvites(ctx, db, rows)
   const tally: Record<string, number> = {}
   for (const v of result.values()) tally[v] = (tally[v] ?? 0) + 1
-  return json({
-    results: Object.fromEntries(result),
-    tally,
-    mail_configured: Boolean(Deno.env.get('RESEND_API_KEY') && Deno.env.get('MAIL_FROM')),
-  })
+  ctx.log.info('send done', { tally })
+  return ctx.json({ results: Object.fromEntries(result), tally, mail_configured: Boolean(ctx.env('RESEND_API_KEY') && ctx.env('MAIL_FROM')) })
+}
+
+/** Background job: re-send failed invites whose backoff has expired. */
+async function handleRetry(ctx: Ctx, db: any) {
+  const { data, error } = await db
+    .from('student_invites')
+    .select(INVITE_COLS)
+    .eq('status', 'failed')
+    .lte('next_attempt_at', new Date().toISOString())
+    .lt('attempts', MAX_ATTEMPTS)
+    .order('next_attempt_at')
+    .limit(200)
+  if (error) throw error
+  const result = await sendInvites(ctx, db, data ?? [], { ignoreCooldown: true })
+  const tally: Record<string, number> = {}
+  for (const v of result.values()) tally[v] = (tally[v] ?? 0) + 1
+  ctx.log.info('retry run', { due: data?.length ?? 0, tally })
+  return ctx.json({ due: data?.length ?? 0, tally })
 }
 
 // ── entry ───────────────────────────────────────────────────────────────────
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
-  if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
-  if (Number(req.headers.get('content-length') ?? 0) > 3_000_000) return json({ error: 'too_large' }, 413)
+serve('admin-invite-students', { corsExtraHeaders: 'x-cron-secret' }, async (ctx) => {
+  const body = await readJson(ctx.req, MAX_BODY_BYTES)
+  const db = serviceClient()
 
-  const url = Deno.env.get('SUPABASE_URL')!
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-
-  const authHeader = req.headers.get('Authorization') ?? ''
-  if (!authHeader) return json({ error: 'missing_authorization' }, 401)
-  const caller = createClient(url, anonKey, { global: { headers: { Authorization: authHeader } } })
-  const { data: userRes } = await caller.auth.getUser()
-  if (!userRes?.user) return json({ error: 'unauthenticated' }, 401)
-  const { data: isAdmin, error: adminErr } = await caller.rpc('is_admin')
-  if (adminErr) return json({ error: 'auth_check_failed' }, 500)
-  if (!isAdmin) return json({ error: 'forbidden' }, 403)
-
-  let body: any
-  try {
-    body = await req.json()
-  } catch {
-    return json({ error: 'invalid_json' }, 400)
+  if (body.action === 'retry') {
+    const secret = ctx.env('CRON_SECRET')
+    if (!secret || !timingSafeEqual(ctx.req.headers.get('x-cron-secret') ?? '', secret)) throw unauthorized('bad_cron_secret')
+    return await handleRetry(ctx, db)
   }
 
-  const admin = createClient(url, serviceKey)
-  try {
-    if (body?.action === 'import') return await handleImport(admin, userRes.user.id, body)
-    if (body?.action === 'send') return await handleSend(admin, body)
-    return json({ error: 'unknown_action' }, 400)
-  } catch (e) {
-    console.error('admin-invite-students failed', e)
-    return json({ error: 'server_error' }, 500)
+  const { user } = await requireAdmin(ctx)
+  if (body.action === 'import') {
+    await enforceRateLimit(db, ctx.log, `invite-import:${user.id}`, 30, 3600)
+    return await handleImport(ctx, db, user.id, body)
   }
+  if (body.action === 'send') {
+    await enforceRateLimit(db, ctx.log, `invite-send:${user.id}`, 120, 3600)
+    return await handleSend(ctx, db, body)
+  }
+  throw badRequest('unknown_action')
 })

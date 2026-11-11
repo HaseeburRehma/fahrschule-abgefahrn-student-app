@@ -16,6 +16,7 @@ import { getSupabase } from '@/lib/supabase/client'
 import { classifyPasswordError, passwordErrorKey } from '@/lib/auth/errors'
 import { useT } from '@/lib/i18n'
 import { TimeoutError, withTimeout } from '@/lib/async'
+import { loginLockRemainingMs, recordLoginFailure, resetLoginFailures } from '@/lib/auth/throttle'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -61,6 +62,12 @@ export default function Login() {
     }
     if (!ok) return
 
+    const waitMs = loginLockRemainingMs(cleanEmail)
+    if (waitMs > 0) {
+      setPwErr(t('auth.err.lockedFor', { s: Math.ceil(waitMs / 1000) }))
+      return
+    }
+
     busyRef.current = true
     setBusy(true)
     try {
@@ -69,10 +76,18 @@ export default function Login() {
         20_000,
       )
       if (error) throw error
+      resetLoginFailures(cleanEmail)
       // AuthGuard sees the new session and routes to Home.
     } catch (e) {
       const kind = e instanceof TimeoutError ? 'network' : classifyPasswordError(e)
-      if (kind === 'invalid_credentials') setBadCreds(true)
+      if (kind === 'invalid_credentials') {
+        setBadCreds(true)
+        const lock = recordLoginFailure(cleanEmail)
+        if (lock > 0) {
+          setPwErr(t('auth.err.lockedFor', { s: Math.ceil(lock / 1000) }))
+          return
+        }
+      }
       setPwErr(t(passwordErrorKey(kind)))
     } finally {
       busyRef.current = false

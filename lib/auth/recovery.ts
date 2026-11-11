@@ -16,6 +16,35 @@ export function recoveryRedirect(): string {
   return Linking.createURL('/reset-password')
 }
 
+/**
+ * Set when Supabase fires PASSWORD_RECOVERY (the user really came from a
+ * recovery link). The reset screen only accepts an already-existing session
+ * when this happened recently — otherwise anyone holding an unlocked, signed-in
+ * device could open /reset-password and change the password without knowing it.
+ */
+let recoveryEventAt = 0
+const RECOVERY_WINDOW_MS = 15 * 60_000
+
+export function markRecoveryEvent(now = Date.now()) {
+  recoveryEventAt = now
+}
+
+export function recoveryEventFresh(now = Date.now()): boolean {
+  return recoveryEventAt > 0 && now - recoveryEventAt < RECOVERY_WINDOW_MS
+}
+
+export function clearRecoveryEvent() {
+  recoveryEventAt = 0
+}
+
+// Web: supabase-js consumes the #access_token=…&type=recovery fragment when it
+// initialises (possibly before any listener is attached), so remember at load
+// time that this page was opened from a recovery link.
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  const p = parseAuthParams(window.location.href)
+  if (p.type === 'recovery' || ((p.access_token || p.code) && window.location.pathname.endsWith('/reset-password'))) markRecoveryEvent()
+}
+
 export async function sendRecoveryMail(email: string) {
   const { error } = await getSupabase().auth.resetPasswordForEmail(email, { redirectTo: recoveryRedirect() })
   if (error) throw error

@@ -1,6 +1,6 @@
 {
   "name": "fahrschule-abgefahrn-app",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
@@ -20,7 +20,14 @@
     "submit:android": "eas submit --platform android --latest",
     "test": "vitest run",
     "e2e": "playwright test",
-    "e2e:public": "playwright test --project=public"
+    "e2e:public": "playwright test --project=public",
+    "test:db": "bash scripts/db-test.sh",
+    "test:load:db": "bash scripts/db-load.sh",
+    "test:load:web": "node scripts/load-test.mjs",
+    "security:probe": "node scripts/security-probe.mjs",
+    "audit:deps": "node scripts/audit.mjs",
+    "check:bundle": "node scripts/check-bundle.mjs dist",
+    "check:functions": "deno lint --config supabase/functions/deno.json supabase/functions && deno check --config supabase/functions/deno.json supabase/functions/*/index.ts"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",

@@ -11,6 +11,7 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import { useRouter, useSegments } from 'expo-router'
+import { markRecoveryEvent } from '@/lib/auth/recovery'
 
 import { useUser } from '@/lib/user-context'
 import { getSupabase } from '@/lib/supabase/client'
@@ -54,7 +55,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const { data } = getSupabase().auth.onAuthStateChange((event) => {
       // deferred: never navigate from inside supabase's auth callback (it holds the auth lock)
-      if (event === 'PASSWORD_RECOVERY') setTimeout(() => router.replace('/reset-password' as any), 0)
+      if (event === 'PASSWORD_RECOVERY') {
+        markRecoveryEvent()
+        setTimeout(() => router.replace('/reset-password' as any), 0)
+      }
     })
     return () => data.subscription.unsubscribe()
   }, [router])

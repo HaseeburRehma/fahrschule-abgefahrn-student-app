@@ -1,0 +1,103 @@
+# Continuous integration: every push and pull request must pass all jobs.
+# Deployments stay where they are: Vercel builds the web app from main, EAS
+# builds/updates the mobile apps, Supabase migrations + functions are deployed
+# with the Supabase CLI (see docs/OPERATIONS.md).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: App · typecheck, unit tests, audit, bundle budget
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --no-fund
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Unit tests
+        run: npx vitest run
+      - name: Dependency vulnerabilities (production deps, high+)
+        run: node scripts/audit.mjs
+      - name: Web export
+        run: npx expo export --platform web --output-dir dist
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_ci_placeholder
+          EXPO_NO_TELEMETRY: 1
+      - name: Performance budget + secret scan
+        run: node scripts/check-bundle.mjs dist
+
+  functions:
+    name: Edge functions · deno lint + type check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno lint --config supabase/functions/deno.json supabase/functions
+      - run: deno check --config supabase/functions/deno.json supabase/functions/*/index.ts
+
+  database:
+    name: Database · migrations + RLS/security tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/db-test.sh
+
+  docker:
+    name: Docker · build the self-hosted web image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: fahrschule-web:ci
+          load: true
+          build-args: |
+            EXPO_PUBLIC_SUPABASE_URL=https://example.supabase.co
+            EXPO_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_ci_placeholder
+      - name: Smoke test (health + security headers)
+        run: |
+          docker run -d --name web -p 8080:8080 fahrschule-web:ci
+          for i in $(seq 1 20); do curl -fs http://localhost:8080/healthz && break; sleep 1; done
+          curl -fsI http://localhost:8080/ | tee headers.txt
+          grep -qi 'x-frame-options: DENY' headers.txt
+          grep -qi 'content-security-policy' headers.txt
+          docker stop web

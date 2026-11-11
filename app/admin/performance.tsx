@@ -20,6 +20,7 @@ import {
   kpis,
   matches,
   sortRows,
+  berlinDay,
   toCsv,
   type Derived,
   type FilterKey,
@@ -124,7 +125,7 @@ export default function PerformanceScreen() {
       p.xp_total, p.xp_week, p.streak_days, d.daysSinceActive ?? '', p.driving_lessons, p.lessons_completed,
       p.theory_exam_date ?? '', p.practical_exam_date ?? '', d.flags.map((f) => t(`perf.flag.${f}`)).join(', '),
     ])
-    downloadText(`leistung-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(header, body)).catch(() => {})
+    downloadText(`leistung-${berlinDay(new Date())}.csv`, toCsv(header, body)).catch(() => {})
   }
 
   if (data === null) {

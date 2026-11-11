@@ -9,9 +9,10 @@
 import { getSupabase } from '@/lib/supabase/client'
 import type { ImportFormat, PreviewRow } from '@/lib/student-import'
 import { MIME_BY_FORMAT } from '@/lib/student-import'
+import { berlinDay } from '@/lib/performance'
 
 export type InviteStatus = 'pending' | 'sent' | 'failed' | 'accepted' | 'revoked'
-export type MailResult = 'sent' | 'failed' | 'skipped' | 'throttled' | 'not_configured'
+export type MailResult = 'sent' | 'failed' | 'skipped' | 'throttled' | 'not_configured' | 'disabled' | 'queued'
 export type RowOutcome = 'invite_new' | 'invite_update' | 'registered' | 'skipped'
 
 export interface Invite {
@@ -30,6 +31,8 @@ export interface Invite {
   accepted_at: string | null
   profile_id: string | null
   created_at: string
+  /** From Resend's webhook (after the hardening migration). */
+  delivery_status?: 'delivered' | 'bounced' | 'complained' | 'delayed' | null
 }
 
 export interface ImportResultRow {
@@ -82,22 +85,52 @@ export function isNotDeployed(e: any): boolean {
   )
 }
 
-async function invoke<T>(body: Record<string, unknown>): Promise<T> {
-  const { data, error } = await getSupabase().functions.invoke('admin-invite-students', { body })
-  if (error) {
+/** UUID v4 for Idempotency-Key headers (crypto when available). */
+export function newIdempotencyKey(): string {
+  const b = new Uint8Array(16)
+  const c = (globalThis as any).crypto
+  if (c?.getRandomValues) c.getRandomValues(b)
+  else for (let i = 0; i < 16; i++) b[i] = Math.floor(Math.random() * 256)
+  b[6] = (b[6] & 0x0f) | 0x40
+  b[8] = (b[8] & 0x3f) | 0x80
+  const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('')
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
+}
+
+/** Worth retrying: network failure, timeout, 429 or 5xx (never 4xx validation errors). */
+export function isRetryable(status: number | null): boolean {
+  return status === null || status === 408 || status === 429 || status >= 500
+}
+
+async function invoke<T>(body: Record<string, unknown>, opts: { idempotencyKey?: string; retries?: number } = {}): Promise<T> {
+  const retries = opts.retries ?? 0
+  for (let attempt = 0; ; attempt++) {
+    const { data, error } = await getSupabase().functions.invoke('admin-invite-students', {
+      body,
+      headers: opts.idempotencyKey ? { 'Idempotency-Key': opts.idempotencyKey } : undefined,
+    })
+    if (!error) {
+      if ((data as any)?.error) throw new InviteApiError((data as any).error)
+      return data as T
+    }
     let code: string = (error as any)?.message ?? 'error'
+    let status: number | null = null
     try {
       const ctx = (error as any).context
-      if (ctx?.status === 404) code = 'not_found'
+      status = typeof ctx?.status === 'number' ? ctx.status : null
+      if (status === 404) code = 'not_found'
       const parsed = ctx && typeof ctx.json === 'function' ? await ctx.json() : null
       if (parsed?.error) code = parsed.error
     } catch {
       /* body not JSON */
     }
+    // Safe to repeat: the same Idempotency-Key makes the server return the first result.
+    if (attempt < retries && isRetryable(status)) {
+      await new Promise((r) => setTimeout(r, Math.random() * Math.min(8000, 1000 * 2 ** attempt)))
+      continue
+    }
     throw new InviteApiError(code)
   }
-  if ((data as any)?.error) throw new InviteApiError((data as any).error)
-  return data as T
 }
 
 /** Invite text to copy / share by hand (WhatsApp, SMS) — same content as the e-mail. */
@@ -121,7 +154,7 @@ export async function storeImportFile(
   data: Uint8Array | Blob,
 ): Promise<string | null> {
   const safe = fileName.replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^\.+/, '').slice(-120) || `liste.${format}`
-  const stamp = new Date().toISOString().slice(0, 10)
+  const stamp = berlinDay(new Date())
   const path = `imports/${stamp}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safe}`
   const { error } = await getSupabase()
     .storage.from('student-imports')
@@ -135,7 +168,9 @@ export async function importStudents(input: {
   filePath: string | null
   rows: PreviewRow[]
   send: boolean
-}): Promise<{ import_id: string; summary: ImportSummary; rows: ImportResultRow[]; mail_configured: boolean }> {
+  /** Same key for every retry of one import (see newIdempotencyKey). */
+  idempotencyKey: string
+}): Promise<{ import_id: string; summary: ImportSummary; rows: ImportResultRow[]; mail_configured: boolean; replayed?: boolean }> {
   return invoke({
     action: 'import',
     file_name: input.fileName,
@@ -152,7 +187,7 @@ export async function importStudents(input: {
         phone: r.phone,
         student_code: r.student_code,
       })),
-  })
+  }, { idempotencyKey: input.idempotencyKey, retries: 2 })
 }
 
 export async function sendInvites(
@@ -169,9 +204,14 @@ const INVITE_COLS =
 export async function fetchInvites(filter?: { importId?: string }): Promise<Invite[]> {
   const out: Invite[] = []
   for (let from = 0; ; from += 1000) {
-    let q = getSupabase().from('student_invites').select(INVITE_COLS).order('created_at', { ascending: false }).range(from, from + 999)
-    if (filter?.importId) q = q.eq('import_id', filter.importId)
-    const { data, error } = await q
+    const query = (cols: string) => {
+      let q = getSupabase().from('student_invites').select(cols).order('created_at', { ascending: false }).range(from, from + 999)
+      if (filter?.importId) q = q.eq('import_id', filter.importId)
+      return q
+    }
+    let { data, error } = (await query(`${INVITE_COLS},delivery_status`)) as any
+    // Before the 2026-11-11 migration the column doesn't exist yet (42703) — degrade gracefully.
+    if (error && String(error.code) === '42703') ({ data, error } = (await query(INVITE_COLS)) as any)
     if (error) throw error
     out.push(...((data ?? []) as Invite[]))
     if (!data || data.length < 1000) return out

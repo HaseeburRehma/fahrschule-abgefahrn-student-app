@@ -1,57 +1,40 @@
-// @ts-nocheck  — Deno edge function (Deno global + https: imports). Checked by
-// the Deno runtime at deploy, not by the app's TypeScript.
+// @ts-nocheck  — Deno edge function. Checked by `deno check` in CI.
 // ============================================================================
-// delete-account — lets a signed-in user delete THEIR OWN account (required by
-// the App Store / Play Store). Verifies the caller from their JWT, then deletes
-// that auth user via the service role; FK cascades remove profile, packages,
-// enrolments and notifications. Admins can't self-delete here (avoids locking
-// the school out); an admin removes another admin from the dashboard.
+// delete-account — a signed-in user deletes THEIR OWN account (App Store /
+// Play Store requirement, GDPR right to erasure).
 //
+// The caller comes from their verified JWT (never from the body), so nobody
+// can delete someone else (no IDOR). Stored files are purged first, then the
+// auth user is deleted; FK cascades remove profile, packages, enrolments,
+// notifications. Admins can't self-delete here (keeps the school from locking
+// itself out). Rate limited: 5 / hour per user.
+//
+//   200 { ok } | 400 admin_cannot_self_delete | 401 | 429 | 500
 // Deploy:  supabase functions deploy delete-account
 // ============================================================================
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { HttpError, badRequest } from '../_shared/http.ts'
+import { authenticate, enforceRateLimit, purgeStudentFiles, serve, serviceClient } from '../_shared/serve.ts'
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS, 'content-type': 'application/json' },
-  })
-}
+serve('delete-account', {}, async (ctx) => {
+  const { user } = await authenticate(ctx)
+  const admin = serviceClient()
+  await enforceRateLimit(admin, ctx.log, `delete-account:${user.id}`, 5, 3600)
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
-  if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
+  const { data: prof } = await admin.from('profiles').select('role').eq('id', user.id).maybeSingle()
+  if (prof?.role === 'admin') throw badRequest('admin_cannot_self_delete')
 
-  const url = Deno.env.get('SUPABASE_URL')!
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-
-  const authHeader = req.headers.get('Authorization') ?? ''
-  if (!authHeader) return json({ error: 'missing_authorization' }, 401)
-
-  const caller = createClient(url, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  })
-  const { data: userRes } = await caller.auth.getUser()
-  if (!userRes?.user) return json({ error: 'unauthenticated' }, 401)
-  const uid = userRes.user.id
-
-  const admin = createClient(url, serviceKey)
-  const { data: prof } = await admin
-    .from('profiles')
-    .select('role')
-    .eq('id', uid)
-    .maybeSingle()
-  if (prof?.role === 'admin') return json({ error: 'admin_cannot_self_delete' }, 400)
-
-  const { error } = await admin.auth.admin.deleteUser(uid)
-  if (error) return json({ error: error.message }, 500)
-  return json({ ok: true })
+  try {
+    await purgeStudentFiles(admin, ctx.log, user.id)
+  } catch (e) {
+    // Don't block the deletion on storage — log it so the files can be cleaned up by hand.
+    ctx.log.error('file purge failed', { error: e })
+  }
+  const { error } = await admin.auth.admin.deleteUser(user.id)
+  if (error) {
+    ctx.log.error('delete user failed', { error: error.message })
+    throw new HttpError(500, 'delete_failed')
+  }
+  ctx.log.info('account deleted', { user_id: user.id })
+  return ctx.json({ ok: true })
 })

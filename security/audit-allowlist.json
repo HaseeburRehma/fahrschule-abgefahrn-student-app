@@ -1,0 +1,26 @@
+{
+  "_comment": "Reviewed high-severity advisories we accept until the next Expo SDK upgrade. CI fails on any other high/critical advisory, and on these once 'expires' has passed.",
+  "accepted": [
+    {
+      "id": "GHSA-qr28-fpjm-wq7f",
+      "package": "decode-uri-component",
+      "via": "expo-router@6 → query-string@7",
+      "reason": "Denial of service only on the user's own device when parsing a hostile URL; the fix (0.5.x) is ESM-only and breaks query-string@7's require(). Fixed by the Expo Router upgrade with the next SDK.",
+      "expires": "2027-03-31"
+    },
+    {
+      "id": "GHSA-5p2g-fcmc-qvqq",
+      "package": "image-size",
+      "via": "metro (bundler, build time only)",
+      "reason": "Only reached while bundling our own assets at build time; never ships in the app or runs on a server.",
+      "expires": "2027-03-31"
+    },
+    {
+      "id": "GHSA-w3rx-r6r6-pgpr",
+      "package": "image-size",
+      "via": "metro (bundler, build time only)",
+      "reason": "Same as above (ICNS parser, build time only).",
+      "expires": "2027-03-31"
+    }
+  ]
+}

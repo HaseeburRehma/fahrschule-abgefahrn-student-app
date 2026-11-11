@@ -1,128 +1,83 @@
-// @ts-nocheck  — Deno edge function (Deno global + https: imports). Checked by
-// the Deno runtime at deploy, not by the app's TypeScript.
+// @ts-nocheck  — Deno edge function. Checked by `deno check` in CI.
 // ============================================================================
 // push-dispatch — sends an Expo push when a notification row is inserted.
 //
-// Wired as a Supabase **Database Webhook** on INSERT of public.notifications
-// (Dashboard → Database → Webhooks). The webhook POSTs the new row here; we
-// look up the recipient's Expo push token and forward to Expo's push service.
-//
-// Env (auto-provided by Supabase): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
-// Required: WEBHOOK_SECRET — the caller must send a matching `x-webhook-secret`
-//           header (the DB trigger reads it from Vault 'push_webhook_secret').
+// Called by the database (trigger dispatch_push_on_notification → pg_net) —
+// an internal webhook. Security & reliability:
+//   * shared secret WEBHOOK_SECRET in `x-webhook-secret`, compared in constant
+//     time, fail closed when unset
+//   * the payload is never trusted: the real row is re-read, stale rows skipped
+//   * idempotent: each notification id is pushed at most once (webhook_events),
+//     so a retried webhook can't double-notify a student
+//   * Expo call with timeout; retried only on 429/503 (nothing was delivered)
 //
 // Deploy:  supabase functions deploy push-dispatch --no-verify-jwt
 // ============================================================================
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-interface NotificationRecord {
-  id: string
-  user_id: string
-  title: string
-  body: string | null
-  type: string | null
-  data: Record<string, unknown> | null
-}
-
-interface WebhookPayload {
-  type: 'INSERT' | 'UPDATE' | 'DELETE'
-  table: string
-  record: NotificationRecord | null
-}
+import { HttpError, fetchWithRetry, isUuid, readJson, timingSafeEqual, unauthorized } from '../_shared/http.ts'
+import { serve, serviceClient } from '../_shared/serve.ts'
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send'
 
-Deno.serve(async (req) => {
-  // Shared-secret gate — REQUIRED (fail closed). The DB trigger
-  // dispatch_push_on_notification sends it from Supabase Vault ('push_webhook_secret').
-  const requiredSecret = Deno.env.get('WEBHOOK_SECRET')
-  if (!requiredSecret || req.headers.get('x-webhook-secret') !== requiredSecret) {
-    return new Response('Unauthorized', { status: 401 })
-  }
+serve('push-dispatch', {}, async (ctx) => {
+  const secret = ctx.env('WEBHOOK_SECRET')
+  if (!secret) throw new HttpError(503, 'not_configured')
+  if (!timingSafeEqual(ctx.req.headers.get('x-webhook-secret') ?? '', secret)) throw unauthorized('bad_secret')
 
-  let payload: WebhookPayload
-  try {
-    payload = await req.json()
-  } catch {
-    return new Response('Bad request', { status: 400 })
-  }
+  const payload = await readJson(ctx.req, 50_000)
+  const id = payload?.record?.id
+  if (payload.type !== 'INSERT' || !isUuid(id)) return ctx.json({ skipped: true })
 
-  if (payload.type !== 'INSERT' || !payload.record?.id) {
-    return new Response(JSON.stringify({ skipped: true }), {
-      headers: { 'content-type': 'application/json' },
-    })
-  }
-
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  )
-
-  // Never trust the payload: load the real notification row and only push
-  // fresh ones (prevents replaying old notifications or forged content).
-  const { data: record } = await supabase
+  const db = serviceClient()
+  const { data: record } = await db
     .from('notifications')
     .select('id, user_id, title, body, type, data, created_at')
-    .eq('id', payload.record.id)
+    .eq('id', id)
     .maybeSingle()
   if (!record || Date.now() - new Date(record.created_at).getTime() > 15 * 60_000) {
-    return new Response(JSON.stringify({ skipped: true, reason: 'not_found_or_stale' }), {
-      headers: { 'content-type': 'application/json' },
-    })
+    return ctx.json({ skipped: true, reason: 'not_found_or_stale' })
   }
 
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('push_token')
-    .eq('id', record.user_id)
-    .maybeSingle()
-
-  if (error || !profile?.push_token) {
-    // No device token → the recipient still gets the in-app realtime feed.
-    return new Response(JSON.stringify({ delivered: false, reason: 'no_token' }), {
-      headers: { 'content-type': 'application/json' },
-    })
+  // Idempotency: claim this notification once.
+  const { error: dupErr } = await db.from('webhook_events').insert({ id: `push:${record.id}`, source: 'db', type: 'notification.insert' })
+  if (dupErr) {
+    if (dupErr.code === '23505') return ctx.json({ skipped: true, reason: 'duplicate' })
+    ctx.log.warn('dedupe insert failed (continuing)', { error: dupErr.message })
   }
+
+  const { data: profile } = await db.from('profiles').select('push_token').eq('id', record.user_id).maybeSingle()
+  if (!profile?.push_token) return ctx.json({ delivered: false, reason: 'no_token' })
 
   const message = {
     to: profile.push_token,
     sound: 'default',
-    title: record.title,
-    body: record.body ?? '',
+    title: String(record.title).slice(0, 178),
+    body: String(record.body ?? '').slice(0, 1000),
     data: { id: record.id, type: record.type ?? 'general', ...(record.data ?? {}) },
     channelId: 'default',
     priority: 'high',
   }
 
-  const expoRes = await fetch(EXPO_PUSH_URL, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      accept: 'application/json',
-      'accept-encoding': 'gzip, deflate',
-    },
-    body: JSON.stringify(message),
-  })
-
-  const expoJson = await expoRes.json().catch(() => null)
-
-  // Expo says the token is dead (app uninstalled / token rotated) → forget it,
-  // so we stop pushing to it; the app registers a fresh token on next launch.
-  const ticket = Array.isArray(expoJson?.data) ? expoJson.data[0] : expoJson?.data
-  if (ticket?.status === 'error' && ticket?.details?.error === 'DeviceNotRegistered') {
-    await supabase
-      .from('profiles')
-      .update({ push_token: null })
-      .eq('id', record.user_id)
-      .eq('push_token', profile.push_token)
+  let expoRes: Response
+  try {
+    expoRes = await fetchWithRetry(
+      EXPO_PUSH_URL,
+      { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(message) },
+      { retries: 2, timeoutMs: 8000, retryOn: (s) => s === 429 || s === 503, onRetry: (i) => ctx.log.warn('expo retry', i) },
+    )
+  } catch (e) {
+    ctx.log.error('expo unreachable', { error: e })
+    throw new HttpError(502, 'push_provider_unreachable')
   }
+  const expoJson = await expoRes.json().catch(() => null)
+  const ticket = Array.isArray(expoJson?.data) ? expoJson.data[0] : expoJson?.data
 
-  return new Response(
-    JSON.stringify({ delivered: expoRes.ok && ticket?.status === 'ok', expo: expoJson }),
-    {
-      status: expoRes.ok ? 200 : 502,
-      headers: { 'content-type': 'application/json' },
-    },
-  )
+  // Dead token (app uninstalled / rotated) → forget it.
+  if (ticket?.status === 'error' && ticket?.details?.error === 'DeviceNotRegistered') {
+    await db.from('profiles').update({ push_token: null }).eq('id', record.user_id).eq('push_token', profile.push_token)
+  }
+  const delivered = expoRes.ok && ticket?.status === 'ok'
+  if (!delivered) ctx.log.warn('push not delivered', { status: expoRes.status, expo_error: ticket?.details?.error ?? ticket?.message })
+  if (!expoRes.ok) throw new HttpError(502, 'push_provider_error')
+  return ctx.json({ delivered })
 })

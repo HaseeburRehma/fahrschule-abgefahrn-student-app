@@ -190,6 +190,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     const uid = activeUserId.current
     clearProfileCache(uid)
+    // Session management: this device must stop receiving the user's pushes
+    // once they sign out (the token is re-registered on the next sign-in).
+    if (uid) {
+      try {
+        await withTimeout(
+          Promise.resolve(getSupabase().from('profiles').update({ push_token: null }).eq('id', uid)),
+          4000,
+        )
+      } catch {}
+    }
     await signOutEverywhere()
     setProfile(null)
     setProfileValidated(false)
