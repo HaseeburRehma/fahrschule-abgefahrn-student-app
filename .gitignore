@@ -61,3 +61,4 @@ e2e-run.log
 # Generated (the PDF is committed)
 docs/engineering-practices.html
 supabase/functions/deno.lock
+supabase/.temp/
