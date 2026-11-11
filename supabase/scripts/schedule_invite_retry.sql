@@ -1,24 +1,34 @@
 -- ============================================================================
--- OPTIONAL — background retry worker for invite e-mails (run once, by hand).
+-- Background retry worker for invite e-mails — run once in the SQL editor
+-- (after migration 20261111000002_worker_secret.sql).
 --
--- Every 10 minutes pg_cron calls admin-invite-students { action: 'retry' }
--- through pg_net. The function re-sends failed invites whose backoff expired.
+-- 1. Generates a random secret inside the database and stores it in Vault
+--    (nobody ever sees or copies it).
+-- 2. Every 10 minutes pg_cron calls admin-invite-students { action: 'retry' }
+--    through pg_net with that secret; the function checks it with
+--    public.verify_worker_secret().
 --
--- Before running:
---   1. Pick a long random secret, e.g.  openssl rand -hex 32
---   2. Dashboard → Edge Functions → Secrets: CRON_SECRET = <that value>
---   3. Store the same value + the project URL in Vault (SQL editor):
---        select vault.create_secret('<that value>', 'invite_worker_secret');
---        select vault.create_secret('https://<project-ref>.supabase.co', 'project_url');
--- Secrets live only in Vault / function secrets — never in this file or git.
--- Rotate: update both places, nothing else changes.
+-- Rotate the secret:  delete from vault.secrets where name = 'invite_worker_secret';
+--                     then run this script again.
+-- Stop the worker:    select cron.unschedule('invite-retry');
 -- ============================================================================
+do $$
+begin
+  if not exists (select 1 from vault.secrets where name = 'invite_worker_secret') then
+    perform vault.create_secret(
+      replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''),
+      'invite_worker_secret',
+      'pg_cron retry worker -> edge function admin-invite-students'
+    );
+  end if;
+end $$;
+
 select cron.schedule(
   'invite-retry',
   '*/10 * * * *',
   $job$
   select net.http_post(
-    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/admin-invite-students',
+    url := 'https://fzolxwxdeyshtodlikkl.supabase.co/functions/v1/admin-invite-students',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'invite_worker_secret')
@@ -28,4 +38,5 @@ select cron.schedule(
   );
   $job$
 );
--- Undo: select cron.unschedule('invite-retry');
+
+-- Check: select jobname, schedule, active from cron.job where jobname = 'invite-retry';

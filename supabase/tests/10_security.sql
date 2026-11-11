@@ -78,6 +78,8 @@ begin
   if not ok then raise exception 'FAIL: student called new_student_code'; end if;
   ok := false; begin perform * from public.check_rate_limit('x', 1, 60); exception when others then ok := true; end;
   if not ok then raise exception 'FAIL: student called check_rate_limit'; end if;
+  ok := false; begin perform public.verify_worker_secret(repeat('a', 64)); exception when others then ok := true; end;
+  if not ok then raise exception 'FAIL: student called verify_worker_secret'; end if;
   ok := false; begin insert into storage.objects (bucket_id, name) values ('student-imports', 'imports/x.csv'); exception when others then ok := true; end;
   if not ok then raise exception 'FAIL: student uploaded into student-imports'; end if;
   raise notice 'student checks passed';
@@ -167,6 +169,9 @@ begin
 
   ok := false; begin delete from public.audit_log; exception when others then ok := true; end;
   if not ok then raise exception 'FAIL: service role can delete audit history'; end if;
+  if public.verify_worker_secret('x') or public.verify_worker_secret(repeat('a', 64)) then
+    raise exception 'FAIL: worker secret accepted without a Vault secret';
+  end if;
   raise notice 'service role checks passed';
 end $$;
 rollback;

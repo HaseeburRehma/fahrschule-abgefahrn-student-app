@@ -7,7 +7,7 @@
 //        double-tapped import returns the first result instead of importing twice.
 //   POST { action: 'send', invite_ids: [...] }
 //        (Re)sends invites. Accepted / revoked ones and ones sent < 60 s ago are skipped.
-//   POST { action: 'retry' }  + header x-cron-secret
+//   POST { action: 'retry' }  + header x-cron-secret (checked against Vault via verify_worker_secret)
 //        Background worker (pg_cron → pg_net): re-sends failed invites whose
 //        next_attempt_at is due (exponential backoff, max 5 attempts, bounced
 //        addresses are never retried).
@@ -22,7 +22,7 @@
 // while it is down — those invites go to the retry queue instead.
 //
 // Secrets: RESEND_API_KEY, MAIL_FROM (verified domain), MAIL_REPLY_TO?, APP_WEB_URL?,
-//          CRON_SECRET (for the retry worker).
+//          CRON_SECRET optional (the retry worker's secret normally lives in Vault).
 // Deploy:  supabase functions deploy admin-invite-students
 // ============================================================================
 
@@ -432,8 +432,18 @@ serve('admin-invite-students', { corsExtraHeaders: 'x-cron-secret' }, async (ctx
   const db = serviceClient()
 
   if (body.action === 'retry') {
-    const secret = ctx.env('CRON_SECRET')
-    if (!secret || !timingSafeEqual(ctx.req.headers.get('x-cron-secret') ?? '', secret)) throw unauthorized('bad_cron_secret')
+    // Worker auth: the secret pg_cron sends is checked against the one the
+    // database generated in Vault (verify_worker_secret). CRON_SECRET, if set
+    // as a function secret, is accepted too.
+    const given = ctx.req.headers.get('x-cron-secret') ?? ''
+    const envSecret = ctx.env('CRON_SECRET')
+    let ok = Boolean(envSecret) && timingSafeEqual(given, envSecret!)
+    if (!ok && given) {
+      const { data, error } = await db.rpc('verify_worker_secret', { p_secret: given })
+      if (error) ctx.log.error('worker secret check failed', { error: error.message })
+      ok = data === true
+    }
+    if (!ok) throw unauthorized('bad_cron_secret')
     return await handleRetry(ctx, db)
   }
 

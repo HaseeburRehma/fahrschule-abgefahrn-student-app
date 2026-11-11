@@ -25,13 +25,19 @@ jobs:
           echo "web: $out"
           [ "${out%% *}" = "200" ]
           awk -v t="${out##* }" 'BEGIN { exit !(t < 5) }'
-      - name: Supabase Auth healthy
+      - name: Supabase API healthy (Auth + database)
         env:
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          # The publishable key is public by design (it ships inside the web app
+          # and the mobile apps); Row Level Security protects the data, so it
+          # doesn't need to be a secret. A repo secret of the same name wins.
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'sb_publishable_rPRvwTMIBrvVN-PzsIJEVw_-iX_k5iY' }}
         run: |
-          if [ -z "$SUPABASE_ANON_KEY" ]; then echo "::warning::secret SUPABASE_ANON_KEY not set — skipping API check"; exit 0; fi
-          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 -H "apikey: $SUPABASE_ANON_KEY" "$SUPABASE_URL/auth/v1/health")
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 -H "apikey: $SUPABASE_PUBLISHABLE_KEY" "$SUPABASE_URL/auth/v1/health")
           echo "auth health: $code"
+          [ "$code" = "200" ]
+          # Database reachable through PostgREST (feature_flags() is public).
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 -X POST -H "apikey: $SUPABASE_PUBLISHABLE_KEY" -H 'Content-Type: application/json' -d '{}' "$SUPABASE_URL/rest/v1/rpc/feature_flags")
+          echo "database (rpc feature_flags): $code"
           [ "$code" = "200" ]
       - name: Security headers still present
         run: |
