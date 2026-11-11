@@ -358,8 +358,12 @@ function lastSentText(i: Invite, t: RowProps['t'], locale: 'de' | 'en'): string 
 }
 
 function errorText(i: Invite, t: RowProps['t']): string | null {
-  if (!i.last_error || i.status === 'accepted') return null
-  return i.last_error === 'mail_not_configured' ? t('inv.mail.not_configured') : i.last_error
+  if (i.status === 'accepted') return null
+  if (i.delivery_status === 'bounced' || i.delivery_status === 'complained') return t(`inv.delivery.${i.delivery_status}`)
+  if (!i.last_error) return i.delivery_status === 'delayed' ? t('inv.delivery.delayed') : null
+  if (i.last_error === 'mail_not_configured') return t('inv.mail.not_configured')
+  if (i.last_error === 'provider_unavailable') return t('inv.mail.queued')
+  return i.last_error.startsWith('resend_') ? t('inv.mail.failed') : i.last_error
 }
 
 function InviteRowWide(p: RowProps) {

@@ -1,0 +1,12 @@
+node_modules
+dist
+.expo
+.git
+.env
+.env.*
+*.local.sql
+e2e
+store-assets
+docs
+ios
+android

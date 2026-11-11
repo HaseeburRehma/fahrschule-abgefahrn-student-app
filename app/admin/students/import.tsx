@@ -7,7 +7,7 @@
  * 3. Result   invites saved, codes generated where missing, e-mails sent
  */
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Platform, Switch, Text, TextInput, View } from 'react-native'
 import { Stack, useRouter } from 'expo-router'
 import * as DocumentPicker from 'expo-document-picker'
@@ -38,6 +38,7 @@ import {
   InviteApiError,
   fetchInvites,
   importStudents,
+  newIdempotencyKey,
   storeImportFile,
   type ImportResultRow,
   type ImportSummary,
@@ -77,6 +78,9 @@ export default function ImportStudents() {
 
   const [step, setStep] = useState<'source' | 'preview' | 'result'>('source')
   const [source, setSource] = useState<Source | null>(null)
+  // One key per import attempt: automatic network retries reuse it (the server
+  // answers with the first result), a manual retry after an error gets a new one.
+  const idemKey = useRef(newIdempotencyKey())
   const [table, setTable] = useState<string[][]>([])
   const [mapping, setMapping] = useState<Mapping>({ headerRow: null, columns: [] })
   const [paste, setPaste] = useState('')
@@ -118,6 +122,7 @@ export default function ImportStudents() {
 
   function load(src: Source, input: Uint8Array | string) {
     const tbl = parseTable(src.format, input)
+    idemKey.current = newIdempotencyKey()
     setSource(src)
     setTable(tbl)
     setMapping(detectMapping(tbl))
@@ -190,7 +195,7 @@ export default function ImportStudents() {
       if (source.format !== 'paste' && source.bytes) {
         filePath = await storeImportFile(source.fileName, source.format, source.bytes).catch(() => null)
       }
-      const res = await importStudents({ fileName: source.fileName, format: source.format, filePath, rows, send })
+      const res = await importStudents({ fileName: source.fileName, format: source.format, filePath, rows, send, idempotencyKey: idemKey.current })
       setResult({
         summary: res.summary,
         rows: res.rows,
@@ -208,9 +213,16 @@ export default function ImportStudents() {
             ? t('inv.err.forbidden')
             : code === 'too_many_rows'
               ? t('inv.err.too_many_rows')
-              : `${t('inv.err.importFailed')}${code ? ` (${code})` : ''}`,
+              : code === 'feature_disabled'
+                ? t('inv.err.featureDisabled')
+                : code === 'import_in_progress'
+                  ? t('inv.err.inProgress')
+                  : code === 'rate_limited'
+                    ? t('inv.err.rateLimited')
+                    : `${t('inv.err.importFailed')}${code ? ` (${code})` : ''}`,
       )
     } finally {
+      idemKey.current = newIdempotencyKey()
       setBusy(false)
     }
   }

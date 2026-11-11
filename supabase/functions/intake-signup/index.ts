@@ -1,5 +1,4 @@
-// @ts-nocheck  — Deno edge function (Deno global + https: imports). Checked by
-// the Deno runtime at deploy, not by the app's TypeScript.
+// @ts-nocheck  — Deno edge function. Checked by `deno check` in CI.
 // ============================================================================
 // intake-signup — the website "Online Anmeldung" (registration + package
 // purchase) POSTs here. It AUTO-CREATES the student's account so they can log
@@ -10,27 +9,21 @@
 // When a real payment gateway is connected later, point its webhook at this
 // same function (send the same fields) — the logic is unchanged.
 //
-// Security: a shared secret. Set INTAKE_SECRET as a function secret and send it
-// from the form as `?secret=` (or `x-intake-secret` header).
-// Accepts JSON or form-urlencoded. The full body is always stored in `raw`.
+// Security: shared secret INTAKE_SECRET, preferably in the `x-intake-secret`
+// header (constant-time compare, fail closed). `?secret=` still works for the
+// existing WordPress form but is logged as deprecated — query strings end up
+// in access logs, so move the form to the header and rotate the secret.
+// Body ≤ 64 KB, 30 submissions / hour per IP, e-mail validated server-side.
 //
 // Deploy:  supabase functions deploy intake-signup --no-verify-jwt
 // ============================================================================
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { HttpError, badRequest, timingSafeEqual, tooLarge, unauthorized } from '../_shared/http.ts'
+import { isValidEmail, normalizeEmail } from '../_shared/invites.ts'
+import { enforceRateLimit, serve, serviceClient } from '../_shared/serve.ts'
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'content-type, x-intake-secret',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS, 'content-type': 'application/json' },
-  })
-}
+const MAX_BODY = 64_000
+const clip = (v: string | null, n: number) => (v == null ? null : v.slice(0, n))
 
 // First non-empty value whose key matches a candidate (exact, then substring).
 function pick(obj: Record<string, any>, keys: string[]): string | null {
@@ -68,56 +61,46 @@ function matchPackageId(
   return null
 }
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
-  if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
+serve('intake-signup', { corsExtraHeaders: 'x-intake-secret' }, async (ctx) => {
+  const { req, log } = ctx
+  const secret = ctx.env('INTAKE_SECRET')
+  if (!secret) throw new HttpError(503, 'not_configured') // fail closed
+  const fromHeader = req.headers.get('x-intake-secret')
+  const fromQuery = new URL(req.url).searchParams.get('secret')
+  if (!fromHeader && fromQuery) log.warn('intake secret sent in query string (deprecated)')
+  if (!timingSafeEqual(fromHeader ?? fromQuery ?? '', secret)) throw unauthorized()
 
-  const secret = Deno.env.get('INTAKE_SECRET')
-  // fail closed: without a configured secret the endpoint is disabled
-  if (!secret) return json({ error: 'not_configured' }, 503)
-  {
-    const url = new URL(req.url)
-    const got =
-      req.headers.get('x-intake-secret') ?? url.searchParams.get('secret')
-    if (got !== secret) return json({ error: 'unauthorized' }, 401)
-  }
+  const supabase = serviceClient()
+  await enforceRateLimit(supabase, log, `intake:ip:${ctx.ip}`, 30, 3600)
 
+  if (Number(req.headers.get('content-length') ?? 0) > MAX_BODY) throw tooLarge()
+  const text = await req.text()
+  if (text.length > MAX_BODY) throw tooLarge()
   let raw: Record<string, any> = {}
-  const ct = req.headers.get('content-type') ?? ''
   try {
-    if (ct.includes('application/json')) raw = await req.json()
-    else raw = Object.fromEntries(new URLSearchParams(await req.text()))
+    const ct = req.headers.get('content-type') ?? ''
+    raw = ct.includes('application/json') ? JSON.parse(text) : Object.fromEntries(new URLSearchParams(text))
   } catch {
-    return json({ error: 'invalid_body' }, 400)
+    throw badRequest('invalid_body')
   }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw badRequest('invalid_body')
 
-  const first_name = pick(raw, ['first_name', 'first-name', 'vorname', 'firstname', 'fname', 'first'])
-  const last_name = pick(raw, ['last_name', 'last-name', 'nachname', 'lastname', 'lname', 'last', 'name'])
+  const first_name = clip(pick(raw, ['first_name', 'first-name', 'vorname', 'firstname', 'fname', 'first']), 100)
+  const last_name = clip(pick(raw, ['last_name', 'last-name', 'nachname', 'lastname', 'lname', 'last', 'name']), 100)
   const email = pick(raw, ['email', 'e-mail', 'e_mail', 'mail'])
-  const phone = pick(raw, ['phone', 'nummer', 'telefon', 'tel', 'mobile', 'handy'])
-  const service_label = pick(raw, ['service', 'service_label', 'paket', 'package', 'kurs', 'angebot', 'leistung'])
-  const payment = pick(raw, ['payment', 'zahlung', 'zahlungsart', 'bezahlung'])
-  const form_title = pick(raw, ['form_title', 'form_name'])
+  const phone = clip(pick(raw, ['phone', 'nummer', 'telefon', 'tel', 'mobile', 'handy']), 40)
+  const service_label = clip(pick(raw, ['service', 'service_label', 'paket', 'package', 'kurs', 'angebot', 'leistung']), 300)
+  const payment = clip(pick(raw, ['payment', 'zahlung', 'zahlungsart', 'bezahlung']), 100)
+  const form_title = clip(pick(raw, ['form_title', 'form_name']), 200)
 
   // Real sign-up must carry a real email. Forminator "Send test" sends field
   // labels ("E-Mail") — skip those (200 so the webhook doesn't retry).
-  const cleanEmail =
-    email && email.includes('@') ? email.trim().toLowerCase() : null
-  if (!cleanEmail) return json({ ok: true, skipped: 'no_valid_email' }, 200)
-
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  )
+  const cleanEmail = normalizeEmail(email)
+  if (!isValidEmail(cleanEmail)) return ctx.json({ ok: true, skipped: 'no_valid_email' })
 
   // Match the chosen package from the whole submission.
-  const { data: packages } = await supabase
-    .from('packages')
-    .select('id, key, name_de')
-    .order('sort', { ascending: true })
-  const haystack = [service_label, form_title, ...Object.values(raw)]
-    .filter((v) => typeof v === 'string')
-    .join(' ')
+  const { data: packages } = await supabase.from('packages').select('id, key, name_de').order('sort', { ascending: true })
+  const haystack = [service_label, form_title, ...Object.values(raw)].filter((v) => typeof v === 'string').join(' ')
   const packageId = matchPackageId((packages ?? []) as any, haystack)
 
   // Is there already an account for this email?
@@ -132,27 +115,18 @@ Deno.serve(async (req) => {
   let accountError: string | null = null
 
   if (!existing) {
-    // Create a proper, OTP-ready student account (no password, email confirmed).
     const { data: made, error: cErr } = await supabase.auth.admin.createUser({
       email: cleanEmail,
       email_confirm: true,
       user_metadata: { role: 'student', first_name, last_name },
     })
     if (cErr || !made?.user) {
-      accountError = cErr?.message ?? 'create_failed'
+      accountError = 'create_failed'
+      log.error('create user failed', { error: cErr?.message })
     } else {
       studentId = made.user.id
       created = true
-      // Fill the profile the trigger just created.
-      await supabase
-        .from('profiles')
-        .update({
-          first_name: first_name ?? null,
-          last_name: last_name ?? null,
-          phone: phone ?? null,
-        })
-        .eq('id', studentId)
-      // Welcome notification (shows in their feed on first login).
+      await supabase.from('profiles').update({ first_name, last_name, phone }).eq('id', studentId)
       await supabase.from('notifications').insert({
         user_id: studentId,
         title: 'Willkommen bei Fahrschule Abgefahrn! 🎉',
@@ -166,20 +140,15 @@ Deno.serve(async (req) => {
     if (first_name && !existing.first_name) patch.first_name = first_name
     if (last_name && !existing.last_name) patch.last_name = last_name
     if (phone && !existing.phone) patch.phone = phone
-    if (Object.keys(patch).length) {
-      await supabase.from('profiles').update(patch).eq('id', existing.id)
-    }
+    if (Object.keys(patch).length) await supabase.from('profiles').update(patch).eq('id', existing.id)
   }
   // (If the email belongs to an admin, we leave the account untouched.)
 
-  // Assign the matched package to the student (idempotent).
+  // Assign the matched package (idempotent upsert).
   if (studentId && packageId && existing?.role !== 'admin') {
     await supabase
       .from('student_packages')
-      .upsert(
-        { student_id: studentId, package_id: packageId },
-        { onConflict: 'student_id,package_id', ignoreDuplicates: true },
-      )
+      .upsert({ student_id: studentId, package_id: packageId }, { onConflict: 'student_id,package_id', ignoreDuplicates: true })
   }
 
   // Audit row: 'converted' when an account exists/was made, else 'pending'
@@ -195,6 +164,7 @@ Deno.serve(async (req) => {
     status: studentId ? 'converted' : 'pending',
   })
 
-  if (!studentId) return json({ ok: false, error: accountError }, 500)
-  return json({ ok: true, student_id: studentId, created, package_id: packageId })
+  if (!studentId) throw new HttpError(500, accountError ?? 'create_failed')
+  log.info('intake processed', { created, student_id: studentId, package_id: packageId })
+  return ctx.json({ ok: true, student_id: studentId, created, package_id: packageId })
 })

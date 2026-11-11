@@ -1,11 +1,12 @@
 import React, { useCallback, useState } from 'react'
-import { Alert, Platform, ScrollView, Text } from 'react-native'
+import { Alert, Platform, ScrollView, Switch, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack, useFocusEffect } from 'expo-router'
 
 import { useTranslation } from '@/lib/i18n'
 import { fetchSignupCode, normalizeSignupCode, setSignupCode } from '@/lib/admin'
 import { Button, Card, ErrorText, Loader, TextField } from '@/components/ui'
+import { FEATURE_FLAGS, setFeatureFlag, useFeatureFlags, type FeatureFlag } from '@/lib/flags'
 
 function notify(msg: string) {
   if (Platform.OS === 'web') window.alert(msg)
@@ -20,6 +21,20 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { flags, reload: reloadFlags } = useFeatureFlags()
+  const [flagBusy, setFlagBusy] = useState<FeatureFlag | null>(null)
+
+  async function toggleFlag(name: FeatureFlag, on: boolean) {
+    setFlagBusy(name)
+    try {
+      await setFeatureFlag(name, on)
+      await reloadFlags()
+    } catch (e: any) {
+      notify(e?.message ?? t('common.error'))
+    } finally {
+      setFlagBusy(null)
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -100,6 +115,26 @@ export default function AdminSettings() {
             loading={saving}
             disabled={loading || unchanged}
           />
+        </Card>
+
+        <Card className="gap-3">
+          <Text className="font-m-bold text-base text-neutral-100">{t('admin.flags.title')}</Text>
+          <Text className="font-m-regular text-sm text-neutral-400">{t('admin.flags.help')}</Text>
+          {FEATURE_FLAGS.map((name) => (
+            <View key={name} className="flex-row items-center justify-between gap-3 py-1">
+              <View className="flex-1">
+                <Text className="font-m-semibold text-sm text-neutral-100">{t(`admin.flags.${name}`)}</Text>
+                <Text className="font-m-regular text-xs text-neutral-500">{t(`admin.flags.${name}.hint`)}</Text>
+              </View>
+              <Switch
+                value={flags[name]}
+                disabled={flagBusy !== null}
+                onValueChange={(v) => toggleFlag(name, v)}
+                trackColor={{ true: '#00FF24' }}
+                accessibilityLabel={t(`admin.flags.${name}`)}
+              />
+            </View>
+          ))}
         </Card>
       </ScrollView>
     </SafeAreaView>

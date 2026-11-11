@@ -15,7 +15,8 @@ export function outcomeBadge(t: (k: string) => string, r: Pick<ImportResultRow, 
 
 export function mailBadge(t: (k: string) => string, mail: ImportResultRow['mail']): { label: string; tone: Tone } | null {
   if (!mail || mail === 'skipped') return null
-  const tone: Tone = mail === 'sent' ? 'green' : mail === 'failed' ? 'red' : mail === 'not_configured' ? 'amber' : 'gray'
+  const tone: Tone =
+    mail === 'sent' ? 'green' : mail === 'failed' ? 'red' : mail === 'not_configured' || mail === 'disabled' || mail === 'queued' ? 'amber' : 'gray'
   return { label: t(`inv.mail.${mail}`), tone }
 }
 

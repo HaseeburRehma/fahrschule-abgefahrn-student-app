@@ -1,108 +1,74 @@
-// @ts-nocheck  — Deno edge function (Deno global + https: imports). Checked by
-// the Deno runtime at deploy, not by the app's TypeScript.
+// @ts-nocheck  — Deno edge function. Checked by `deno check` in CI.
 // ============================================================================
-// admin-create-student — provisions a passwordless student account.
+// admin-create-student — creates a student account (admins only, RBAC).
 //
-// Only an authenticated ADMIN may call it. It creates the auth user (no
-// password; email pre-confirmed so OTP login works immediately), lets the
-// on_auth_user_created trigger insert the profile, then fills in name/phone,
-// the current theory topic, and any package assignments.
+// Server-side validation of every field (the app's checks are only UX):
+// e-mail format/length, name/phone limits, UUIDs for topic and packages. Only
+// whitelisted fields are copied into the profile (no mass assignment). If a
+// later step fails, the half-created auth user is removed again so a retry
+// starts clean (compensating action instead of a distributed transaction).
 //
-// Called from the app via supabase.functions.invoke('admin-create-student').
+//   POST { email, first_name?, last_name?, phone?, current_theory_topic_id?, package_ids? }
+//   → 200 { id } | 400 | 401 | 403 | 409 email_exists | 429 | 500
 // Deploy:  supabase functions deploy admin-create-student
 // ============================================================================
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { HttpError, badRequest, conflict, isUuid, readJson } from '../_shared/http.ts'
+import { cleanName, cleanPhone, isValidEmail, normalizeEmail } from '../_shared/invites.ts'
+import { enforceRateLimit, requireAdmin, serve, serviceClient } from '../_shared/serve.ts'
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
+serve('admin-create-student', {}, async (ctx) => {
+  const { user } = await requireAdmin(ctx)
+  const body = await readJson(ctx.req, 20_000)
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS, 'content-type': 'application/json' },
-  })
-}
+  const email = normalizeEmail(body.email)
+  if (!isValidEmail(email)) throw badRequest('invalid_email')
+  const topic = body.current_theory_topic_id ?? null
+  if (topic !== null && !isUuid(topic)) throw badRequest('invalid_topic')
+  const packageIds = Array.isArray(body.package_ids) ? body.package_ids : []
+  if (packageIds.length > 20 || !packageIds.every(isUuid)) throw badRequest('invalid_packages')
 
-interface Body {
-  email: string
-  first_name?: string
-  last_name?: string
-  phone?: string
-  current_theory_topic_id?: string | null
-  package_ids?: string[]
-}
+  const admin = serviceClient()
+  await enforceRateLimit(admin, ctx.log, `admin-create:${user.id}`, 120, 3600)
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
-  if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
-
-  const url = Deno.env.get('SUPABASE_URL')!
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-
-  const authHeader = req.headers.get('Authorization') ?? ''
-  if (!authHeader) return json({ error: 'missing_authorization' }, 401)
-
-  // 1) Verify the caller is a signed-in admin (RLS/JWT bound).
-  const caller = createClient(url, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  })
-  const { data: userRes } = await caller.auth.getUser()
-  if (!userRes?.user) return json({ error: 'unauthenticated' }, 401)
-  const { data: isAdmin, error: adminErr } = await caller.rpc('is_admin')
-  if (adminErr) return json({ error: adminErr.message }, 500)
-  if (!isAdmin) return json({ error: 'forbidden' }, 403)
-
-  // 2) Parse input.
-  let body: Body
-  try {
-    body = await req.json()
-  } catch {
-    return json({ error: 'invalid_json' }, 400)
-  }
-  const email = (body.email ?? '').trim().toLowerCase()
-  if (!email || !email.includes('@')) return json({ error: 'invalid_email' }, 400)
-
-  // 3) Create the auth user with the service role.
-  const admin = createClient(url, serviceKey)
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
     email,
     email_confirm: true,
     user_metadata: { role: 'student' },
   })
   if (createErr || !created?.user) {
-    return json({ error: createErr?.message ?? 'create_failed' }, 400)
+    const msg = String(createErr?.message ?? '').toLowerCase()
+    if (msg.includes('already') || msg.includes('exists') || msg.includes('registered')) throw conflict('email_exists')
+    ctx.log.error('create user failed', { error: createErr?.message })
+    throw new HttpError(500, 'create_failed')
   }
   const uid = created.user.id
 
-  // 4) Fill in the profile (the trigger already created the base row).
+  const rollback = async (step: string, err: unknown) => {
+    ctx.log.error(`${step} failed — rolling back user`, { error: err })
+    await admin.auth.admin.deleteUser(uid).catch((e) => ctx.log.error('rollback failed', { error: e }))
+    throw new HttpError(500, `${step}_failed`)
+  }
+
   const { error: updErr } = await admin
     .from('profiles')
     .update({
       email,
-      first_name: body.first_name ?? null,
-      last_name: body.last_name ?? null,
-      phone: body.phone ?? null,
+      first_name: cleanName(body.first_name),
+      last_name: cleanName(body.last_name),
+      phone: cleanPhone(body.phone),
       role: 'student',
-      current_theory_topic_id: body.current_theory_topic_id ?? null,
+      current_theory_topic_id: topic,
     })
     .eq('id', uid)
-  if (updErr) return json({ error: updErr.message }, 500)
+  if (updErr) await rollback('profile', updErr.message)
 
-  // 5) Assign packages.
-  if (body.package_ids?.length) {
-    const rows = body.package_ids.map((pid) => ({
-      student_id: uid,
-      package_id: pid,
-    }))
+  if (packageIds.length) {
+    const rows = [...new Set(packageIds)].map((pid) => ({ student_id: uid, package_id: pid }))
     const { error: pkgErr } = await admin.from('student_packages').insert(rows)
-    if (pkgErr) return json({ error: pkgErr.message }, 500)
+    if (pkgErr) await rollback('packages', pkgErr.message)
   }
 
-  return json({ id: uid })
+  ctx.log.info('student created', { admin_id: user.id, student_id: uid })
+  return ctx.json({ id: uid })
 })

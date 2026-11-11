@@ -68,7 +68,8 @@ export function buildMotivationItems(
       Math.round((end.getTime() - day.getTime()) / 86_400_000),
     )
     items.push({
-      id: `motiv-${day.toISOString().slice(0, 10)}`,
+      // Local calendar day (toISOString() is UTC → yesterday's date before 01:00/02:00 in Germany).
+      id: `motiv-${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`,
       fireAt,
       title: titleFn(daysLeft),
       body: bodies[i % bodies.length],
