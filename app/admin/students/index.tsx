@@ -3,6 +3,7 @@ import { FlatList, Pressable, Text, TextInput, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Stack, useFocusEffect, useRouter } from 'expo-router'
 import { UserPlus } from 'phosphor-react-native/src/icons/UserPlus'
+import { UploadSimple } from 'phosphor-react-native/src/icons/UploadSimple'
 import { CaretRight as ChevronRight } from 'phosphor-react-native/src/icons/CaretRight'
 import { Prohibit as CircleSlash } from 'phosphor-react-native/src/icons/Prohibit'
 import { BookOpen } from 'phosphor-react-native/src/icons/BookOpen'
@@ -37,7 +38,7 @@ export default function StudentsList() {
     return list.filter((r) => {
       const hay = `${displayName(r.profile)} ${r.profile.email ?? ''} ${
         r.profile.phone ?? ''
-      }`.toLowerCase()
+      } ${r.profile.student_code ?? ''}`.toLowerCase()
       return hay.includes(q)
     })
   }, [rows, query])
@@ -50,17 +51,26 @@ export default function StudentsList() {
       <FlatList
         data={filtered}
         keyExtractor={(s) => s.profile.id}
-        contentContainerClassName="p-5 gap-2"
+        contentContainerStyle={{ padding: 20, gap: 8, width: '100%', maxWidth: 1200, alignSelf: 'center' }}
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <View className="mb-1 gap-2">
-            <Pressable
-              onPress={() => router.push('/admin/students/new')}
-              className="flex-row items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-4"
-            >
-              <UserPlus size={18} color="#0A0A0A" />
-              <Text className="font-m-bold text-ink">{t('admin.addStudent')}</Text>
-            </Pressable>
+            <View className="flex-row gap-2">
+              <Pressable
+                onPress={() => router.push('/admin/students/new')}
+                className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl bg-brand px-4 py-4"
+              >
+                <UserPlus size={18} color="#0A0A0A" />
+                <Text className="font-m-bold text-ink" numberOfLines={1}>{t('admin.addStudent')}</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push('/admin/students/import' as any)}
+                className="flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-brand px-4 py-4"
+              >
+                <UploadSimple size={18} color="#00FF24" />
+                <Text className="font-m-bold text-brand" numberOfLines={1}>{t('inv.importList')}</Text>
+              </Pressable>
+            </View>
             {rows.length > 0 ? (
               <TextInput
                 value={query}
@@ -96,6 +106,11 @@ export default function StudentsList() {
                 </View>
                 {p.email ? (
                   <Text className="font-m-regular text-xs text-neutral-400">{p.email}</Text>
+                ) : null}
+                {p.student_code ? (
+                  <Text className="font-m-semibold text-[11px] text-neutral-300">
+                    {t('perf.code')}: {p.student_code}
+                  </Text>
                 ) : null}
 
                 {/* Plan (packages) */}

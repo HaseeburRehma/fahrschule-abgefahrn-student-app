@@ -1,6 +1,5 @@
-import React, { useCallback, useState } from 'react'
-import { Pressable, ScrollView, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import React, { useCallback, useMemo, useState } from 'react'
+import { Pressable, Text, View } from 'react-native'
 import { Stack, useFocusEffect, useRouter } from 'expo-router'
 import { Users } from 'phosphor-react-native/src/icons/Users'
 import { Tray as Inbox } from 'phosphor-react-native/src/icons/Tray'
@@ -15,48 +14,61 @@ import { CaretRight as ChevronRight } from 'phosphor-react-native/src/icons/Care
 import { CaretLeft } from 'phosphor-react-native/src/icons/CaretLeft'
 import { Key as KeyRound } from 'phosphor-react-native/src/icons/Key'
 import { ShieldCheck } from 'phosphor-react-native/src/icons/ShieldCheck'
+import { UploadSimple } from 'phosphor-react-native/src/icons/UploadSimple'
+import { EnvelopeSimple } from 'phosphor-react-native/src/icons/EnvelopeSimple'
+import { ChartLineUp } from 'phosphor-react-native/src/icons/ChartLineUp'
+import { UserPlus } from 'phosphor-react-native/src/icons/UserPlus'
 
 import { useTranslation } from '@/lib/i18n'
 import { fetchAdminStats, type AdminStats } from '@/lib/admin'
-import { Card } from '@/components/ui'
+import { fetchInvites, fetchPerformance, type Invite, type StudentPerformance } from '@/lib/invites'
+import { derive, kpis } from '@/lib/performance'
+import { Grid, GREEN, Kpi, Page, SectionTitle } from '@/components/admin/kit'
 
-function Stat({ value, label }: { value: number; label: string }) {
-  return (
-    <View className="flex-1 rounded-2xl border border-neutral-800 bg-neutral-900 p-3">
-      <Text className="text-2xl font-m-xbold text-brand">{value}</Text>
-      <Text className="text-[11px] font-m-medium text-neutral-400">{label}</Text>
-    </View>
-  )
-}
-
+/** Admin dashboard — KPIs, quick actions and every admin area (web + phone). */
 export default function AdminHome() {
   const { t } = useTranslation()
   const router = useRouter()
   const [stats, setStats] = useState<AdminStats | null>(null)
+  const [perf, setPerf] = useState<StudentPerformance[] | null>(null)
+  const [invites, setInvites] = useState<Invite[] | null>(null)
 
   useFocusEffect(
     useCallback(() => {
       fetchAdminStats().then(setStats).catch(() => {})
+      fetchPerformance().then(setPerf).catch(() => setPerf(null))
+      fetchInvites().then(setInvites).catch(() => setInvites(null))
     }, []),
   )
 
+  const k = useMemo(() => (perf ? kpis(perf.map((p) => ({ p, d: derive(p) }))) : null), [perf])
+  const openInvites = invites?.filter((i) => i.status === 'pending' || i.status === 'sent' || i.status === 'failed').length
+  const failedInvites = invites?.filter((i) => i.status === 'failed').length ?? 0
+
+  const quick: { href: string; label: string; hint: string; icon: React.ReactNode }[] = [
+    { href: '/admin/students/import', label: t('inv.importList'), hint: t('admin.dash.importHint'), icon: <UploadSimple size={22} color="#0A0A0A" /> },
+    { href: '/admin/invites', label: t('inv.title'), hint: t('admin.dash.invitesHint'), icon: <EnvelopeSimple size={22} color="#0A0A0A" /> },
+    { href: '/admin/performance', label: t('perf.title'), hint: t('admin.dash.perfHint'), icon: <ChartLineUp size={22} color="#0A0A0A" /> },
+    { href: '/admin/students/new', label: t('admin.addStudent'), hint: t('admin.dash.addHint'), icon: <UserPlus size={22} color="#0A0A0A" /> },
+  ]
+
   const links: { href: string; label: string; icon: React.ReactNode }[] = [
-    { href: '/admin/students', label: t('admin.students'), icon: <Users size={20} color="#00FF24" /> },
-    { href: '/admin/intake', label: t('admin.intake'), icon: <Inbox size={20} color="#00FF24" /> },
-    { href: '/admin/chat', label: t('admin.chat'), icon: <MessageCircle size={20} color="#00FF24" /> },
-    { href: '/admin/notify', label: t('admin.notify'), icon: <Send size={20} color="#00FF24" /> },
-    { href: '/admin/motivation', label: t('admin.motivation'), icon: <Sparkles size={20} color="#00FF24" /> },
-    { href: '/admin/history', label: t('admin.history'), icon: <History size={20} color="#00FF24" /> },
-    { href: '/admin/documents', label: t('admin.documents'), icon: <FileText size={20} color="#00FF24" /> },
-    { href: '/admin/classes', label: t('admin.classes'), icon: <CalendarPlus size={20} color="#00FF24" /> },
-    { href: '/admin/appointments', label: t('admin.appointments'), icon: <CalendarClock size={20} color="#00FF24" /> },
-    { href: '/admin/availability', label: t('admin.availability'), icon: <CalendarClock size={20} color="#00FF24" /> },
-    { href: '/admin/settings', label: t('admin.v2.signupCode'), icon: <KeyRound size={20} color="#00FF24" /> },
-    { href: '/admin/admins', label: t('admin.v2.admins.title'), icon: <ShieldCheck size={20} color="#00FF24" /> },
+    { href: '/admin/students', label: t('admin.students'), icon: <Users size={20} color={GREEN} /> },
+    { href: '/admin/intake', label: t('admin.intake'), icon: <Inbox size={20} color={GREEN} /> },
+    { href: '/admin/chat', label: t('admin.chat'), icon: <MessageCircle size={20} color={GREEN} /> },
+    { href: '/admin/notify', label: t('admin.notify'), icon: <Send size={20} color={GREEN} /> },
+    { href: '/admin/motivation', label: t('admin.motivation'), icon: <Sparkles size={20} color={GREEN} /> },
+    { href: '/admin/history', label: t('admin.history'), icon: <History size={20} color={GREEN} /> },
+    { href: '/admin/documents', label: t('admin.documents'), icon: <FileText size={20} color={GREEN} /> },
+    { href: '/admin/classes', label: t('admin.classes'), icon: <CalendarPlus size={20} color={GREEN} /> },
+    { href: '/admin/appointments', label: t('admin.appointments'), icon: <CalendarClock size={20} color={GREEN} /> },
+    { href: '/admin/availability', label: t('admin.availability'), icon: <CalendarClock size={20} color={GREEN} /> },
+    { href: '/admin/settings', label: t('admin.v2.signupCode'), icon: <KeyRound size={20} color={GREEN} /> },
+    { href: '/admin/admins', label: t('admin.v2.admins.title'), icon: <ShieldCheck size={20} color={GREEN} /> },
   ]
 
   return (
-    <SafeAreaView className="flex-1 bg-black" edges={['bottom']}>
+    <Page>
       <Stack.Screen
         options={{
           title: t('admin.title'),
@@ -75,28 +87,49 @@ export default function AdminHome() {
           ),
         }}
       />
-      <ScrollView contentContainerClassName="p-5 gap-3">
-        {/* Stats */}
-        <View className="flex-row gap-3">
-          <Stat value={stats?.students ?? 0} label={t('admin.students')} />
-          <Stat value={stats?.pendingIntake ?? 0} label={t('admin.statPending')} />
-          <Stat value={stats?.upcomingClasses ?? 0} label={t('admin.statUpcoming')} />
-        </View>
 
-        {links.map((l) => (
-          <Pressable key={l.href} onPress={() => router.push(l.href as any)}>
-            <Card className="flex-row items-center gap-3">
-              <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">
-                {l.icon}
-              </View>
-              <Text className="flex-1 font-m-semibold text-neutral-100">
-                {l.label}
-              </Text>
-              <ChevronRight size={20} color="#6B7280" />
-            </Card>
+      <Grid cols={6} phoneCols={2}>
+        <Kpi label={t('admin.students')} value={k?.students ?? stats?.students ?? 0} />
+        <Kpi label={t('perf.k.activeWeek')} value={k ? k.activeWeek : '—'} hint={k && k.students ? `${Math.round((100 * k.activeWeek) / k.students)} %` : undefined} />
+        <Kpi label={t('perf.k.accuracy')} value={k?.avgAccuracy != null ? `${k.avgAccuracy} %` : '—'} tone="blue" />
+        <Kpi label={t('admin.dash.openInvites')} value={openInvites ?? '—'} tone={failedInvites ? 'red' : 'amber'} hint={failedInvites ? t('admin.dash.failed', { n: failedInvites }) : undefined} />
+        <Kpi label={t('admin.statPending')} value={stats?.pendingIntake ?? 0} tone="amber" />
+        <Kpi label={t('admin.statUpcoming')} value={stats?.upcomingClasses ?? 0} tone="gray" />
+      </Grid>
+
+      <SectionTitle>{t('admin.dash.quick')}</SectionTitle>
+      <Grid cols={4} phoneCols={2}>
+        {quick.map((q) => (
+          <Pressable
+            key={q.href}
+            onPress={() => router.push(q.href as any)}
+            accessibilityRole="button"
+            accessibilityLabel={q.label}
+            className="gap-2 rounded-2xl bg-brand p-4 active:opacity-85"
+            style={{ minHeight: 120 }}
+          >
+            {q.icon}
+            <Text className="font-m-xbold text-[15px] text-ink" numberOfLines={2}>{q.label}</Text>
+            <Text className="font-m-medium text-xs text-ink/70" numberOfLines={2}>{q.hint}</Text>
           </Pressable>
         ))}
-      </ScrollView>
-    </SafeAreaView>
+      </Grid>
+
+      <SectionTitle>{t('admin.dash.areas')}</SectionTitle>
+      <Grid cols={3} phoneCols={1} gap={10}>
+        {links.map((l) => (
+          <Pressable
+            key={l.href}
+            onPress={() => router.push(l.href as any)}
+            accessibilityRole="button"
+            className="flex-row items-center gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 p-4 active:opacity-80"
+          >
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-brand/10">{l.icon}</View>
+            <Text className="font-m-semibold flex-1 text-neutral-100" numberOfLines={1}>{l.label}</Text>
+            <ChevronRight size={20} color="#6B7280" />
+          </Pressable>
+        ))}
+      </Grid>
+    </Page>
   )
 }
