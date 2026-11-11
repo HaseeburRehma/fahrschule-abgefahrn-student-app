@@ -4,6 +4,11 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [Semantic Versioning](https://semver.org/) (see docs/OPERATIONS.md → Versioning).
 Store versions (`expo.version`) are listed in brackets.
 
+## [1.1.1] — 2026-11-11 (store: 1.0.1 + OTA)
+
+### Changed
+- Dependency updates within Expo SDK 54 (JavaScript only, no native changes): supabase-js 2.119.0 (app and edge functions), nativewind 4.2.7, react-native-css-interop 0.2.7, react-native-web 0.21.4, Babel 7.29.13, @types/node 22.20.5.
+
 ## [1.1.0] — 2026-11-11 (store: 1.0.1 + OTA)
 
 ### Added

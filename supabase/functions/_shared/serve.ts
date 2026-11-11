@@ -8,7 +8,7 @@
  * and graceful shutdown logging when the runtime recycles the instance.
  */
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.2'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.119.0'
 import {
   type Logger,
   forbidden,
