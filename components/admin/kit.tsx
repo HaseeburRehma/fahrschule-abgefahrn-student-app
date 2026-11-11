@@ -15,6 +15,7 @@ import {
   ScrollView,
   Share,
   Text,
+  TextInput,
   View,
   useWindowDimensions,
   type ViewStyle,
@@ -22,12 +23,19 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as WebBrowser from 'expo-web-browser'
 
-export const ADMIN_MAX_WIDTH = 1200
+export const ADMIN_MAX_WIDTH = 1280
+/** Whole admin area on web uses the full window: sidebar left, content centred (ADMIN_MAX_WIDTH). */
+export const ADMIN_SHELL_MAX_WIDTH = '100%' as const
 export const GREEN = '#00FF24'
 
 /** Wide layout (tables, multi-column grids) from 900 px window width. */
 export function useWide(): boolean {
   return useWindowDimensions().width >= 900
+}
+
+/** Sidebar navigation from 1024 px (desktop, landscape tablets). */
+export function useSidebar(): boolean {
+  return useWindowDimensions().width >= 1024
 }
 
 export function notify(msg: string) {
@@ -280,6 +288,218 @@ export function Spinner() {
   return (
     <View className="items-center py-16">
       <ActivityIndicator color={GREEN} size="large" />
+    </View>
+  )
+}
+
+// ── page header, search, pagination ────────────────────────────────────────
+
+/**
+ * In-page title block. With the desktop sidebar the title lives here (big,
+ * actions on the right); otherwise the native header shows the title, so only
+ * the subtitle + actions render.
+ */
+export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: React.ReactNode }) {
+  const wide = useWide()
+  // with the sidebar the native header is hidden (screens pass headerShown: !sidebar)
+  const sidebar = useSidebar()
+  return (
+    <View style={{ flexDirection: wide ? 'row' : 'column', alignItems: wide ? 'flex-end' : 'stretch', gap: wide ? 16 : 12 }}>
+      <View style={{ flex: wide ? 1 : undefined, gap: 4 }}>
+        {sidebar ? (
+          <Text accessibilityRole="header" className="font-m-black text-[28px] text-neutral-50" numberOfLines={1}>
+            {title}
+          </Text>
+        ) : null}
+        {subtitle ? <Text className="font-m-medium text-sm text-neutral-400">{subtitle}</Text> : null}
+      </View>
+      {actions ? <View style={{ flexDirection: 'row', gap: 8 }}>{actions}</View> : null}
+    </View>
+  )
+}
+
+export function SearchField({
+  value,
+  onChange,
+  placeholder,
+  clearLabel,
+  icon,
+  clearIcon,
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder: string
+  clearLabel: string
+  icon?: React.ReactNode
+  clearIcon?: React.ReactNode
+}) {
+  return (
+    <View className="flex-row items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3.5 focus-within:border-brand/60">
+      {icon}
+      <TextInput
+        value={value}
+        onChangeText={onChange}
+        placeholder={placeholder}
+        placeholderTextColor="#6B7280"
+        autoCapitalize="none"
+        autoCorrect={false}
+        accessibilityLabel={placeholder}
+        className="font-m-medium flex-1 py-3 text-[15px] text-neutral-100"
+        style={Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : undefined}
+      />
+      {value ? (
+        <Pressable onPress={() => onChange('')} accessibilityRole="button" accessibilityLabel={clearLabel} hitSlop={10} className="p-1">
+          {clearIcon ?? <Text className="text-neutral-400">×</Text>}
+        </Pressable>
+      ) : null}
+    </View>
+  )
+}
+
+/** Small segmented control (sort order, page size). */
+export function Segmented<T extends string | number>({
+  options,
+  value,
+  onChange,
+  label,
+}: {
+  options: { value: T; label: string }[]
+  value: T
+  onChange: (v: T) => void
+  label?: string
+}) {
+  return (
+    <View className="flex-row items-center gap-2">
+      {label ? <Text className="font-m-semibold text-xs text-neutral-500">{label}</Text> : null}
+      <View className="flex-row rounded-xl border border-neutral-800 bg-neutral-900 p-1" accessibilityRole="radiogroup">
+        {options.map((o) => {
+          const on = o.value === value
+          return (
+            <Pressable
+              key={String(o.value)}
+              onPress={() => onChange(o.value)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: on }}
+              className={`rounded-lg px-3 py-1.5 ${on ? 'bg-neutral-700' : 'hover:bg-neutral-800'}`}
+            >
+              <Text className={`font-m-semibold text-xs ${on ? 'text-neutral-50' : 'text-neutral-400'}`} numberOfLines={1}>
+                {o.label}
+              </Text>
+            </Pressable>
+          )
+        })}
+      </View>
+    </View>
+  )
+}
+
+function PageBtn({
+  label,
+  onPress,
+  disabled,
+  active,
+  a11y,
+  big,
+}: {
+  label: React.ReactNode
+  onPress?: () => void
+  disabled?: boolean
+  active?: boolean
+  a11y: string
+  /** 48 px touch target (phones) */
+  big?: boolean
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={a11y}
+      accessibilityState={{ disabled: !!disabled, selected: !!active }}
+      className={`items-center justify-center rounded-lg border ${big ? 'min-h-[48px] min-w-[48px] px-3' : 'min-w-[38px] px-2.5 py-2'} ${
+        active ? 'border-brand bg-brand' : 'border-neutral-800 bg-neutral-900 hover:border-neutral-600'
+      } ${disabled ? 'opacity-40' : ''}`}
+    >
+      {typeof label === 'string' || typeof label === 'number' ? (
+        <Text className={`font-m-bold text-[13px] ${active ? 'text-ink' : 'text-neutral-200'}`}>{label}</Text>
+      ) : (
+        label
+      )}
+    </Pressable>
+  )
+}
+
+/**
+ * Pagination bar. Desktop: "1–25 von 76", page size, numbered pages.
+ * Phone: range + previous / next only (big touch targets).
+ */
+export function Pagination({
+  page,
+  pages,
+  from,
+  to,
+  total,
+  onPage,
+  pageSize,
+  pageSizes,
+  onPageSize,
+  window,
+  labels,
+  prevIcon,
+  nextIcon,
+}: {
+  page: number
+  pages: number
+  from: number
+  to: number
+  total: number
+  onPage: (p: number) => void
+  pageSize?: number
+  pageSizes?: readonly number[]
+  onPageSize?: (n: number) => void
+  /** page numbers to show, 'gap' for … (see lib/admin-list pageWindow) */
+  window: (number | 'gap')[]
+  labels: { showing: string; perPage: string; prev: string; next: string; page: (n: number) => string; pageOf: string }
+  prevIcon: React.ReactNode
+  nextIcon: React.ReactNode
+}) {
+  const wide = useWide()
+  if (!total) return null
+  if (!wide) {
+    return (
+      <View className="flex-row items-center justify-between gap-3 pt-2">
+        <PageBtn big label={prevIcon} a11y={labels.prev} disabled={page <= 1} onPress={() => onPage(page - 1)} />
+        <View className="items-center">
+          <Text className="font-m-bold text-[13px] text-neutral-200">{labels.pageOf}</Text>
+          <Text className="font-m-medium text-[11px] text-neutral-500">{labels.showing}</Text>
+        </View>
+        <PageBtn big label={nextIcon} a11y={labels.next} disabled={page >= pages} onPress={() => onPage(page + 1)} />
+      </View>
+    )
+  }
+  return (
+    <View className="flex-row flex-wrap items-center justify-between gap-3 pt-2">
+      <View className="flex-row items-center gap-4">
+        <Text className="font-m-semibold text-[13px] text-neutral-400">{labels.showing}</Text>
+        {pageSizes && onPageSize && pageSize ? (
+          <Segmented label={labels.perPage} options={pageSizes.map((n) => ({ value: n, label: String(n) }))} value={pageSize} onChange={onPageSize} />
+        ) : null}
+      </View>
+      {pages > 1 ? (
+        <View className="flex-row items-center gap-1.5" accessibilityRole="toolbar">
+          <PageBtn label={prevIcon} a11y={labels.prev} disabled={page <= 1} onPress={() => onPage(page - 1)} />
+          {window.map((n, i) =>
+            n === 'gap' ? (
+              <Text key={`g${i}`} className="px-1 text-neutral-500">
+                …
+              </Text>
+            ) : (
+              <PageBtn key={n} label={String(n)} a11y={labels.page(n)} active={n === page} onPress={() => onPage(n)} />
+            ),
+          )}
+          <PageBtn label={nextIcon} a11y={labels.next} disabled={page >= pages} onPress={() => onPage(page + 1)} />
+        </View>
+      ) : null}
     </View>
   )
 }

@@ -4,10 +4,10 @@
  * search, sorting, table on wide screens / cards on phones, CSV export.
  */
 
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Platform, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Stack, useFocusEffect, useRouter } from 'expo-router'
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { Export } from 'phosphor-react-native/src/icons/Export'
 import { CaretRight } from 'phosphor-react-native/src/icons/CaretRight'
 import { Fire } from 'phosphor-react-native/src/icons/Fire'
@@ -64,7 +64,14 @@ export default function PerformanceScreen() {
   const [data, setData] = useState<StudentPerformance[] | null>(null)
   const [notDeployed, setNotDeployed] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [filter, setFilter] = useState<FilterKey>('all')
+  // the dashboard's to-do list links here with ?filter=inactive|exam_soon|struggling|…
+  const params = useLocalSearchParams<{ filter?: string }>()
+  const FILTERS: FilterKey[] = ['all', 'inactive', 'exam_soon', 'struggling', 'ready', 'new']
+  const paramFilter = FILTERS.includes(params.filter as FilterKey) ? (params.filter as FilterKey) : null
+  const [filter, setFilter] = useState<FilterKey>(paramFilter ?? 'all')
+  useEffect(() => {
+    if (paramFilter) setFilter(paramFilter)
+  }, [paramFilter])
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortKey>('readiness')
   const [desc, setDesc] = useState(true)
