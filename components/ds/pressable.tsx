@@ -15,6 +15,16 @@ import {
   type View,
 } from 'react-native'
 
+/**
+ * State passed to style functions. `hovered` comes from expo-router's / RN-web's
+ * Pressable typings; it isn't in plain React Native's type, so build the object
+ * outside the call (no excess-property check) to type-check in both setups.
+ */
+function pressState(pressed: boolean) {
+  const state = { pressed, hovered: false }
+  return state
+}
+
 export const Pressable = forwardRef<View, PressableProps>(function Pressable(
   { style, onPressIn, onPressOut, ...rest },
   ref,
@@ -25,7 +35,7 @@ export const Pressable = forwardRef<View, PressableProps>(function Pressable(
     <RNPressable
       ref={ref}
       {...rest}
-      style={dynamic ? style({ pressed, hovered: false }) : style}
+      style={dynamic ? style(pressState(pressed)) : style}
       onPressIn={(e: GestureResponderEvent) => {
         if (dynamic) setPressed(true)
         onPressIn?.(e)
