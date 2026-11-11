@@ -18,7 +18,7 @@ import { SessionGuardRunner } from '@/components/session-guard-runner'
 import { PushRegistrar } from '@/components/push-registrar'
 import { BiometricGate } from '@/components/biometric-gate'
 import { APP_MAX_WIDTH, C, ErrorState, ToastProvider } from '@/components/ds'
-import { ADMIN_MAX_WIDTH } from '@/components/admin/kit'
+import { ADMIN_SHELL_MAX_WIDTH } from '@/components/admin/kit'
 import { useT } from '@/lib/i18n'
 
 /**
@@ -59,7 +59,7 @@ function RootErrorState({ retry }: { retry: () => Promise<void> }) {
 export default function RootLayout() {
   // The admin dashboard gets a wide column (tables, grids); the student app stays phone-width.
   const pathname = usePathname()
-  const columnWidth = pathname?.startsWith('/admin') ? ADMIN_MAX_WIDTH : APP_MAX_WIDTH
+  const columnWidth = pathname?.startsWith('/admin') ? ADMIN_SHELL_MAX_WIDTH : APP_MAX_WIDTH
   // Montserrat subset to Latin + punctuation (assets/fonts, ~53 KB each instead of ~335 KB):
   // 2.4 MB → 0.37 MB to load before the first screen.
   const [fontsLoaded, fontError] = useFonts({

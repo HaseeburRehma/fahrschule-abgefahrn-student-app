@@ -4,6 +4,13 @@ All notable changes to this project. Format: [Keep a Changelog](https://keepacha
 versioning: [Semantic Versioning](https://semver.org/) (see docs/OPERATIONS.md → Versioning).
 Store versions (`expo.version`) are listed in brackets.
 
+## [Unreleased]
+
+### Added
+- Admin sidebar navigation on desktop and tablets (from 1024 px), grouped into Students, Teaching, Communication and Settings; phones keep the native stack with the dashboard as the menu.
+- Students list: search across name, e-mail, phone and code; filters with counts (active, deactivated, no package, no theory class); sorting; pagination with 10/25/50/100 per page. Table on desktop, cards on phones. `?filter=` preselects a filter.
+- Dashboard: greeting, four headline numbers, a to-do list built from live data (sign-ups, undelivered invites, exams soon, students who need help, inactive students, students without a package), newest students and quick actions. To-do rows open the matching filtered list.
+
 ## [1.1.1] — 2026-11-11 (store: 1.0.1 + OTA)
 
 ### Changed
