@@ -16,7 +16,7 @@ Fahrschule Abgefahrn is the official companion app of a driving school in Düsse
 2. ACCESS AND SETUP
 Demo account (student with sample data): see Sign-In Information.
 - Login: Anmelden > e-mail + password from Sign-In Information.
-- Sign-up: Registrieren needs the school code the school gives its students at enrolment. School code for review: ABG-2026. The demo account already contains everything, so sign-up is optional for review.
+- Sign-up: Registrieren needs the school code the school gives its students at enrolment; the demo account already contains everything, so sign-up is optional for review.
 - Main areas: tabs Start, Theorie, Termine, Fortschritt, Profil. Theorie-Quiz and Liga are on the Start tab (Schnellzugriff).
 - Account deletion: Profil > Konto löschen > confirm. It permanently deletes the account and all its data (profile, lessons, quiz results, notifications).
 No sample files are needed.
