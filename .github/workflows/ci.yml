@@ -64,7 +64,8 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_PASSWORD: postgres
+          # Throwaway container that only lives for this job: no password at all.
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U postgres"
@@ -73,7 +74,6 @@ jobs:
       PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
-      PGPASSWORD: postgres
     steps:
       - uses: actions/checkout@v4
       - run: bash scripts/db-test.sh
