@@ -6,6 +6,9 @@
   "framework": null,
   "cleanUrls": false,
   "trailingSlash": false,
+  "github": {
+    "silent": true
+  },
   "rewrites": [
     {
       "source": "/((?!_expo/|assets/|favicon\\.ico|robots\\.txt|metadata\\.json).*)",
