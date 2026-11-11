@@ -26,6 +26,7 @@ RUN npx expo export --platform web --output-dir dist
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS web
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+COPY deploy/security-headers.inc /etc/nginx/security-headers.inc
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 8080
 # nginx finishes in-flight requests on SIGQUIT (graceful shutdown).

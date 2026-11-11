@@ -101,4 +101,5 @@ jobs:
           curl -fsI http://localhost:8080/ | tee headers.txt
           grep -qi 'x-frame-options: DENY' headers.txt
           grep -qi 'content-security-policy' headers.txt
+          curl -fsI http://localhost:8080/favicon.ico | grep -qi 'x-frame-options: DENY'
           docker stop web
