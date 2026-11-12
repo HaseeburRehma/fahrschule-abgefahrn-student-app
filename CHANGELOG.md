@@ -6,6 +6,10 @@ Store versions (`expo.version`) are listed in brackets.
 
 ## [Unreleased]
 
+### Fixed
+- Admin invites: one action at a time (no double e-mails from a second tap), bulk send/revoke for any selection size (sent in parts), revoked invites can't be selected, refreshes can't undo a revoke, copy falls back to showing the text. Server: invites are claimed in the database before mailing, so overlapping sends or retry runs never mail twice, and a revoke during a send is kept.
+- Admin dashboard: shows "—" while loading instead of 0 / "all done". Invites page hides search and filters while there are no invites. Students and invites toolbars wrap on narrow desktops.
+
 ### Added
 - Invites page in the same style: status cards that filter on tap (sent, signed up with sign-up rate, failed, not yet sent), search, status filters with counts, sorting, pagination, selection across pages with a bulk bar, compact row actions (send / copy / revoke) and a table of imported lists. Table on desktop, cards on phones. `?status=failed` preselects a filter; the dashboard links there.
 - Admin sidebar navigation on desktop and tablets (from 1024 px), grouped into Students, Teaching, Communication and Settings; phones keep the native stack with the dashboard as the menu.

@@ -163,8 +163,8 @@ export default function StudentsList() {
 
             {/* toolbar */}
             <View style={{ gap: 12 }}>
-              <View style={{ flexDirection: wide ? 'row' : 'column', gap: 12, alignItems: wide ? 'center' : 'stretch' }}>
-                <View style={{ flex: wide ? 1 : undefined, maxWidth: wide ? 460 : undefined }}>
+              <View style={{ flexDirection: wide ? 'row' : 'column', flexWrap: wide ? 'wrap' : 'nowrap', gap: 12, alignItems: wide ? 'center' : 'stretch' }}>
+                <View style={wide ? { flexGrow: 1, flexBasis: 320, minWidth: 320, maxWidth: 460 } : undefined}>
                   <SearchField
                     value={query}
                     onChange={setQuery}

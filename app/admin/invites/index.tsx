@@ -126,15 +126,22 @@ export default function InvitesScreen() {
   const [busy, setBusy] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const scrollRef = useRef<ScrollView>(null)
+  // one action at a time (a second tap while a send runs must not start another request)
+  const inFlight = useRef(false)
+  // only the newest load may update the list (an older, slower one must not undo a revoke)
+  const loadSeq = useRef(0)
 
   const load = useCallback(async () => {
+    const seq = ++loadSeq.current
     try {
       const [inv, imp] = await Promise.all([fetchInvites(), fetchImports()])
+      if (seq !== loadSeq.current) return
       setInvites(inv)
       setImports(imp)
       setNotDeployed(false)
       setLoadError(null)
     } catch (e: any) {
+      if (seq !== loadSeq.current) return
       if (isNotDeployed(e)) setNotDeployed(true)
       else setLoadError(e?.message ?? t('common.error'))
       setInvites((v) => v ?? [])
@@ -149,7 +156,7 @@ export default function InvitesScreen() {
   )
 
   useEffect(() => {
-    if (paramFilter) setStatus(paramFilter)
+    setStatus(paramFilter ?? 'all')
   }, [paramFilter])
 
   // new search / filter / sort / page size → page 1, selection cleared
@@ -168,7 +175,7 @@ export default function InvitesScreen() {
   const impPg = paginate(imports ?? [], importPage, 12)
 
   // selection works across pages: "select all" takes every matching invite
-  const selectable = filtered.filter((i) => i.status !== 'accepted')
+  const selectable = filtered.filter((i) => i.status !== 'accepted' && i.status !== 'revoked')
   const selectedIds = selectable.filter((i) => selected.has(i.id)).map((i) => i.id)
   const allSelected = selectable.length > 0 && selectedIds.length === selectable.length
 
@@ -190,54 +197,66 @@ export default function InvitesScreen() {
     setSelected(allSelected ? new Set() : new Set(selectable.map((i) => i.id)))
   }
 
-  async function doSend(ids: string[]) {
-    if (!ids.length) return
-    setBusy(ids.length === 1 ? ids[0] : 'send')
+  /** Runs one admin action at a time; every action button is disabled while it runs. */
+  async function exclusive(key: string, fn: () => Promise<void>) {
+    if (inFlight.current) return
+    inFlight.current = true
+    setBusy(key)
     try {
-      const res = await sendInvites(ids.slice(0, 500))
-      const sent = res.tally.sent ?? 0
-      const failed = res.tally.failed ?? 0
-      if (!res.mail_configured) notify(t('inv.mailOffTitle') + '\n\n' + t('inv.mailOffBody'))
-      else notify(t('inv.sendDone', { sent, failed, skipped: (res.tally.skipped ?? 0) + (res.tally.throttled ?? 0) }))
-      setSelected(new Set())
-      await load()
-    } catch (e: any) {
-      notify(e instanceof InviteApiError && e.message === 'not_found' ? t('inv.err.notDeployed') : `${t('common.error')} (${e?.message ?? ''})`)
+      await fn()
     } finally {
+      inFlight.current = false
       setBusy(null)
     }
   }
 
-  async function doRevoke(ids: string[]) {
+  async function doSend(ids: string[], key = ids.length === 1 ? ids[0] : 'send') {
     if (!ids.length) return
-    if (!(await confirmAsk(t('inv.revokeConfirm', { n: ids.length }), t('inv.revoke'), t('common.cancel')))) return
-    setBusy('revoke')
-    try {
-      await revokeInvites(ids)
-      setSelected(new Set())
+    await exclusive(key, async () => {
+      try {
+        const { tally, mail_configured } = await sendInvites(ids) // sent in parts of 500
+        if (!mail_configured) notify(t('inv.mailOffTitle') + '\n\n' + t('inv.mailOffBody'))
+        else notify(t('inv.sendDone', { sent: tally.sent ?? 0, failed: tally.failed ?? 0, skipped: (tally.skipped ?? 0) + (tally.throttled ?? 0) }))
+        setSelected(new Set())
+      } catch (e: any) {
+        notify(e instanceof InviteApiError && e.message === 'not_found' ? t('inv.err.notDeployed') : `${t('common.error')} (${e?.message ?? ''})`)
+      }
       await load()
-    } catch (e: any) {
-      notify(e?.message ?? t('common.error'))
-    } finally {
-      setBusy(null)
-    }
+    })
+  }
+
+  async function doRevoke(ids: string[], key = ids.length === 1 ? `revoke:${ids[0]}` : 'revoke') {
+    if (!ids.length) return
+    if (inFlight.current) return
+    if (!(await confirmAsk(t('inv.revokeConfirm', { n: ids.length }), t('inv.revoke'), t('common.cancel')))) return
+    await exclusive(key, async () => {
+      try {
+        await revokeInvites(ids)
+        setSelected(new Set())
+      } catch (e: any) {
+        notify(e?.message ?? t('common.error'))
+      }
+      await load()
+    })
   }
 
   async function doReopen(id: string) {
-    setBusy(id)
-    try {
-      await reopenInvites([id])
+    await exclusive(id, async () => {
+      try {
+        await reopenInvites([id])
+      } catch (e: any) {
+        notify(e?.message ?? t('common.error'))
+      }
       await load()
-    } catch (e: any) {
-      notify(e?.message ?? t('common.error'))
-    } finally {
-      setBusy(null)
-    }
+    })
   }
 
   async function share(i: Invite) {
-    const r = await copyOrShare(inviteText(i))
+    const text = inviteText(i)
+    const r = await copyOrShare(text)
     if (r === 'copied') notify(t('inv.copied'))
+    // no clipboard access (e.g. blocked by the browser): show the text so it can be copied by hand
+    else if (r === 'failed') notify(text)
   }
 
   const rowProps = { t, locale, busy, onToggle: toggle, onSend: doSend, onRevoke: doRevoke, onReopen: doReopen, onShare: share }
@@ -316,7 +335,7 @@ export default function InvitesScreen() {
                         accessibilityRole="button"
                         accessibilityState={{ selected: on }}
                         accessibilityLabel={`${s.label}: ${counts[s.key]}`}
-                        style={{ flex: 1, borderColor: on ? TONE_FG[s.tone] : undefined }}
+                        style={on ? { flex: 1, borderColor: TONE_FG[s.tone] } : { flex: 1 }}
                         className={`${wide ? 'flex-row items-center' : ''} gap-3 rounded-2xl border bg-neutral-950 p-3.5 ${on ? '' : 'border-neutral-800 hover:border-neutral-700'}`}
                       >
                         <View style={{ backgroundColor: TONE_BG[s.tone] }} className="h-10 w-10 items-center justify-center rounded-xl">
@@ -366,11 +385,14 @@ export default function InvitesScreen() {
               </>
             ) : (
               <>
-                {/* toolbar */}
+                {/* toolbar (only the tabs while there are no invites yet: nothing to search, filter or sort) */}
+                {!counts.all ? (
+                  <View className="flex-row">{tabs}</View>
+                ) : (
                 <View style={{ gap: 12 }}>
-                  <View style={{ flexDirection: wide ? 'row' : 'column', gap: 12, alignItems: wide ? 'center' : 'stretch' }}>
+                  <View style={{ flexDirection: wide ? 'row' : 'column', flexWrap: wide ? 'wrap' : 'nowrap', gap: 12, alignItems: wide ? 'center' : 'stretch' }}>
                     {!wide ? <View className="flex-row">{tabs}</View> : null}
-                    <View style={{ flex: wide ? 1 : undefined, maxWidth: wide ? 420 : undefined }}>
+                    <View style={wide ? { flexGrow: 1, flexBasis: 260, minWidth: 260, maxWidth: 420 } : undefined}>
                       <SearchField
                         value={query}
                         onChange={setQuery}
@@ -413,6 +435,7 @@ export default function InvitesScreen() {
                     </ChipRow>
                   ) : null}
                 </View>
+                )}
 
                 {/* bulk actions: only while something is selected (phones: select-all lives here too) */}
                 {selectable.length && (selectedIds.length || !wide) ? (
@@ -436,15 +459,17 @@ export default function InvitesScreen() {
                           label={t('inv.revokeSelected', { n: selectedIds.length })}
                           variant="danger"
                           loading={busy === 'revoke'}
+                          disabled={busy !== null}
                           icon={<Prohibit size={15} color="#F87171" />}
-                          onPress={() => doRevoke(selectedIds)}
+                          onPress={() => doRevoke(selectedIds, 'revoke')}
                         />
                         <SmallButton
                           label={t('inv.sendSelected', { n: selectedIds.length })}
                           variant="primary"
                           loading={busy === 'send'}
+                          disabled={busy !== null}
                           icon={<PaperPlaneTilt size={15} color="#0A0A0A" weight="bold" />}
-                          onPress={() => doSend(selectedIds)}
+                          onPress={() => doSend(selectedIds, 'send')}
                         />
                       </>
                     ) : null}
@@ -578,7 +603,7 @@ function Actions({ i, t, busy, onSend, onRevoke, onReopen, onShare }: RowProps) 
   if (i.status === 'revoked') {
     return (
       <View className="flex-row flex-wrap justify-end gap-2">
-        <SmallButton label={t('inv.reopen')} loading={busy === i.id} icon={<ArrowClockwise size={14} color={GREEN} />} onPress={() => onReopen(i.id)} />
+        <SmallButton label={t('inv.reopen')} loading={busy === i.id} disabled={busy !== null} icon={<ArrowClockwise size={14} color={GREEN} />} onPress={() => onReopen(i.id)} />
       </View>
     )
   }
@@ -589,13 +614,13 @@ function Actions({ i, t, busy, onSend, onRevoke, onReopen, onShare }: RowProps) 
         variant={i.status === 'pending' || i.status === 'failed' ? 'primary' : 'ghost'}
         icon={<PaperPlaneTilt size={14} color={i.status === 'pending' || i.status === 'failed' ? '#0A0A0A' : GREEN} weight="bold" />}
         loading={busy === i.id}
-        disabled={busy === 'send'}
+        disabled={busy !== null}
         onPress={() => onSend([i.id])}
       />
       <IconBtn label={Platform.OS === 'web' ? t('inv.copy') : t('inv.share')} onPress={() => onShare(i)}>
         <ShareIcon size={16} color="#D4D4D4" />
       </IconBtn>
-      <IconBtn label={t('inv.revoke')} onPress={() => onRevoke([i.id])} danger disabled={busy === 'revoke'}>
+      <IconBtn label={t('inv.revoke')} onPress={() => onRevoke([i.id])} danger disabled={busy !== null}>
         <Prohibit size={16} color="#F87171" />
       </IconBtn>
     </View>
@@ -621,7 +646,7 @@ function IconBtn({ label, onPress, children, danger, disabled }: { label: string
 }
 
 function Check({ i, checked, onToggle }: Pick<RowProps, 'i' | 'checked' | 'onToggle'>) {
-  if (i.status === 'accepted') return <View style={{ width: 20 }} />
+  if (i.status === 'accepted' || i.status === 'revoked') return <View style={{ width: 20 }} />
   return (
     <Pressable onPress={() => onToggle(i.id)} hitSlop={10} accessibilityRole="checkbox" accessibilityState={{ checked }} accessibilityLabel={i.email}>
       {checked ? <CheckSquare size={20} color={GREEN} weight="fill" /> : <Square size={20} color="#737373" />}

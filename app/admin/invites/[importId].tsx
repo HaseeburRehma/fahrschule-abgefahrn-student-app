@@ -64,9 +64,10 @@ export default function ImportDetail() {
   }
 
   async function resendUnsent() {
+    if (busy) return
     setBusy('send')
     try {
-      const res = await sendInvites(unsent.map((i) => i.id).slice(0, 500))
+      const res = await sendInvites(unsent.map((i) => i.id))
       if (!res.mail_configured) notify(t('inv.mailOffTitle') + '\n\n' + t('inv.mailOffBody'))
       else notify(t('inv.sendDone', { sent: res.tally.sent ?? 0, failed: res.tally.failed ?? 0, skipped: (res.tally.skipped ?? 0) + (res.tally.throttled ?? 0) }))
       await load()

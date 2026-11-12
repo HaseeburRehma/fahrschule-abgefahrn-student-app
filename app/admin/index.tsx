@@ -63,6 +63,8 @@ export default function AdminHome() {
   const [invites, setInvites] = useState<Invite[] | null>(null)
   const [students, setStudents] = useState<StudentWithPlan[] | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  // false until the first load finishes, so the page never shows "0" / "all done" while fetching
+  const [loaded, setLoaded] = useState(false)
 
   const load = useCallback(async () => {
     await Promise.all([
@@ -71,6 +73,7 @@ export default function AdminHome() {
       fetchInvites().then(setInvites).catch(() => setInvites(null)),
       fetchStudentsWithPlans().then(setStudents).catch(() => setStudents(null)),
     ])
+    setLoaded(true)
   }, [])
 
   useFocusEffect(
@@ -122,7 +125,7 @@ export default function AdminHome() {
   const kpiCards = (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 }}>
       {[
-        { label: t('admin.students'), value: String(studentsTotal), hint: k ? t('dash.studentsHint', { n: k.activeWeek }) : undefined, Icon: Users, tone: 'green' as Tone, href: '/admin/students' },
+        { label: t('admin.students'), value: loaded ? String(studentsTotal) : '—', hint: k ? t('dash.studentsHint', { n: k.activeWeek }) : undefined, Icon: Users, tone: 'green' as Tone, href: '/admin/students' },
         {
           label: t('perf.k.activeWeek'),
           value: k ? String(k.activeWeek) : '—',
@@ -141,7 +144,7 @@ export default function AdminHome() {
           bar: k?.avgAccuracy ?? null,
           href: flags.performance_dashboard ? '/admin/performance' : undefined,
         },
-        { label: t('admin.classes'), value: String(stats?.upcomingClasses ?? 0), hint: t('dash.upcomingHint'), Icon: CalendarCheck, tone: 'gray' as Tone, href: '/admin/classes' },
+        { label: t('admin.classes'), value: stats ? String(stats.upcomingClasses ?? 0) : '—', hint: t('dash.upcomingHint'), Icon: CalendarCheck, tone: 'gray' as Tone, href: '/admin/classes' },
       ].map((c) => (
         <View key={c.label} style={{ width: wide ? '25%' : '50%', padding: 6, flexDirection: 'column' }}>
           <Pressable
@@ -178,7 +181,9 @@ export default function AdminHome() {
 
   const todoCard = (
     <Card title={t('dash.attention')} count={todo.length || undefined}>
-      {todo.length === 0 ? (
+      {!loaded ? (
+        <Text className="font-m-regular px-4 py-5 text-sm text-neutral-500">…</Text>
+      ) : todo.length === 0 ? (
         <View className="flex-row items-center gap-3 px-4 py-5">
           <CheckCircle size={22} color={GREEN} weight="fill" />
           <Text className="font-m-medium flex-1 text-sm text-neutral-300">{t('dash.allGood')}</Text>
