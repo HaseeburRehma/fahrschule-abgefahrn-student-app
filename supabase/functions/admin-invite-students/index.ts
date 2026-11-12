@@ -107,6 +107,51 @@ interface InviteRow {
 type MailResult = 'sent' | 'failed' | 'skipped' | 'throttled' | 'not_configured' | 'disabled' | 'queued'
 const INVITE_COLS = 'id,email,first_name,student_code,status,send_count,last_sent_at,attempts,delivery_status'
 
+/** How long the retry job holds a failed invite while it re-sends it (a parallel run skips it meanwhile). */
+const RETRY_LEASE_MS = 10 * 60_000
+
+/**
+ * Claims invites for sending, atomically in the database: only rows that are still sendable and
+ * not claimed by an overlapping call come back. Two overlapping sends (double tap, two admins,
+ * two retry runs) therefore never mail the same invite twice — the reading-then-sending check
+ * alone can't guarantee that, because last_sent_at is only written after Resend answers.
+ * Both kinds stamp last_sent_at now AND push next_attempt_at forward (a lease), so they also
+ * exclude each other:
+ * - admin send: claims rows not stamped within the cooldown.
+ * - retry job: claims failed rows whose next attempt is due.
+ * The final status write afterwards sets both columns to their real values.
+ */
+async function claimForSending(db: any, ids: string[], mode: 'send' | 'retry'): Promise<Set<string>> {
+  const got = new Set<string>()
+  const stamp = new Date().toISOString()
+  const lease = { last_sent_at: stamp, next_attempt_at: new Date(Date.now() + RETRY_LEASE_MS).toISOString() }
+  for (const part of chunks(ids, 300)) {
+    const runs =
+      mode === 'retry'
+        ? [db.from('student_invites').update(lease).in('id', part).eq('status', 'failed').lte('next_attempt_at', stamp)]
+        : [
+            db.from('student_invites').update(lease)
+              .in('id', part).not('status', 'in', '(accepted,revoked)').is('last_sent_at', null),
+            db.from('student_invites').update(lease)
+              .in('id', part).not('status', 'in', '(accepted,revoked)')
+              .lt('last_sent_at', new Date(Date.now() - RESEND_COOLDOWN_MS).toISOString()),
+          ]
+    for (const q of runs) {
+      const { data, error } = await q.select('id')
+      if (error) throw error
+      for (const r of data ?? []) got.add(r.id)
+    }
+  }
+  return got
+}
+
+/** Invites revoked while a send was running — their status must stay 'revoked'. */
+async function revokedNow(db: any, ids: string[]): Promise<Set<string>> {
+  const { data, error } = await db.from('student_invites').select('id').in('id', ids).eq('status', 'revoked')
+  if (error) return new Set()
+  return new Set((data ?? []).map((r: { id: string }) => r.id))
+}
+
 async function sendInvites(ctx: Ctx, db: any, invites: InviteRow[], opts: { ignoreCooldown?: boolean } = {}): Promise<Map<string, MailResult>> {
   const { log } = ctx
   const result = new Map<string, MailResult>()
@@ -136,15 +181,24 @@ async function sendInvites(ctx: Ctx, db: any, invites: InviteRow[], opts: { igno
     return result
   }
 
-  for (const [i, batch] of chunks(due, 100).entries()) {
+  const claimed = await claimForSending(db, due.map((d) => d.id), opts.ignoreCooldown ? 'retry' : 'send')
+  const mine: InviteRow[] = []
+  for (const inv of due) {
+    if (claimed.has(inv.id)) mine.push(inv)
+    else result.set(inv.id, 'throttled') // another call is sending it right now (or it just changed)
+  }
+
+  for (const [i, batch] of chunks(mine, 100).entries()) {
     if (i > 0) await sleep(600) // Resend default limit: 2 requests / second
     const stamp = new Date().toISOString()
 
     if (!resendBreaker.canRequest()) {
       // Fail fast — queue for the background retry instead of waiting on timeouts.
+      const revoked = await revokedNow(db, batch.map((inv) => inv.id))
       await db.from('student_invites').upsert(
-        batch.map((inv) => ({
+        batch.filter((inv) => !revoked.has(inv.id)).map((inv) => ({
           id: inv.id, email: inv.email, student_code: inv.student_code, status: 'failed',
+          last_sent_at: inv.last_sent_at, // undo the claim stamp: nothing was sent
           last_error: 'provider_unavailable', next_attempt_at: nextAttemptAt(inv.attempts ?? 0),
         })),
         { onConflict: 'id' },
@@ -199,6 +253,8 @@ async function sendInvites(ctx: Ctx, db: any, invites: InviteRow[], opts: { igno
       log.error('resend batch failed', { batch: i, size: batch.length, error: errText, breaker: resendBreaker.state })
     }
 
+    // An admin may have revoked some of these while Resend was busy — don't flip them back.
+    const revoked = await revokedNow(db, batch.map((inv) => inv.id))
     const updates = batch.map((inv, j) => ({
       id: inv.id,
       email: inv.email,
@@ -211,7 +267,7 @@ async function sendInvites(ctx: Ctx, db: any, invites: InviteRow[], opts: { igno
       delivery_status: null,
       attempts: ok ? 0 : (inv.attempts ?? 0) + 1,
       next_attempt_at: ok || (inv.attempts ?? 0) + 1 >= MAX_ATTEMPTS ? null : nextAttemptAt(inv.attempts ?? 0),
-    }))
+    })).filter((u) => !revoked.has(u.id))
     const { error } = await db.from('student_invites').upsert(updates, { onConflict: 'id' })
     if (error) log.error('invite status update failed', { error: error.message })
     for (const inv of batch) result.set(inv.id, ok ? 'sent' : 'failed')

@@ -190,10 +190,19 @@ export async function importStudents(input: {
   }, { idempotencyKey: input.idempotencyKey, retries: 2 })
 }
 
-export async function sendInvites(
-  ids: string[],
-): Promise<{ results: Record<string, MailResult>; tally: Partial<Record<MailResult, number>>; mail_configured: boolean }> {
-  return invoke({ action: 'send', invite_ids: ids })
+type SendResult = { results: Record<string, MailResult>; tally: Partial<Record<MailResult, number>>; mail_configured: boolean }
+
+/** The function takes at most 500 invites per call — larger lists are sent in parts and the results merged. */
+export async function sendInvites(ids: string[]): Promise<SendResult> {
+  const out: SendResult = { results: {}, tally: {}, mail_configured: true }
+  for (let n = 0; n < ids.length; n += 500) {
+    const res: SendResult = await invoke({ action: 'send', invite_ids: ids.slice(n, n + 500) })
+    Object.assign(out.results, res.results)
+    for (const [k, v] of Object.entries(res.tally) as [MailResult, number][]) out.tally[k] = (out.tally[k] ?? 0) + (v ?? 0)
+    out.mail_configured = res.mail_configured
+    if (!res.mail_configured) break
+  }
+  return out
 }
 
 // ── lists ───────────────────────────────────────────────────────────────────
@@ -218,22 +227,31 @@ export async function fetchInvites(filter?: { importId?: string }): Promise<Invi
   }
 }
 
+/** ids go into the request URL — keep each request well below gateway URL limits */
+const ID_CHUNK = 150
+const idChunks = (ids: string[]) => Array.from({ length: Math.ceil(ids.length / ID_CHUNK) }, (_, i) => ids.slice(i * ID_CHUNK, (i + 1) * ID_CHUNK))
+
 export async function revokeInvites(ids: string[]): Promise<void> {
-  const { error } = await getSupabase()
-    .from('student_invites')
-    .update({ status: 'revoked' })
-    .in('id', ids)
-    .neq('status', 'accepted')
-  if (error) throw error
+  for (const part of idChunks(ids)) {
+    const { error } = await getSupabase()
+      .from('student_invites')
+      .update({ status: 'revoked' })
+      .in('id', part)
+      .neq('status', 'accepted')
+      .neq('status', 'revoked')
+    if (error) throw error
+  }
 }
 
 export async function reopenInvites(ids: string[]): Promise<void> {
-  const { error } = await getSupabase()
-    .from('student_invites')
-    .update({ status: 'pending', last_error: null })
-    .in('id', ids)
-    .eq('status', 'revoked')
-  if (error) throw error
+  for (const part of idChunks(ids)) {
+    const { error } = await getSupabase()
+      .from('student_invites')
+      .update({ status: 'pending', last_error: null })
+      .in('id', part)
+      .eq('status', 'revoked')
+    if (error) throw error
+  }
 }
 
 export async function fetchImports(): Promise<StudentImport[]> {
