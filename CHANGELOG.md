@@ -7,6 +7,7 @@ Store versions (`expo.version`) are listed in brackets.
 ## [Unreleased]
 
 ### Added
+- Invites page in the same style: status cards that filter on tap (sent, signed up with sign-up rate, failed, not yet sent), search, status filters with counts, sorting, pagination, selection across pages with a bulk bar, compact row actions (send / copy / revoke) and a table of imported lists. Table on desktop, cards on phones. `?status=failed` preselects a filter; the dashboard links there.
 - Admin sidebar navigation on desktop and tablets (from 1024 px), grouped into Students, Teaching, Communication and Settings; phones keep the native stack with the dashboard as the menu.
 - Students list: search across name, e-mail, phone and code; filters with counts (active, deactivated, no package, no theory class); sorting; pagination with 10/25/50/100 per page. Table on desktop, cards on phones. `?filter=` preselects a filter.
 - Dashboard: greeting, four headline numbers, a to-do list built from live data (sign-ups, undelivered invites, exams soon, students who need help, inactive students, students without a package), newest students and quick actions. To-do rows open the matching filtered list.
