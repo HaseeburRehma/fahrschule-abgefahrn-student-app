@@ -99,7 +99,7 @@ export default function AdminHome() {
   type Todo = { n: number; label: string; href: string; Icon: IconC; tone: Tone }
   const allTodo: Todo[] = [
     { n: stats?.pendingIntake ?? 0, label: t('dash.att.intake'), href: '/admin/intake', Icon: Tray, tone: 'amber' },
-    { n: failedInvites, label: t('dash.att.failed'), href: '/admin/invites', Icon: Warning, tone: 'red' },
+    { n: failedInvites, label: t('dash.att.failed'), href: '/admin/invites?status=failed', Icon: Warning, tone: 'red' },
     { n: k?.examsSoon ?? 0, label: t('dash.att.examSoon'), href: perfHref('exam_soon'), Icon: GraduationCap, tone: 'blue' },
     { n: struggling, label: t('dash.att.struggling'), href: perfHref('struggling'), Icon: Lifebuoy, tone: 'red' },
     { n: k?.inactive ?? 0, label: t('dash.att.inactive'), href: perfHref('inactive'), Icon: Moon, tone: 'gray' },

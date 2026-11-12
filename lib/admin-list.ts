@@ -4,6 +4,7 @@
  */
 
 import type { StudentWithPlan } from '@/lib/admin'
+import type { Invite, InviteStatus } from '@/lib/invites'
 
 // ── pagination ──────────────────────────────────────────────────────────────
 
@@ -120,4 +121,60 @@ export function daysAgo(iso: string | null | undefined, now = new Date()): numbe
   if (t === null) return null
   const d = Math.floor((now.getTime() - t) / 86_400_000)
   return d < 0 ? 0 : d
+}
+
+// ── invites ─────────────────────────────────────────────────────────────────
+
+
+export type InviteFilter = 'all' | InviteStatus
+export type InviteSort = 'newest' | 'name' | 'last_sent'
+
+export const INVITE_FILTERS: InviteFilter[] = ['all', 'pending', 'sent', 'failed', 'accepted', 'revoked']
+export const INVITE_SORTS: InviteSort[] = ['newest', 'name', 'last_sent']
+
+export function inviteName(i: Pick<Invite, 'first_name' | 'last_name'>): string {
+  return [i.first_name, i.last_name].filter(Boolean).join(' ').trim()
+}
+
+export function matchesInvite(i: Invite, query: string, filter: InviteFilter): boolean {
+  if (filter !== 'all' && i.status !== filter) return false
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  return `${inviteName(i)} ${i.email} ${i.student_code} ${i.phone ?? ''}`.toLowerCase().includes(q)
+}
+
+export function sortInvites(list: Invite[], sort: InviteSort): Invite[] {
+  const out = [...list]
+  const newest = (a: Invite, b: Invite) => (time(b.created_at) ?? 0) - (time(a.created_at) ?? 0)
+  switch (sort) {
+    case 'name':
+      return out.sort((a, b) => (inviteName(a) || a.email).localeCompare(inviteName(b) || b.email, 'de', { sensitivity: 'base' }))
+    case 'last_sent':
+      // never-sent invites go last
+      return out.sort((a, b) => {
+        const ta = time(a.last_sent_at)
+        const tb = time(b.last_sent_at)
+        if (ta === tb) return newest(a, b)
+        if (ta === null) return 1
+        if (tb === null) return -1
+        return tb - ta
+      })
+    default:
+      return out.sort(newest)
+  }
+}
+
+export function inviteCounts(list: Invite[]): Record<InviteFilter, number> {
+  const c: Record<InviteFilter, number> = { all: 0, pending: 0, sent: 0, failed: 0, accepted: 0, revoked: 0 }
+  for (const i of list) {
+    c.all++
+    c[i.status]++
+  }
+  return c
+}
+
+/** Share of invites (excluding revoked) that turned into an account, 0–100, null when none. */
+export function acceptRate(c: Record<InviteFilter, number>): number | null {
+  const base = c.all - c.revoked
+  return base > 0 ? Math.round((100 * c.accepted) / base) : null
 }

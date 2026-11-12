@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest'
 
-import { countByFilter, daysAgo, matchesStudent, pageWindow, paginate, sortStudents } from '../lib/admin-list'
+import {
+  acceptRate,
+  countByFilter,
+  daysAgo,
+  inviteCounts,
+  matchesInvite,
+  matchesStudent,
+  pageWindow,
+  paginate,
+  sortInvites,
+  sortStudents,
+} from '../lib/admin-list'
+import type { Invite } from '../lib/invites'
 import type { StudentWithPlan } from '../lib/admin'
 
 const s = (id: string, over: Record<string, unknown> = {}, extra: Partial<StudentWithPlan> = {}): StudentWithPlan =>
@@ -107,5 +119,54 @@ describe('daysAgo', () => {
     expect(daysAgo('2026-12-01', now)).toBe(0)
     expect(daysAgo(null, now)).toBeNull()
     expect(daysAgo('nope', now)).toBeNull()
+  })
+})
+
+const inv = (id: string, over: Partial<Invite> = {}): Invite =>
+  ({
+    id,
+    import_id: null,
+    email: `${id}@example.de`,
+    first_name: id,
+    last_name: null,
+    phone: null,
+    student_code: `CODE-${id.toUpperCase()}`,
+    code_source: 'generated',
+    status: 'pending',
+    send_count: 0,
+    last_sent_at: null,
+    last_error: null,
+    accepted_at: null,
+    profile_id: null,
+    created_at: '2026-11-01T00:00:00Z',
+    ...over,
+  }) as Invite
+
+describe('invites', () => {
+  const a = inv('anna', { status: 'sent', last_sent_at: '2026-11-05T10:00:00Z', created_at: '2026-11-02T00:00:00Z' })
+  const b = inv('Ben', { status: 'failed', last_sent_at: '2026-11-08T10:00:00Z', created_at: '2026-11-01T00:00:00Z' })
+  const c = inv('carla', { status: 'accepted', created_at: '2026-11-03T00:00:00Z' })
+  const d = inv('dora', { status: 'revoked' })
+
+  it('filters by status and searches name, e-mail and code', () => {
+    expect(matchesInvite(b, '', 'failed')).toBe(true)
+    expect(matchesInvite(a, '', 'failed')).toBe(false)
+    expect(matchesInvite(a, 'code-anna', 'all')).toBe(true)
+    expect(matchesInvite(a, 'ANNA@EXAMPLE', 'sent')).toBe(true)
+    expect(matchesInvite(a, 'ben', 'all')).toBe(false)
+  })
+
+  it('sorts by newest, name and last sent (never sent last)', () => {
+    const ids = (l: Invite[]) => l.map((x) => x.id)
+    expect(ids(sortInvites([a, b, c], 'newest'))).toEqual(['carla', 'anna', 'Ben'])
+    expect(ids(sortInvites([c, b, a], 'name'))).toEqual(['anna', 'Ben', 'carla'])
+    expect(ids(sortInvites([c, a, b], 'last_sent'))).toEqual(['Ben', 'anna', 'carla'])
+  })
+
+  it('counts per status and the sign-up rate without revoked invites', () => {
+    const counts = inviteCounts([a, b, c, d])
+    expect(counts).toEqual({ all: 4, pending: 0, sent: 1, failed: 1, accepted: 1, revoked: 1 })
+    expect(acceptRate(counts)).toBe(33)
+    expect(acceptRate(inviteCounts([d]))).toBeNull()
   })
 })
