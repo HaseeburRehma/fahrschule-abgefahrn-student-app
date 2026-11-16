@@ -6,6 +6,14 @@ Store versions (`expo.version`) are listed in brackets.
 
 ## [Unreleased]
 
+### Security
+- Deactivated accounts lose access in the database immediately (restrictive RLS on every student table + documents storage, quiz and league functions). Before, only the app checked `is_active` on start-up. Login now says "account deactivated" instead of silently bouncing.
+- Students the school creates (admin "add student", website intake form) get an e-mail with a one-time link to choose a password. Before, these accounts had no password and nobody told the student.
+- Password-reset links: the web app only accepts login tokens from real recovery links on /reset-password, and the native reset screen only takes tokens with `type=recovery` (no signing a device into someone else's account with a crafted link).
+- Sign-up: the per-e-mail limit only counts requests with a valid code, so nobody can lock a stranger out with junk requests.
+- RSVP only for enrolled classes; students can only mark notifications read (no rewriting title/body/data); quiz rounds need at least 2 s per question since the last round (server clock).
+- Admin: function errors (e-mail exists, rate limited, cannot delete admin, …) are shown as readable messages instead of "Edge Function returned a non-2xx status code"; converting an intake whose e-mail already has an account marks it done.
+
 ### Fixed
 - Admin invites: one action at a time (no double e-mails from a second tap), bulk send/revoke for any selection size (sent in parts), revoked invites can't be selected, refreshes can't undo a revoke, copy falls back to showing the text. Server: invites are claimed in the database before mailing, so overlapping sends or retry runs never mail twice, and a revoke during a send is kept.
 - Admin dashboard: shows "—" while loading instead of 0 / "all done". Invites page hides search and filters while there are no invites. Students and invites toolbars wrap on narrow desktops.

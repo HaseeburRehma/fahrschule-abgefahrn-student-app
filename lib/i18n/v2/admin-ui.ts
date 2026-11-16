@@ -85,6 +85,17 @@ export const de: Record<string, string> = {
   'inv.imp.registered': 'Registriert',
   'inv.imp.skipped': 'Übersprungen',
   'inv.imp.failed': 'Fehler',
+  // admin function errors + account e-mail
+  'adm.err.email_exists': 'Für diese E-Mail-Adresse gibt es schon ein Konto.',
+  'adm.err.invalid_email': 'Bitte eine gültige E-Mail-Adresse eingeben.',
+  'adm.err.cannot_delete_admin': 'Administratoren können hier nicht gelöscht werden.',
+  'adm.err.rate_limited': 'Zu viele Anfragen – bitte kurz warten und erneut versuchen.',
+  'adm.err.network': 'Keine Verbindung – bitte Internet prüfen.',
+  'adm.err.generic': 'Das hat nicht geklappt ({code}).',
+  'adm.created.mailSent': 'Fahrschüler angelegt – er hat eine E-Mail bekommen, um sein Passwort festzulegen.',
+  'adm.created.mailOff': 'Fahrschüler angelegt. Einladungs-E-Mails sind ausgeschaltet – er kann in der App über „Passwort vergessen“ ein Passwort festlegen.',
+  'adm.created.mailFailed': 'Fahrschüler angelegt, aber die E-Mail konnte nicht gesendet werden. Er kann in der App über „Passwort vergessen“ ein Passwort festlegen.',
+  'adm.intake.exists': 'Für diese E-Mail gibt es schon ein Konto – als erledigt markiert.',
 }
 
 export const en: Record<string, string> = {
@@ -173,4 +184,15 @@ export const en: Record<string, string> = {
   'inv.imp.registered': 'Signed up',
   'inv.imp.skipped': 'Skipped',
   'inv.imp.failed': 'Failed',
+  // admin function errors + account e-mail
+  'adm.err.email_exists': 'An account with this e-mail address already exists.',
+  'adm.err.invalid_email': 'Please enter a valid e-mail address.',
+  'adm.err.cannot_delete_admin': 'Admins can’t be deleted here.',
+  'adm.err.rate_limited': 'Too many requests – please wait a moment and try again.',
+  'adm.err.network': 'No connection – please check your internet.',
+  'adm.err.generic': 'That didn’t work ({code}).',
+  'adm.created.mailSent': 'Student added – they got an e-mail to choose their password.',
+  'adm.created.mailOff': 'Student added. Invite e-mails are switched off – they can set a password in the app via “Forgot password”.',
+  'adm.created.mailFailed': 'Student added, but the e-mail could not be sent. They can set a password in the app via “Forgot password”.',
+  'adm.intake.exists': 'This e-mail already has an account – marked as done.',
 }

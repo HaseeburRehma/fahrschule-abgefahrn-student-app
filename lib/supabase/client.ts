@@ -104,7 +104,13 @@ export function getSupabase(): AppSupabase {
       autoRefreshToken: true,
       persistSession: true,
       // Web: parse password-recovery links (#access_token=…&type=recovery).
-      detectSessionInUrl: Platform.OS === 'web',
+      // Web only, and only for real password-recovery links on /reset-password:
+      // a crafted link with someone else's tokens must not sign this browser in.
+      detectSessionInUrl:
+        Platform.OS === 'web'
+          ? (url: URL, params: Record<string, string>) =>
+              url.pathname.endsWith('/reset-password') && (params.type === 'recovery' || !!params.code || !!params.error_description)
+          : false,
     },
     global: { fetch: fetchWithTimeout },
   })

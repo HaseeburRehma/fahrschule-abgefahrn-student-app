@@ -21,6 +21,7 @@
 import { HttpError, badRequest, timingSafeEqual, tooLarge, unauthorized } from '../_shared/http.ts'
 import { isValidEmail, normalizeEmail } from '../_shared/invites.ts'
 import { enforceRateLimit, serve, serviceClient } from '../_shared/serve.ts'
+import { sendAccessMail } from '../_shared/access-mail.ts'
 
 const MAX_BODY = 64_000
 const clip = (v: string | null, n: number) => (v == null ? null : v.slice(0, n))
@@ -113,6 +114,7 @@ serve('intake-signup', { corsExtraHeaders: 'x-intake-secret' }, async (ctx) => {
   let studentId: string | null = existing?.id ?? null
   let created = false
   let accountError: string | null = null
+  let accessMail: string | null = null
 
   if (!existing) {
     const { data: made, error: cErr } = await supabase.auth.admin.createUser({
@@ -133,6 +135,8 @@ serve('intake-signup', { corsExtraHeaders: 'x-intake-secret' }, async (ctx) => {
         body: 'Dein Konto wurde erstellt. Melde dich mit dieser E-Mail an, um Termine und Mitteilungen zu erhalten.',
         type: 'general',
       })
+      // the account has no password yet — send the link to choose one
+      accessMail = await sendAccessMail(ctx, supabase, { email: cleanEmail, firstName: first_name ?? null, userId: studentId })
     }
   } else if (existing.role === 'student') {
     // Existing student re-registering: fill any blanks, don't overwrite.
@@ -165,6 +169,6 @@ serve('intake-signup', { corsExtraHeaders: 'x-intake-secret' }, async (ctx) => {
   })
 
   if (!studentId) throw new HttpError(500, accountError ?? 'create_failed')
-  log.info('intake processed', { created, student_id: studentId, package_id: packageId })
+  log.info('intake processed', { created, student_id: studentId, package_id: packageId, access_mail: accessMail })
   return ctx.json({ ok: true, student_id: studentId, created, package_id: packageId })
 })

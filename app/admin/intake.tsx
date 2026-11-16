@@ -10,6 +10,9 @@ import {
   fetchIntake,
   setIntakeStatus,
   createStudent,
+  AdminFunctionError,
+  adminErrorText,
+  createdText,
 } from '@/lib/admin'
 import { formatDateTime } from '@/lib/format'
 import { Card, Loader } from '@/components/ui'
@@ -40,7 +43,7 @@ export default function IntakeQueue() {
     }
     setBusyId(row.id)
     try {
-      await createStudent({
+      const res = await createStudent({
         email: row.email,
         first_name: row.first_name ?? undefined,
         last_name: row.last_name ?? undefined,
@@ -48,9 +51,14 @@ export default function IntakeQueue() {
       })
       await setIntakeStatus(row.id, 'converted')
       setRows((prev) => (prev ?? []).filter((r) => r.id !== row.id))
-      notify(t('common.saved'))
+      notify(t(createdText(res)))
     } catch (e: any) {
-      notify(e?.message ?? t('common.error'))
+      if (e instanceof AdminFunctionError && e.message === 'email_exists') {
+        // the person already has an account — nothing left to convert
+        await setIntakeStatus(row.id, 'converted').catch(() => {})
+        setRows((prev) => (prev ?? []).filter((r) => r.id !== row.id))
+        notify(t('adm.intake.exists'))
+      } else notify(t(...adminErrorText(e)))
     } finally {
       setBusyId(null)
     }

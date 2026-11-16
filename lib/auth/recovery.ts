@@ -42,7 +42,7 @@ export function clearRecoveryEvent() {
 // time that this page was opened from a recovery link.
 if (Platform.OS === 'web' && typeof window !== 'undefined') {
   const p = parseAuthParams(window.location.href)
-  if (p.type === 'recovery' || ((p.access_token || p.code) && window.location.pathname.endsWith('/reset-password'))) markRecoveryEvent()
+  if (window.location.pathname.endsWith('/reset-password') && (p.type === 'recovery' || p.code)) markRecoveryEvent()
 }
 
 export async function sendRecoveryMail(email: string) {

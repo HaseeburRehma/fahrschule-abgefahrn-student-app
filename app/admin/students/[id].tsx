@@ -17,6 +17,7 @@ import {
   updateStudent,
   setStudentPackages,
   deleteStudent,
+  adminErrorText,
   LICENSE_CLASSES,
 } from '@/lib/admin'
 import { fetchMyClasses, splitByTime } from '@/lib/data'
@@ -194,7 +195,7 @@ export default function EditStudent() {
       notify(t('admin.deleted'))
       router.back()
     } catch (e: any) {
-      setError(e?.message ?? t('common.error'))
+      setError(t(...adminErrorText(e)))
     } finally {
       setBusy(false)
     }

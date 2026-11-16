@@ -71,12 +71,23 @@ export default function Login() {
     busyRef.current = true
     setBusy(true)
     try {
-      const { error } = await withTimeout(
+      const { data, error } = await withTimeout(
         getSupabase().auth.signInWithPassword({ email: cleanEmail, password }),
         20_000,
       )
       if (error) throw error
       resetLoginFailures(cleanEmail)
+      // A deactivated account signs in fine at the auth level but has no access —
+      // say so instead of silently bouncing back to this screen.
+      const uid = data?.user?.id
+      if (uid) {
+        const { data: prof } = await getSupabase().from('profiles').select('is_active').eq('id', uid).maybeSingle()
+        if (prof && prof.is_active === false) {
+          await getSupabase().auth.signOut().catch(() => {})
+          setPwErr(t('auth.err.deactivated'))
+          return
+        }
+      }
       // AuthGuard sees the new session and routes to Home.
     } catch (e) {
       const kind = e instanceof TimeoutError ? 'network' : classifyPasswordError(e)

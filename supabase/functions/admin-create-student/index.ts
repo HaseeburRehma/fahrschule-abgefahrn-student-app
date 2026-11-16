@@ -9,13 +9,17 @@
 // starts clean (compensating action instead of a distributed transaction).
 //
 //   POST { email, first_name?, last_name?, phone?, current_theory_topic_id?, package_ids? }
-//   → 200 { id } | 400 | 401 | 403 | 409 email_exists | 429 | 500
+// The student then gets an e-mail with a one-time link to choose a password
+// (without it the account would exist but nobody could sign in).
+//
+//   → 200 { id, access_mail: sent|disabled|not_configured|failed } | 400 | 401 | 403 | 409 email_exists | 429 | 500
 // Deploy:  supabase functions deploy admin-create-student
 // ============================================================================
 
 import { HttpError, badRequest, conflict, isUuid, readJson } from '../_shared/http.ts'
 import { cleanName, cleanPhone, isValidEmail, normalizeEmail } from '../_shared/invites.ts'
 import { enforceRateLimit, requireAdmin, serve, serviceClient } from '../_shared/serve.ts'
+import { sendAccessMail } from '../_shared/access-mail.ts'
 
 serve('admin-create-student', {}, async (ctx) => {
   const { user } = await requireAdmin(ctx)
@@ -69,6 +73,7 @@ serve('admin-create-student', {}, async (ctx) => {
     if (pkgErr) await rollback('packages', pkgErr.message)
   }
 
-  ctx.log.info('student created', { admin_id: user.id, student_id: uid })
-  return ctx.json({ id: uid })
+  const access_mail = await sendAccessMail(ctx, admin, { email, firstName: cleanName(body.first_name), userId: uid })
+  ctx.log.info('student created', { admin_id: user.id, student_id: uid, access_mail })
+  return ctx.json({ id: uid, access_mail })
 })

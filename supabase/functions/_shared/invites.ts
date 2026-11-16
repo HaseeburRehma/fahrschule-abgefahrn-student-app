@@ -328,3 +328,71 @@ ${m.supportEmail ? `<p style="margin:0;font-size:13px;color:#A3A3A3">Fragen? <a 
 
   return { subject, html, text }
 }
+
+// ── access e-mail (account created by the school) ───────────────────────────
+
+export interface AccessMailInput {
+  email: string
+  firstName: string | null
+  /** one-time link that lets the student choose a password */
+  link: string
+  schoolName: string
+  appStoreUrl: string
+  playStoreUrl: string
+  supportEmail?: string | null
+}
+
+/** "Your account is ready — choose a password" mail for accounts the school created. */
+export function buildAccessEmail(m: AccessMailInput): { subject: string; html: string; text: string } {
+  const name = m.firstName ? cleanName(m.firstName, 60) : null
+  const hiDe = name ? `Hallo ${name},` : 'Hallo,'
+  const hiEn = name ? `Hi ${name},` : 'Hi,'
+  const subject = `Dein Zugang zur App von ${m.schoolName}`
+
+  const text = [
+    hiDe,
+    '',
+    `${m.schoolName} hat dir ein Konto in der Fahrschul-App angelegt: Theorie lernen, Quiz üben, Fahrstunden und Prüfungstermine im Blick.`,
+    '',
+    'Wähle jetzt dein Passwort (der Link gilt 1 Stunde):',
+    m.link,
+    '',
+    `Danach meldest du dich in der App mit ${m.email} und deinem Passwort an.`,
+    `App – iPhone: ${m.appStoreUrl}`,
+    `      Android: ${m.playStoreUrl}`,
+    '',
+    'Link abgelaufen? In der App auf „Passwort vergessen“ tippen und diese E-Mail-Adresse eingeben.',
+    ...(m.supportEmail ? ['', `Fragen? ${m.supportEmail}`] : []),
+    '',
+    '—',
+    '',
+    hiEn,
+    `${m.schoolName} created an account for you in the driving school app. Choose your password here (valid for 1 hour): ${m.link}`,
+    `Then sign in with ${m.email}. Link expired? Tap "Forgot password" in the app.`,
+  ].join('\n')
+
+  const e = escapeHtml
+  const btn = (href: string, label: string, primary = true) =>
+    `<a href="${e(href)}" style="display:inline-block;margin:4px 6px 4px 0;padding:12px 18px;border-radius:12px;background:${primary ? '#00FF24' : '#262626'};color:${primary ? '#0A0A0A' : '#F5F5F5'};font-weight:700;text-decoration:none">${e(label)}</a>`
+
+  const html = `<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${e(subject)}</title></head>
+<body style="margin:0;background:#0A0A0A;font-family:Helvetica,Arial,sans-serif;color:#F5F5F5">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0A0A0A"><tr><td align="center" style="padding:24px 16px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#141414;border:1px solid #262626;border-radius:20px">
+<tr><td style="padding:28px 24px">
+<p style="margin:0 0 12px;font-size:18px;font-weight:700">${e(hiDe)}</p>
+<p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#D4D4D4">${e(m.schoolName)} hat dir ein Konto in der Fahrschul-App angelegt: Theorie lernen, Quiz üben, Fahrstunden und Prüfungstermine im Blick.</p>
+<p style="margin:0 0 16px">${btn(m.link, 'Passwort festlegen')}</p>
+<p style="margin:0 0 20px;font-size:13px;color:#A3A3A3">Der Link gilt 1 Stunde. Danach meldest du dich in der App mit <strong style="color:#F5F5F5">${e(m.email)}</strong> und deinem Passwort an.</p>
+<p style="margin:0 0 16px">${btn(m.appStoreUrl, 'App Store', false)}${btn(m.playStoreUrl, 'Google Play', false)}</p>
+<p style="margin:0 0 4px;font-size:13px;color:#A3A3A3">Link abgelaufen? In der App auf „Passwort vergessen“ tippen und diese E-Mail-Adresse eingeben.</p>
+${m.supportEmail ? `<p style="margin:0;font-size:13px;color:#A3A3A3">Fragen? <a href="mailto:${e(m.supportEmail)}" style="color:#00FF24">${e(m.supportEmail)}</a></p>` : ''}
+<hr style="border:none;border-top:1px solid #262626;margin:24px 0">
+<p style="margin:0;font-size:13px;color:#A3A3A3">${e(hiEn)} ${e(m.schoolName)} created an account for you in the driving school app. Use the button above to choose your password (valid for 1 hour), then sign in with this e-mail address. Link expired? Tap “Forgot password” in the app.</p>
+</td></tr></table>
+</td></tr></table>
+</body></html>`
+
+  return { subject, html, text }
+}

@@ -38,7 +38,9 @@ async function establishSession(url: string | null): Promise<boolean> {
   const p = parseAuthParams(url)
   if (p.error || p.error_code || p.error_description) return false
 
-  if (p.access_token && p.refresh_token) {
+  // Only a recovery link may hand over tokens: a crafted link with someone
+  // else's tokens (and no type=recovery) must not sign this device into that account.
+  if (p.access_token && p.refresh_token && p.type === 'recovery') {
     const { error } = await auth.setSession({ access_token: p.access_token, refresh_token: p.refresh_token })
     return !error
   }
