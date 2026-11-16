@@ -12,6 +12,7 @@
 // accepted. The app signs in with the password right after.
 //
 // Brute-force protection: 10 attempts / 10 min per IP and 5 / hour per e-mail
+// (the per-e-mail limit counts only requests with a valid code)
 // (shared across instances via public.check_rate_limit), plus a per-instance
 // fallback. Wrong codes all get the same 403 so codes can't be enumerated.
 // Passwords: ≥ 8 chars with letter + digit, checked against HaveIBeenPwned
@@ -71,7 +72,6 @@ serve('signup-with-code', {}, async (ctx) => {
   const last = String(body.last_name ?? '').trim().slice(0, 60)
   const locale = body.locale === 'en' ? 'en' : 'de'
   if (!isValidEmail(email) || !first) throw badRequest('invalid_input')
-  await enforceRateLimit(admin, log, `signup:email:${email}`, 5, 3600)
   // same policy as Auth (password_required_characters): ≥ 8, at least one letter and one digit
   if (password.length < 8 || password.length > 72 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
     throw badRequest('weak_password')
@@ -105,6 +105,10 @@ serve('signup-with-code', {}, async (ctx) => {
     }
     invite = data
   }
+
+  // Per-address limit only after the code was accepted: otherwise anyone could
+  // lock a stranger out of signing up by sending five junk requests with their e-mail.
+  await enforceRateLimit(admin, log, `signup:email:${email}`, 5, 3600)
 
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
     email,

@@ -6,6 +6,8 @@ import { Stack, useRouter } from 'expo-router'
 import { useTranslation } from '@/lib/i18n'
 import {
   createStudent,
+  adminErrorText,
+  createdText,
   fetchPackages,
   fetchTopics,
 } from '@/lib/admin'
@@ -55,7 +57,7 @@ export default function NewStudent() {
     }
     setBusy(true)
     try {
-      await createStudent({
+      const res = await createStudent({
         email: clean,
         first_name: firstName.trim() || undefined,
         last_name: lastName.trim() || undefined,
@@ -63,10 +65,10 @@ export default function NewStudent() {
         current_theory_topic_id: topicId,
         package_ids: pkgIds,
       })
-      notify(t('common.saved'))
+      notify(t(createdText(res)))
       router.back()
     } catch (e: any) {
-      setError(e?.message ?? t('common.error'))
+      setError(t(...adminErrorText(e)))
     } finally {
       setBusy(false)
     }

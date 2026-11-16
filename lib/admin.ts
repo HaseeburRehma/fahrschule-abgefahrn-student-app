@@ -5,6 +5,7 @@
  */
 
 import { getSupabase } from '@/lib/supabase/client'
+import { readFunctionError } from '@/lib/auth/errors'
 import type {
   Package,
   Profile,
@@ -86,32 +87,47 @@ export interface NewStudentInput {
   package_ids?: string[]
 }
 
-/** Creates the auth user + profile via the admin-create-student Edge Function. */
-export async function createStudent(input: NewStudentInput): Promise<{ id: string }> {
-  const { data, error } = await getSupabase().functions.invoke(
-    'admin-create-student',
-    { body: input },
-  )
+/** Error from an admin Edge Function; `message` is the function's error code (e.g. 'email_exists'). */
+export class AdminFunctionError extends Error {}
+
+async function invokeAdmin<T>(name: string, body: Record<string, any>): Promise<T> {
+  const { data, error } = await getSupabase().functions.invoke(name, { body })
   if (error) {
-    // Surface the function's JSON error message when present.
-    const msg = (data as any)?.error ?? error.message
-    throw new Error(msg)
+    // On a non-2xx answer supabase-js leaves `data` empty — read the JSON body from the response.
+    const { code, network } = await readFunctionError(error)
+    throw new AdminFunctionError(network ? 'network' : code || 'error')
   }
-  if ((data as any)?.error) throw new Error((data as any).error)
-  return data as { id: string }
+  if ((data as any)?.error) throw new AdminFunctionError((data as any).error)
+  return data as T
+}
+
+export type AccessMailResult = 'sent' | 'disabled' | 'not_configured' | 'failed'
+
+const KNOWN_ADMIN_ERRORS = new Set(['email_exists', 'invalid_email', 'cannot_delete_admin', 'rate_limited', 'network'])
+
+/** i18n key + vars for an error thrown by an admin Edge Function call. */
+export function adminErrorText(e: unknown): [string, Record<string, string>?] {
+  const code = e instanceof AdminFunctionError ? e.message : ''
+  if (KNOWN_ADMIN_ERRORS.has(code)) return [`adm.err.${code}`]
+  return ['adm.err.generic', { code: code || String((e as any)?.message ?? 'error').slice(0, 60) }]
+}
+
+/** Message after "add student": whether the password e-mail went out. */
+export function createdText(r: { access_mail?: AccessMailResult }): string {
+  return r.access_mail === 'sent' ? 'adm.created.mailSent' : r.access_mail === 'disabled' ? 'adm.created.mailOff' : 'adm.created.mailFailed'
+}
+
+/**
+ * Creates the auth user + profile via the admin-create-student Edge Function.
+ * The student is e-mailed a link to choose a password (`access_mail` says how that went).
+ */
+export async function createStudent(input: NewStudentInput): Promise<{ id: string; access_mail?: AccessMailResult }> {
+  return invokeAdmin('admin-create-student', { ...input })
 }
 
 /** Permanently deletes a student (auth user + all their data) via Edge Function. */
 export async function deleteStudent(id: string): Promise<void> {
-  const { data, error } = await getSupabase().functions.invoke(
-    'admin-delete-student',
-    { body: { id } },
-  )
-  if (error) {
-    const msg = (data as any)?.error ?? error.message
-    throw new Error(msg)
-  }
-  if ((data as any)?.error) throw new Error((data as any).error)
+  await invokeAdmin('admin-delete-student', { id })
 }
 
 export async function updateStudent(
